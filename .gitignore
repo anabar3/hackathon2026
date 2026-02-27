@@ -1,0 +1,35 @@
+﻿# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+.metadata
+
+# Android
+.gradle/
+local.properties
+*.jks
+*.keystore
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+
+# iOS
+.tags*
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+/ios/Pods/
+/ios/.symlinks/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# System
+.DS_Store
+*.log
