@@ -14,6 +14,9 @@ import 'screens/add_screen.dart';
 import 'screens/drift_screen.dart';
 import 'screens/person_boards_screen.dart';
 import 'screens/profile_screen.dart';
+import 'services/ble_service.dart';
+import 'services/background_service.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +25,8 @@ void main() async {
     url: 'https://qthjufceuesqwrypwqgx.supabase.co',
     anonKey: 'sb_publishable_lw7OkHrufOLfqCw1J4Am3A_FB601r5d',
   );
+
+  await initializeBackgroundService();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -88,7 +93,7 @@ class _CollectHomeState extends State<CollectHome> {
   Screen _prevScreen = Screen.dashboard;
   late Board _selectedBoard;
   late ContentItem _selectedItem;
-  late NearbyPerson _selectedPerson;
+  late NearbyPerson? _selectedPerson;
   late List<ContentItem> _items;
 
   @override
@@ -96,8 +101,20 @@ class _CollectHomeState extends State<CollectHome> {
     super.initState();
     _items = buildContentItems();
     _selectedBoard = boards.first;
-    _selectedItem = _items.first;
-    _selectedPerson = nearbyPeople.first;
+    _selectedPerson = null;
+
+    // Initialize BLE if we have a user
+    final userId = _service.currentUser?.id;
+    if (userId != null) {
+      BleService.instance.init(userId);
+      FlutterBackgroundService().startService();
+    }
+  }
+
+  @override
+  void dispose() {
+    BleService.instance.dispose();
+    super.dispose();
   }
 
   void _navigate(Screen s) {
@@ -160,6 +177,8 @@ class _CollectHomeState extends State<CollectHome> {
   }
 
   Future<void> _handleLogout() async {
+    BleService.instance.dispose();
+    FlutterBackgroundService().invoke('stopService');
     await _service.signOut();
     widget.onLogout();
   }
@@ -203,12 +222,13 @@ class _CollectHomeState extends State<CollectHome> {
       case Screen.add:
         return AddScreen(onClose: _handleBack);
       case Screen.drift:
-        return DriftScreen(
-          people: nearbyPeople,
-          onPersonSelect: _handlePersonSelect,
-        );
+        return DriftScreen(onPersonSelect: _handlePersonSelect);
       case Screen.personBoards:
-        return PersonBoardsScreen(person: _selectedPerson, onBack: _handleBack);
+        if (_selectedPerson == null) return const SizedBox.shrink();
+        return PersonBoardsScreen(
+          person: _selectedPerson!,
+          onBack: _handleBack,
+        );
       case Screen.profile:
         return ProfileScreen(onBack: _handleBack, onLogout: _handleLogout);
       case Screen.edit:

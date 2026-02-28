@@ -100,12 +100,36 @@ class SupabaseService {
   }
 
   // ─── ENCUENTROS ─────────────────────────────────
+  /// Register or update an encounter with another user.
+  Future<void> registrarEncuentro(String otherUserId) async {
+    final user = currentUser;
+    if (user == null) return;
+
+    await _supabase.from('encuentros').upsert({
+      'user_id': user.id,
+      'usuario_encontrado_id': otherUserId,
+      'visto_en': DateTime.now().toIso8601String(),
+    }, onConflict: 'encuentros_unique_users');
+  }
+
+  /// Get all encounters for the current user, with profile info.
   Future<List<Map<String, dynamic>>> getEncuentros(String userId) async {
     final res = await _supabase
         .from('encuentros')
         .select('*, usuario_encontrado:perfiles!usuario_encontrado_id(*)')
         .eq('user_id', userId)
         .order('visto_en', ascending: false);
+    return List<Map<String, dynamic>>.from(res);
+  }
+
+  /// Get public boards for a given user.
+  Future<List<Map<String, dynamic>>> getTablerosPublicos(String userId) async {
+    final res = await _supabase
+        .from('tableros')
+        .select()
+        .eq('user_id', userId)
+        .eq('is_public', true)
+        .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(res);
   }
 }

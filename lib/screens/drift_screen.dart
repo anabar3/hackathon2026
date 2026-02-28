@@ -1,25 +1,156 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+import '../services/supabase_service.dart';
+import '../services/ble_service.dart';
 
-class DriftScreen extends StatelessWidget {
-  final List<NearbyPerson> people;
+class DriftScreen extends StatefulWidget {
   final void Function(NearbyPerson) onPersonSelect;
 
-  const DriftScreen({
-    super.key,
-    required this.people,
-    required this.onPersonSelect,
-  });
+  const DriftScreen({super.key, required this.onPersonSelect});
+
+  @override
+  State<DriftScreen> createState() => _DriftScreenState();
+}
+
+class _DriftScreenState extends State<DriftScreen> {
+  final _service = SupabaseService();
+  List<NearbyPerson> _people = [];
+
+  @override
+  void initState() {
+    super.initState();
+    BleService.instance.forceRefreshUI();
+    BleService.instance.nearbyUsers.addListener(_onNearbyUsersChanged);
+    _onNearbyUsersChanged(); // Initial sync
+  }
+
+  @override
+  void dispose() {
+    BleService.instance.nearbyUsers.removeListener(_onNearbyUsersChanged);
+    super.dispose();
+  }
+
+  Future<void> _onNearbyUsersChanged() async {
+    final liveIds = BleService.instance.nearbyUsers.value;
+
+    // Immediately remove users no longer nearby
+    if (mounted) {
+      setState(() {
+        _people.removeWhere((p) => !liveIds.contains(p.id));
+      });
+    }
+
+    // Find new IDs we need to fetch
+    final existingIds = _people.map((p) => p.id).toSet();
+    final newIds = liveIds.where((id) => !existingIds.contains(id)).toList();
+
+    if (newIds.isEmpty) return;
+
+    // Fetch in the background without blocking the UI
+    final myUserId = _service.currentUser?.id;
+    final myInterests = <String>[];
+    if (myUserId != null) {
+      final profile = await _service.getPerfil(myUserId);
+      if (profile != null) {
+        myInterests.addAll(List<String>.from(profile['intereses'] ?? []));
+      }
+    }
+
+    for (final id in newIds) {
+      if (!BleService.instance.nearbyUsers.value.contains(id)) continue;
+
+      try {
+        // Fetch profile
+        final profileData = await _service.getPerfil(id);
+
+        if (!BleService.instance.nearbyUsers.value.contains(id)) continue;
+
+        if (profileData == null) {
+          // Provide a fallback generic person if profile isn't found
+          if (mounted) {
+            setState(() {
+              if (!_people.any((p) => p.id == id) &&
+                  BleService.instance.nearbyUsers.value.contains(id)) {
+                _people.add(
+                  NearbyPerson(
+                    id: id,
+                    name: 'Nearby User',
+                    avatar: '',
+                    bio: 'Active on Collect',
+                    lastSeenLocation: 'Nearby',
+                    lastSeenTime: 'Just now',
+                    sharedInterests: const [],
+                    publicBoards: const [],
+                  ),
+                );
+              }
+            });
+          }
+          continue;
+        }
+
+        // Fetch boards
+        List<Board> boards = [];
+        try {
+          final boardsData = await _service.getTablerosPublicos(id);
+          boards = boardsData
+              .map(
+                (b) => Board(
+                  id: b['id'] ?? '',
+                  name: b['titulo'] ?? '',
+                  description: b['descripcion'],
+                  itemCount: 0,
+                  coverImage: b['imagen_portada'],
+                  color: '#1e1e32',
+                  icon: 'compass',
+                  isPublic: true,
+                ),
+              )
+              .toList();
+        } catch (_) {}
+
+        if (!BleService.instance.nearbyUsers.value.contains(id)) continue;
+
+        final theirInterests = List<String>.from(
+          profileData['intereses'] ?? [],
+        );
+        final shared = theirInterests
+            .where((i) => myInterests.contains(i))
+            .toList();
+
+        if (mounted) {
+          setState(() {
+            if (!_people.any((p) => p.id == id) &&
+                BleService.instance.nearbyUsers.value.contains(id)) {
+              _people.add(
+                NearbyPerson(
+                  id: id,
+                  name:
+                      profileData['nombre_completo'] ??
+                      profileData['username'] ??
+                      'Anonymous',
+                  avatar: profileData['avatar_url'] ?? '',
+                  bio: profileData['bio'] ?? '',
+                  lastSeenLocation: 'Direct BLE Connection',
+                  lastSeenTime: 'Just now',
+                  sharedInterests: shared,
+                  publicBoards: boards,
+                ),
+              );
+            }
+          });
+        }
+      } catch (e) {
+        // Ignore failed fetches
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final activeNow = people
-        .where((p) => p.lastSeenTime.contains('min'))
-        .toList();
-    final earlier = people
-        .where((p) => !p.lastSeenTime.contains('min'))
-        .toList();
+    final activeNow = _people.toList();
+    final earlier = <NearbyPerson>[];
 
     return Column(
       children: [
@@ -88,7 +219,9 @@ class DriftScreen extends StatelessWidget {
                     _PulseDot(),
                     const SizedBox(width: 8),
                     Text(
-                      '${activeNow.length} ${activeNow.length == 1 ? 'person' : 'people'} nearby share your interests',
+                      _people.isEmpty
+                          ? 'Scanning for nearby people...'
+                          : '${activeNow.length} ${activeNow.length == 1 ? 'person' : 'people'} nearby',
                       style: const TextStyle(
                         color: AppColors.primary,
                         fontSize: 11,
@@ -100,7 +233,7 @@ class DriftScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Only boards matching your interests are shown.\nTap someone to see all their public boards.',
+                'People you cross paths with will appear here.\nBluetooth must be enabled.',
                 style: TextStyle(
                   color: AppColors.mutedForeground,
                   fontSize: 10,
@@ -112,53 +245,100 @@ class DriftScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (activeNow.isNotEmpty) ...[
-                  const Text(
-                    'JUST NOW',
-                    style: TextStyle(
-                      color: AppColors.mutedForeground,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1,
-                    ),
+          child: _people.isEmpty
+              ? _buildEmptyState()
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (activeNow.isNotEmpty) ...[
+                        const Text(
+                          'JUST NOW',
+                          style: TextStyle(
+                            color: AppColors.mutedForeground,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ...activeNow.map(
+                          (p) => _PersonCard(
+                            person: p,
+                            onSelect: () => widget.onPersonSelect(p),
+                          ),
+                        ),
+                      ],
+                      if (earlier.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'EARLIER',
+                          style: TextStyle(
+                            color: AppColors.mutedForeground,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ...earlier.map(
+                          (p) => _PersonCard(
+                            person: p,
+                            onSelect: () => widget.onPersonSelect(p),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  ...activeNow.map(
-                    (p) => _PersonCard(
-                      person: p,
-                      onSelect: () => onPersonSelect(p),
-                    ),
-                  ),
-                ],
-                if (earlier.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Text(
-                    'EARLIER TODAY',
-                    style: TextStyle(
-                      color: AppColors.mutedForeground,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ...earlier.map(
-                    (p) => _PersonCard(
-                      person: p,
-                      onSelect: () => onPersonSelect(p),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+                ),
         ),
       ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(26),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.bluetooth_searching,
+                color: AppColors.primary,
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'No encounters yet',
+              style: TextStyle(
+                color: AppColors.foreground,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Walk near someone with the app and you\'ll automatically connect via Bluetooth.',
+              style: TextStyle(
+                color: AppColors.mutedForeground,
+                fontSize: 13,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -290,21 +470,15 @@ class _PersonCard extends StatelessWidget {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(24),
-                        child: Image.network(
-                          person.avatar,
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 48,
-                            height: 48,
-                            color: AppColors.surface,
-                            child: const Icon(
-                              Icons.person,
-                              color: AppColors.mutedForeground,
-                            ),
-                          ),
-                        ),
+                        child: person.avatar.isNotEmpty
+                            ? Image.network(
+                                person.avatar,
+                                width: 48,
+                                height: 48,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _avatarFallback(),
+                              )
+                            : _avatarFallback(),
                       ),
                       Positioned(
                         bottom: 0,
@@ -372,120 +546,137 @@ class _PersonCard extends StatelessWidget {
               ),
             ),
             // Shared interests
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-              child: Wrap(
-                spacing: 6,
-                children: [
-                  const Text(
-                    'In common',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  ...person.sharedInterests.map(
-                    (i) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withAlpha(26),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: AppColors.primary.withAlpha(51),
-                        ),
-                      ),
-                      child: Text(
-                        i,
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Boards
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: Column(
-                children: [
-                  ...shownBoards.map(
-                    (board) => Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface.withAlpha(154),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          if (board.coverImage != null)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.network(
-                                board.coverImage!,
-                                width: 40,
-                                height: 40,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    _BoardIconBox(icon: board.icon),
-                              ),
-                            )
-                          else
-                            _BoardIconBox(
-                              icon: board.icon,
-                              boardIcon: _boardIcon(board.icon),
-                            ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  board.name,
-                                  style: const TextStyle(
-                                    color: AppColors.foreground,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  '${board.itemCount} items',
-                                  style: const TextStyle(
-                                    color: AppColors.mutedForeground,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (hiddenCount > 0)
-                    Text(
-                      '+$hiddenCount more public board${hiddenCount != 1 ? 's' : ''}',
-                      style: const TextStyle(
-                        color: AppColors.mutedForeground,
+            if (person.sharedInterests.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: Wrap(
+                  spacing: 6,
+                  children: [
+                    const Text(
+                      'In common',
+                      style: TextStyle(
+                        color: AppColors.primary,
                         fontSize: 10,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                ],
+                    ...person.sharedInterests.map(
+                      (i) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withAlpha(26),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppColors.primary.withAlpha(51),
+                          ),
+                        ),
+                        child: Text(
+                          i,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            // Boards
+            if (shownBoards.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                child: Column(
+                  children: [
+                    ...shownBoards.map(
+                      (board) => Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface.withAlpha(154),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            if (board.coverImage != null)
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.network(
+                                  board.coverImage!,
+                                  width: 40,
+                                  height: 40,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      _BoardIconBox(icon: board.icon),
+                                ),
+                              )
+                            else
+                              _BoardIconBox(
+                                icon: board.icon,
+                                boardIcon: _boardIcon(board.icon),
+                              ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    board.name,
+                                    style: const TextStyle(
+                                      color: AppColors.foreground,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (board.description != null)
+                                    Text(
+                                      board.description!,
+                                      style: const TextStyle(
+                                        color: AppColors.mutedForeground,
+                                        fontSize: 10,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (hiddenCount > 0)
+                      Text(
+                        '+$hiddenCount more public board${hiddenCount != 1 ? 's' : ''}',
+                        style: const TextStyle(
+                          color: AppColors.mutedForeground,
+                          fontSize: 10,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _avatarFallback() {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(Icons.person, color: AppColors.mutedForeground),
     );
   }
 }
