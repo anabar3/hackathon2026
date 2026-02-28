@@ -22,6 +22,7 @@ import 'services/ble_service.dart';
 import 'services/background_service.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'screens/board_tree_screen.dart';
+import 'screens/cards_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -258,6 +259,8 @@ class _CollectHomeState extends State<CollectHome> {
           onBack: _handleBack,
           onCreateBoard: ({parentId}) => _openCreateBoard(parentId: parentId),
         );
+      case Screen.cards:
+        return CardsScreen(onBack: _handleBack);
       case Screen.drift:
         return DriftScreen(onPersonSelect: _handlePersonSelect);
       case Screen.personBoards:
