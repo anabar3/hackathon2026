@@ -359,12 +359,13 @@ class _CollectHomeState extends State<CollectHome> {
       case Screen.profile:
         return ProfileScreen(onBack: _handleBack, onLogout: _handleLogout);
       case Screen.edit:
-        if (_selectedBoard == null) return DashboardScreen(
-          boards: _boards,
-          onBoardSelect: _handleBoardSelect,
-          onOpenBoardTree: () => _navigate(Screen.boardTree),
-          onCreateBoard: () => _openCreateBoard(),
-        );
+        if (_selectedBoard == null)
+          return DashboardScreen(
+            boards: _boards,
+            onBoardSelect: _handleBoardSelect,
+            onOpenBoardTree: () => _navigate(Screen.boardTree),
+            onCreateBoard: () => _openCreateBoard(),
+          );
         return _EditPlaceholder(board: _selectedBoard!, onBack: _handleBack);
       case Screen.aiOrganize:
         return _AiOrganizePlaceholder(
@@ -640,7 +641,10 @@ class _CollectHomeState extends State<CollectHome> {
                             borderRadius: BorderRadius.circular(16),
                             border: hasImage
                                 ? null
-                                : Border.all(color: AppColors.border, width: 1.5),
+                                : Border.all(
+                            color: AppColors.border,
+                            width: 1.5,
+                          ),
                           );
                         }(),
                         child: Stack(
@@ -664,11 +668,18 @@ class _CollectHomeState extends State<CollectHome> {
                                           mainAxisSize: MainAxisSize.min,
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: const [
-                                            Icon(Icons.image_outlined, size: 30, color: AppColors.mutedForeground),
+                                            Icon(
+                                      Icons.image_outlined,
+                                      size: 30,
+                                      color: AppColors.mutedForeground,
+                                    ),
                                             SizedBox(height: 6),
                                             Text(
                                               'Sube una portada (opcional)',
-                                                  style: TextStyle(color: AppColors.mutedForeground, fontWeight: FontWeight.w700),
+                                                  style: TextStyle(
+                                        color: AppColors.mutedForeground,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                                 ),
                                               ],
                                             ),
@@ -687,9 +698,7 @@ class _CollectHomeState extends State<CollectHome> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String?>(
                       value: parentId,
-                      decoration: const InputDecoration(
-                        labelText: 'Ubicación',
-                      ),
+                      decoration: const InputDecoration(labelText: 'Ubicación'),
                       items: [
                         const DropdownMenuItem<String?>(
                           value: null,
@@ -709,7 +718,8 @@ class _CollectHomeState extends State<CollectHome> {
                       children: [
                         Checkbox(
                           value: isPublic,
-                          onChanged: (v) => setState(() => isPublic = v ?? false),
+                          onChanged: (v) =>
+                              setState(() => isPublic = v ?? false),
                         ),
                         const Text('Público'),
                       ],
@@ -724,7 +734,8 @@ class _CollectHomeState extends State<CollectHome> {
                   child: const Text('Cancelar'),
                 ),
                 ElevatedButton(
-                  onPressed: titleController.text.trim().isEmpty || uploadingCover
+                  onPressed:
+                      titleController.text.trim().isEmpty || uploadingCover
                       ? null
                       : () => Navigator.pop(dialogContext, true),
                   child: const Text('Crear'),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
@@ -17,19 +18,27 @@ class _DriftScreenState extends State<DriftScreen> {
   final _service = SupabaseService();
   List<NearbyPerson> _nearPeople = [];
   List<NearbyPerson> _walkedPeople = [];
+  Timer? _walkedDebounce;
+  bool _loadingWalked = false;
 
   @override
   void initState() {
     super.initState();
     BleService.instance.forceRefreshUI();
     BleService.instance.nearbyUsers.addListener(_onNearbyUsersChanged);
+    BleService.instance.onUserLeft = _onUserLeft;
     _onNearbyUsersChanged(); // Initial sync
     _loadWalkedEncounters(); // Load Walked people from Supabase
   }
 
   Future<void> _loadWalkedEncounters() async {
+    if (_loadingWalked) return; // Avoid overlapping calls
+    _loadingWalked = true;
     final myUserId = _service.currentUser?.id;
-    if (myUserId == null) return;
+    if (myUserId == null) {
+      _loadingWalked = false;
+      return;
+    }
 
     try {
       final encounters = await _service.getEncuentros(myUserId);
@@ -99,6 +108,8 @@ class _DriftScreenState extends State<DriftScreen> {
       }
     } catch (e) {
       // Ignore
+    } finally {
+      _loadingWalked = false;
     }
   }
 
@@ -112,8 +123,50 @@ class _DriftScreenState extends State<DriftScreen> {
 
   @override
   void dispose() {
+    _walkedDebounce?.cancel();
     BleService.instance.nearbyUsers.removeListener(_onNearbyUsersChanged);
+    BleService.instance.onUserLeft = null;
     super.dispose();
+  }
+
+  /// Called when a user is removed from the nearby list by the BLE cleanup timer.
+  /// Immediately moves them from NEAR to WALKED (with data we already have)
+  /// and schedules a full DB reload.
+  void _onUserLeft(String leftUserId) {
+    if (!mounted) return;
+    setState(() {
+      // Find the person in _nearPeople
+      final idx = _nearPeople.indexWhere((p) => p.id == leftUserId);
+      if (idx != -1) {
+        final person = _nearPeople.removeAt(idx);
+        // Add them to walked if not already there
+        if (!_walkedPeople.any((p) => p.id == person.id)) {
+          _walkedPeople.insert(
+            0,
+            NearbyPerson(
+              id: person.id,
+              name: person.name,
+              avatar: person.avatar,
+              bio: person.bio,
+              lastSeenLocation: 'Crossed path',
+              lastSeenTime: 'Just now',
+              sharedInterests: person.sharedInterests,
+              publicBoards: person.publicBoards,
+            ),
+          );
+        }
+      }
+    });
+    // Schedule a debounced DB reload to get proper timestamps
+    _scheduleWalkedReload();
+  }
+
+  /// Debounces walked list reload — avoids multiple overlapping calls.
+  void _scheduleWalkedReload({Duration delay = const Duration(seconds: 2)}) {
+    _walkedDebounce?.cancel();
+    _walkedDebounce = Timer(delay, () {
+      if (mounted) _loadWalkedEncounters();
+    });
   }
 
   Future<void> _onNearbyUsersChanged() async {
@@ -121,20 +174,11 @@ class _DriftScreenState extends State<DriftScreen> {
 
     // Immediately remove users no longer nearby from the Near section
     if (mounted) {
-      bool userLeft = false;
       setState(() {
-        final initialLength = _nearPeople.length;
         _nearPeople.removeWhere((p) => !liveIds.contains(p.id));
-        userLeft = _nearPeople.length < initialLength;
+        // Also remove from walked anyone who just came back near
+        _walkedPeople.removeWhere((p) => liveIds.contains(p.id));
       });
-      // If someone just left the Near radius, wait a second for any pending DB writes to finish, then refresh Walked
-      if (userLeft) {
-        Future.delayed(const Duration(milliseconds: 1500), () {
-          if (mounted) _loadWalkedEncounters();
-        });
-      } else {
-        _loadWalkedEncounters();
-      }
     }
 
     // Find new IDs we need to fetch

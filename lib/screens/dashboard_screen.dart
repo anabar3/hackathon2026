@@ -345,22 +345,24 @@ class DashboardScreen extends StatelessWidget {
                                             size: 32,
                                           ),
                                         Positioned(
-                                        top: 8,
-                                        right: 8,
-                                        child: Row(
-                                          children: [
-                                            if (board.isPinned)
-                                              const Icon(Icons.push_pin,
+                                          top: 8,
+                                          right: 8,
+                                          child: Row(
+                                            children: [
+                                              if (board.isPinned)
+                                                const Icon(
+                                                  Icons.push_pin,
                                                   color: AppColors.primary,
-                                                  size: 16),
-                                            const SizedBox(width: 4),
-                                            _PublicBadgeSolid(
-                                              isPublic: board.isPublic,
-                                              compact: true,
-                                            ),
-                                          ],
+                                                  size: 16,
+                                                ),
+                                              const SizedBox(width: 4),
+                                              _PublicBadgeSolid(
+                                                isPublic: board.isPublic,
+                                                compact: true,
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
                                       ],
                                     ),
                                   ),
@@ -555,10 +557,7 @@ class _BoardsGrid extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.card,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: AppColors.border,
-                width: 2,
-              ),
+              border: Border.all(color: AppColors.border, width: 2),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.border.withAlpha(100),
@@ -599,9 +598,7 @@ class _BoardsGrid extends StatelessWidget {
                         else
                           Icon(
                             _boardIcon(board.icon),
-                            color: AppColors.primary.withAlpha(
-                              100,
-                            ),
+                            color: AppColors.primary.withAlpha(100),
                             size: 32,
                           ),
                         Positioned(
@@ -610,8 +607,11 @@ class _BoardsGrid extends StatelessWidget {
                           child: Row(
                             children: [
                               if (showPin || board.isPinned)
-                                const Icon(Icons.push_pin,
-                                    color: AppColors.primary, size: 16),
+                                const Icon(
+                                  Icons.push_pin,
+                                  color: AppColors.primary,
+                                  size: 16,
+                                ),
                               const SizedBox(width: 4),
                               _PublicBadgeSolid(
                                 isPublic: board.isPublic,
