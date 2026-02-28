@@ -29,6 +29,7 @@ class _InboxScreenState extends State<InboxScreen> {
 
   bool _analyzing = false;
   Map<String, ItemSuggestion> _suggestions = {};
+  List<Map<String, dynamic>> _boards = [];
 
   @override
   void initState() {
@@ -53,6 +54,9 @@ class _InboxScreenState extends State<InboxScreen> {
       if (user == null) return;
 
       final boards = await _supabaseService.getTableros(user.id);
+      if (mounted) {
+        setState(() => _boards = boards);
+      }
       final aiResponse = await _groqService.analyzeInbox(boards, widget.items);
 
       final newSuggestions = <String, ItemSuggestion>{};
@@ -88,9 +92,9 @@ class _InboxScreenState extends State<InboxScreen> {
       }
 
       if (tableroId != null) {
-        await _supabaseService.aplicarSugerencia(
+        await _supabaseService.moverItem(
           itemId: suggestion.itemId,
-          tableroId: tableroId,
+          nuevoTableroId: tableroId,
         );
 
         setState(() {
@@ -204,6 +208,19 @@ class _InboxScreenState extends State<InboxScreen> {
                     );
 
                     final suggestion = _suggestions[itemId];
+                    String actionText = '';
+                    if (suggestion != null) {
+                      if (suggestion.action == 'create_new') {
+                        actionText =
+                            '✨ Crear tablero "${suggestion.newBoardSuggestion?.name ?? ''}"';
+                      } else {
+                        final bName = _boards.firstWhere(
+                          (b) => b['id'] == suggestion.boardId,
+                          orElse: () => {'titulo': 'Tablero'},
+                        )['titulo'];
+                        actionText = '✨ Mover a "$bName"';
+                      }
+                    }
 
                     return Container(
                       decoration: BoxDecoration(
@@ -264,6 +281,7 @@ class _InboxScreenState extends State<InboxScreen> {
                               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                               child: SuggestionCard(
                                 suggestion: suggestion,
+                                actionText: actionText,
                                 onConfirm: () => _applySuggestion(suggestion),
                                 onDismiss: () {
                                   setState(() {

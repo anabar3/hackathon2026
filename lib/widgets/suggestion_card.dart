@@ -4,26 +4,20 @@ import '../models/ai_suggestion.dart';
 
 class SuggestionCard extends StatelessWidget {
   final ItemSuggestion suggestion;
+  final String actionText;
   final VoidCallback onConfirm;
   final VoidCallback onDismiss;
 
   const SuggestionCard({
     super.key,
     required this.suggestion,
+    required this.actionText,
     required this.onConfirm,
     required this.onDismiss,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isNewBoard = suggestion.action == 'create_new';
-    final title = isNewBoard
-        ? 'Sugerencia: Nuevo Tablero'
-        : 'Sugerencia: Archivar';
-    final highlightText = isNewBoard
-        ? (suggestion.newBoardSuggestion?.name ?? 'Nuevo')
-        : 'Tablero Existente';
-
     return Container(
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(12),
@@ -46,11 +40,11 @@ class SuggestionCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  title,
+                  actionText,
                   style: const TextStyle(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w700,
-                    fontSize: 12,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -66,22 +60,8 @@ class SuggestionCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            isNewBoard
-                ? 'Crear "$highlightText" y mover aquí.'
-                : 'Mover al tablero recomendado.',
-            style: const TextStyle(
-              color: AppColors.foreground,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
             suggestion.reasoning,
-            style: const TextStyle(
-              color: AppColors.mutedForeground,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: AppColors.foreground, fontSize: 13),
           ),
           const SizedBox(height: 12),
           Align(

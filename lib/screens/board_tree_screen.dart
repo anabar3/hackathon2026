@@ -19,6 +19,7 @@ class _BoardTreeScreenState extends State<BoardTreeScreen> {
   final _service = SupabaseService();
   bool _loading = true;
   Map<String?, List<Map<String, dynamic>>> _byParent = {};
+  Map<String?, List<Map<String, dynamic>>> _itemsByBoard = {};
   Set<String> _expanded = {};
 
   @override
@@ -28,17 +29,44 @@ class _BoardTreeScreenState extends State<BoardTreeScreen> {
   }
 
   Future<void> _load() async {
+    debugPrint("--- _load() CALLED ---");
     final user = _service.currentUser;
     if (user == null) return;
     setState(() => _loading = true);
     try {
       final all = await _service.getTableros(user.id);
+      final allItems = await _service.getItems(user.id);
+
+      debugPrint("--- DEBUG GET ITEMS ---");
+      debugPrint("Total tableros Fetched: ${all.length}");
+      for (var b in all) {
+        debugPrint(
+          "Tablero: ${b['titulo']} (ID: ${b['id']}, Parent: ${b['parent_id']})",
+        );
+      }
+
+      debugPrint("Total items Fetched: ${allItems.length}");
+      for (var item in allItems) {
+        debugPrint(
+          "Item: ${item['titulo']} (Tablero ID: ${item['tablero_id']})",
+        );
+      }
+      debugPrint("-----------------------");
+
       final map = <String?, List<Map<String, dynamic>>>{};
       for (final b in all) {
-        final pid = b['parent_id'] as String?;
+        final pid = b['parent_id']?.toString();
         map.putIfAbsent(pid, () => []);
         map[pid]!.add(b);
       }
+
+      final itemsMap = <String?, List<Map<String, dynamic>>>{};
+      for (final item in allItems) {
+        final tid = item['tablero_id']?.toString();
+        itemsMap.putIfAbsent(tid, () => []);
+        itemsMap[tid]!.add(item);
+      }
+
       // sort each list by created_at desc if available
       for (final entry in map.entries) {
         entry.value.sort((a, b) {
@@ -47,13 +75,25 @@ class _BoardTreeScreenState extends State<BoardTreeScreen> {
           return db.compareTo(da);
         });
       }
+
+      for (final entry in itemsMap.entries) {
+        entry.value.sort((a, b) {
+          final da = DateTime.tryParse(a['created_at'] ?? '') ?? DateTime(1970);
+          final db = DateTime.tryParse(b['created_at'] ?? '') ?? DateTime(1970);
+          return db.compareTo(da);
+        });
+      }
+
       setState(() {
         _byParent = map;
+        _itemsByBoard = itemsMap;
         _expanded = map.entries
             .where((e) => e.key != null && (e.value.isNotEmpty))
             .map((e) => e.key!)
             .toSet();
       });
+    } catch (e, stack) {
+      debugPrint('Error loading boards: $e\n$stack');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -91,8 +131,9 @@ class _BoardTreeScreenState extends State<BoardTreeScreen> {
               ),
               TextField(
                 controller: descController,
-                decoration:
-                    const InputDecoration(labelText: 'Descripción (opcional)'),
+                decoration: const InputDecoration(
+                  labelText: 'Descripción (opcional)',
+                ),
               ),
               const SizedBox(height: 8),
               Row(
@@ -126,9 +167,7 @@ class _BoardTreeScreenState extends State<BoardTreeScreen> {
       },
     );
     if (created != true) return;
-    await widget.onCreateBoard(
-      parentId: parentId,
-    );
+    await widget.onCreateBoard(parentId: parentId);
     await _load();
     if (parentId != null) _expanded.add(parentId);
   }
@@ -167,9 +206,7 @@ class _BoardTreeScreenState extends State<BoardTreeScreen> {
               onRefresh: _load,
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                children: [
-                  ..._buildList(null, 0),
-                ],
+                children: [..._buildList(null, 0)],
               ),
             ),
     );
@@ -177,14 +214,14 @@ class _BoardTreeScreenState extends State<BoardTreeScreen> {
 
   List<Widget> _buildList(String? parentId, int depth) {
     final nodes = _byParent[parentId] ?? [];
-    if (nodes.isEmpty) {
+    final items = _itemsByBoard[parentId] ?? [];
+
+    if (nodes.isEmpty && items.isEmpty) {
       return [
         Padding(
           padding: EdgeInsets.only(left: depth * 14.0, bottom: 8),
           child: Text(
-            depth == 0
-                ? 'No tienes tableros. Crea uno con el +.'
-                : 'Sin subtableros.',
+            depth == 0 ? 'No tienes tableros ni recursos aquí.' : 'Vacío.',
             style: const TextStyle(
               color: AppColors.mutedForeground,
               fontSize: 12,
@@ -195,21 +232,28 @@ class _BoardTreeScreenState extends State<BoardTreeScreen> {
     }
 
     final children = <Widget>[];
+
+    // Primero agregamos los tableros hijos
     for (final node in nodes) {
-      final nodeId = node['id'] as String?;
+      final nodeId = node['id']?.toString();
       final isExpanded = nodeId != null && _expanded.contains(nodeId);
+      final hasChildNodes = _byParent[nodeId]?.isNotEmpty ?? false;
+      final hasChildItems = _itemsByBoard[nodeId]?.isNotEmpty ?? false;
+      final bool actuallyHasChildren = hasChildNodes || hasChildItems;
+
       children.add(
         Padding(
           padding: EdgeInsets.only(left: depth * 14.0, bottom: 10),
           child: _BoardTile(
-            titulo: node['titulo'] ?? 'Sin título',
+            titulo: node['titulo']?.toString() ?? 'Sin título',
             isPublic: (node['is_public'] ?? false) as bool,
-            hasChildren: true,
+            hasChildren: actuallyHasChildren,
             depth: depth,
             expanded: isExpanded,
             onExpand: nodeId == null ? null : () => _toggleExpand(nodeId),
-            onAddChild:
-                nodeId == null ? null : () => _createBoard(parentId: nodeId),
+            onAddChild: nodeId == null
+                ? null
+                : () => _createBoard(parentId: nodeId),
           ),
         ),
       );
@@ -217,7 +261,78 @@ class _BoardTreeScreenState extends State<BoardTreeScreen> {
         children.addAll(_buildList(nodeId, depth + 1));
       }
     }
+
+    // Luego agregamos los items (recursos)
+    for (final item in items) {
+      children.add(
+        Padding(
+          padding: EdgeInsets.only(left: depth * 14.0, bottom: 10),
+          child: _ItemTile(item: item, depth: depth),
+        ),
+      );
+    }
+
     return children;
+  }
+}
+
+class _ItemTile extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final int depth;
+
+  const _ItemTile({required this.item, required this.depth});
+
+  @override
+  Widget build(BuildContext context) {
+    final tipo = item['tipo']?.toString();
+    final isLink = tipo == 'link';
+    final titulo =
+        (item['titulo'] ?? (isLink ? item['contenido'] : 'Sin título'))
+            ?.toString() ??
+        'Sin título';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border.withOpacity(0.5)),
+      ),
+      child: ListTile(
+        leading: Icon(
+          _getIconForType(tipo),
+          color: AppColors.primary.withOpacity(0.8),
+        ),
+        title: Text(
+          titulo,
+          style: const TextStyle(
+            color: AppColors.foreground,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+
+  IconData _getIconForType(String? tipo) {
+    switch (tipo) {
+      case 'texto':
+        return Icons.description;
+      case 'link':
+        return Icons.link;
+      case 'imagen':
+        return Icons.image;
+      case 'audio':
+        return Icons.audiotrack;
+      case 'video':
+        return Icons.video_library;
+      case 'archivo':
+        return Icons.insert_drive_file;
+      default:
+        return Icons.insert_drive_file;
+    }
   }
 }
 
@@ -250,8 +365,12 @@ class _BoardTile extends StatelessWidget {
       ),
       child: ListTile(
         leading: Icon(
-          hasChildren ? (expanded ? Icons.folder_open : Icons.folder) : Icons.folder,
-          color: AppColors.primary,
+          hasChildren
+              ? (expanded ? Icons.folder_open : Icons.folder)
+              : Icons.folder,
+          color: hasChildren
+              ? AppColors.primary
+              : AppColors.mutedForeground.withOpacity(0.5),
         ),
         title: Text(
           titulo,
@@ -262,25 +381,33 @@ class _BoardTile extends StatelessWidget {
         ),
         subtitle: Text(
           isPublic ? 'Público' : 'Privado',
-          style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
+          style: const TextStyle(
+            color: AppColors.mutedForeground,
+            fontSize: 12,
+          ),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: Icon(
-                expanded ? Icons.expand_less : Icons.expand_more,
-                color: AppColors.mutedForeground,
-              ),
-              onPressed: onExpand,
-            ),
+            if (hasChildren)
+              IconButton(
+                icon: Icon(
+                  expanded ? Icons.expand_less : Icons.expand_more,
+                  color: AppColors.mutedForeground,
+                ),
+                onPressed: onExpand,
+              )
+            else
+              const SizedBox(
+                width: 48,
+              ), // Spacer to align with items that have expand icon
             IconButton(
               icon: const Icon(Icons.add, color: AppColors.primary),
               onPressed: onAddChild,
             ),
           ],
         ),
-        onTap: onExpand,
+        onTap: hasChildren ? onExpand : null,
       ),
     );
   }

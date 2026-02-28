@@ -284,7 +284,6 @@ class SupabaseService {
       if (tipo != null) 'tipo': tipo,
       if (isPublic != null) 'is_public': isPublic,
       if (rawData != null) 'raw_data': rawData,
-      'updated_at': DateTime.now().toIso8601String(),
     };
     await _supabase.from('items').update(updates).eq('id', itemId);
   }
@@ -294,11 +293,10 @@ class SupabaseService {
     String? nuevoTableroId,
     String nuevoEstado = 'organizado',
   }) async {
-    await _supabase.from('items').update({
-      'tablero_id': nuevoTableroId,
-      'estado': nuevoEstado,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', itemId);
+    await _supabase
+        .from('items')
+        .update({'tablero_id': nuevoTableroId, 'estado': nuevoEstado})
+        .eq('id', itemId);
   }
 
   Future<void> eliminarItem(String itemId) async {
@@ -309,10 +307,10 @@ class SupabaseService {
     required String itemId,
     required bool isPublic,
   }) async {
-    await _supabase.from('items').update({
-      'is_public': isPublic,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', itemId);
+    await _supabase
+        .from('items')
+        .update({'is_public': isPublic})
+        .eq('id', itemId);
   }
 
   // ─── TABLEROS ANIDADOS ──────────────────────────
@@ -344,7 +342,6 @@ class SupabaseService {
       if (descripcion != null) 'descripcion': descripcion,
       if (imagenPortada != null) 'imagen_portada': imagenPortada,
       if (isPublic != null) 'is_public': isPublic,
-      'updated_at': DateTime.now().toIso8601String(),
     };
     if (parentId != null) {
       updates['parent_id'] = parentId;
@@ -358,10 +355,10 @@ class SupabaseService {
     required String tableroId,
     String? nuevoParentId,
   }) async {
-    await _supabase.from('tableros').update({
-      'parent_id': nuevoParentId,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', tableroId);
+    await _supabase
+        .from('tableros')
+        .update({'parent_id': nuevoParentId})
+        .eq('id', tableroId);
   }
 
   Future<void> eliminarTablero(String tableroId) async {
@@ -419,27 +416,20 @@ class SupabaseService {
   }
 
   // ─── AI SUGGESTIONS ─────────────────────────────
-  Future<void> aplicarSugerencia({
-    required String itemId,
-    required String tableroId,
-  }) async {
-    await _supabase
-        .from('items')
-        .update({'tablero_id': tableroId, 'estado': 'organizado'})
-        .eq('id', itemId);
-  }
-
   Future<String> crearTableroConRetornoId({
     required String userId,
     required String titulo,
     String? descripcion,
+    String? parentId,
   }) async {
+    await _ensurePerfil();
     final res = await _supabase
         .from('tableros')
         .insert({
           'user_id': userId,
           'titulo': titulo,
           if (descripcion != null) 'descripcion': descripcion,
+          'parent_id': parentId,
           'is_public': false,
         })
         .select('id')
