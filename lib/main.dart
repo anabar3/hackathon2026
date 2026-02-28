@@ -371,6 +371,8 @@ class _CollectHomeState extends State<CollectHome> {
           onBoardSelect: _handleBoardSelect,
           onItemSelect: _handleItemSelect,
           onEdit: () => _navigate(Screen.edit),
+          onCreateSubBoard: (parentId) =>
+              _openCreateBoard(parentId: parentId, lockedParentId: parentId),
           onAiOrganize: () => _navigate(Screen.aiOrganize),
           onAiSummarize: _handleAiSummarize,
         );
@@ -499,7 +501,7 @@ class _CollectHomeState extends State<CollectHome> {
     }
   }
 
-  Future<void> _loadBoards() async {
+  Future<void> _loadBoards({String? keepSelectedId}) async {
     final user = _service.currentUser;
     if (user == null) return;
     final res = await _service.getTableros(user.id);
@@ -520,8 +522,20 @@ class _CollectHomeState extends State<CollectHome> {
             ),
           )
           .toList();
-      final roots = _boards.where((b) => b.parentId == null).toList();
-      _selectedBoard = roots.isNotEmpty ? roots.first : null;
+      Board? nextSelected;
+      final targetId = keepSelectedId ?? _selectedBoard?.id;
+      if (targetId != null) {
+        final matches = _boards.where((b) => b.id == targetId);
+        if (matches.isNotEmpty) {
+          nextSelected = matches.first;
+        }
+      }
+      nextSelected ??= _selectedBoard;
+      if (nextSelected == null) {
+        final roots = _boards.where((b) => b.parentId == null).toList();
+        nextSelected = roots.isNotEmpty ? roots.first : null;
+      }
+      _selectedBoard = nextSelected;
       _loadingBoards = false;
     });
     await _syncItems();
@@ -618,13 +632,18 @@ class _CollectHomeState extends State<CollectHome> {
     );
   }
 
-  Future<void> _openCreateBoard({String? parentId}) async {
+  Future<void> _openCreateBoard({
+    String? parentId,
+    String? lockedParentId,
+  }) async {
     final titleController = TextEditingController();
     final descController = TextEditingController();
     bool isPublic = false;
     String? coverUrl;
     Uint8List? coverBytes;
     bool uploadingCover = false;
+    String? selectedParent = lockedParentId ?? parentId;
+    final bool lockParent = lockedParentId != null;
     final created = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -674,7 +693,7 @@ class _CollectHomeState extends State<CollectHome> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              title: const Text('Nuevo tablero'),
+              title: Text(lockParent ? 'Nuevo subtablero' : 'Nuevo tablero'),
               content: SingleChildScrollView(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420),
@@ -782,26 +801,28 @@ class _CollectHomeState extends State<CollectHome> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      DropdownButtonFormField<String?>(
-                        value: parentId,
-                        decoration: const InputDecoration(
-                          labelText: 'Ubicación',
-                        ),
-                        items: [
-                          const DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text('Nivel raíz'),
+                      if (!lockParent) ...[
+                        DropdownButtonFormField<String?>(
+                          value: selectedParent,
+                          decoration: const InputDecoration(
+                            labelText: 'Ubicación',
                           ),
-                          ..._boards.map(
-                            (b) => DropdownMenuItem<String?>(
-                              value: b.id,
-                              child: Text(b.name),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('Nivel raíz'),
                             ),
-                          ),
-                        ],
-                        onChanged: (v) => setState(() => parentId = v),
-                      ),
-                      const SizedBox(height: 8),
+                            ..._boards.map(
+                              (b) => DropdownMenuItem<String?>(
+                                value: b.id,
+                                child: Text(b.name),
+                              ),
+                            ),
+                          ],
+                          onChanged: (v) => setState(() => selectedParent = v),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       Row(
                         children: [
                           Checkbox(
@@ -846,9 +867,9 @@ class _CollectHomeState extends State<CollectHome> {
           : descController.text.trim(),
       imagenPortada: coverUrl,
       isPublic: isPublic,
-      parentId: parentId,
+      parentId: selectedParent,
     );
-    await _loadBoards();
+    await _loadBoards(keepSelectedId: lockedParentId ?? _selectedBoard?.id);
   }
 }
 
