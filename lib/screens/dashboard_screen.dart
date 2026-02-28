@@ -5,11 +5,15 @@ import '../theme/app_theme.dart';
 class DashboardScreen extends StatelessWidget {
   final List<Board> boards;
   final void Function(Board) onBoardSelect;
+  final VoidCallback? onOpenBoardTree;
+  final VoidCallback? onCreateBoard;
 
   const DashboardScreen({
     super.key,
     required this.boards,
     required this.onBoardSelect,
+    this.onOpenBoardTree,
+    this.onCreateBoard,
   });
 
   IconData _boardIcon(String icon) {
@@ -31,6 +35,8 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final roots = boards.where((b) => b.parentId == null).toList();
+    final hasBoards = roots.isNotEmpty;
     return Column(
       children: [
         // Header
@@ -69,10 +75,14 @@ class DashboardScreen extends StatelessWidget {
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Icon(
-                      Icons.notifications_outlined,
-                      color: AppColors.foreground,
-                      size: 20,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(
+                        Icons.add,
+                        color: AppColors.foreground,
+                        size: 20,
+                      ),
+                      onPressed: onCreateBoard,
                     ),
                   ),
                   Positioned(
@@ -108,11 +118,11 @@ class DashboardScreen extends StatelessWidget {
                       highlight: false,
                     ),
                     const SizedBox(width: 12),
-                    _StatCard(
-                      value: '${boards.length}',
-                      label: 'Boards',
-                      highlight: true,
-                    ),
+                  _StatCard(
+                    value: '${roots.length}',
+                    label: 'Boards',
+                    highlight: true,
+                  ),
                     const SizedBox(width: 12),
                     _StatCard(value: '3', label: 'Recent', highlight: false),
                   ],
@@ -132,82 +142,130 @@ class DashboardScreen extends StatelessWidget {
                         letterSpacing: 1,
                       ),
                     ),
-                    Row(
-                      children: const [
-                        Text(
-                          'View all',
-                          style: TextStyle(
+                    GestureDetector(
+                      onTap: onOpenBoardTree,
+                      behavior: HitTestBehavior.opaque,
+                      child: Row(
+                        children: const [
+                          Text(
+                            'View all',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
                             color: AppColors.primary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Icon(
-                          Icons.chevron_right,
-                          color: AppColors.primary,
-                          size: 14,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                GestureDetector(
-                  onTap: () => onBoardSelect(boards[0]),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: SizedBox(
-                      height: 160,
-                      width: double.infinity,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          if (boards[0].coverImage != null)
-                            Image.network(
-                              boards[0].coverImage!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  Container(color: AppColors.surface),
-                            )
-                          else
-                            Container(color: AppColors.surface),
-                          Container(
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [Colors.transparent, Color(0xDD0F0F17)],
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    boards[0].name,
-                                    style: const TextStyle(
-                                      color: AppColors.foreground,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _PublicBadge(isPublic: boards[0].isPublic),
-                                ],
-                              ),
-                            ),
+                            size: 14,
                           ),
                         ],
                       ),
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 10),
+                if (hasBoards) ...[
+                  GestureDetector(
+                    onTap: () => onBoardSelect(roots[0]),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: SizedBox(
+                        height: 160,
+                        width: double.infinity,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            if (roots[0].coverImage != null)
+                              Image.network(
+                              roots[0].coverImage!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    Container(color: AppColors.surface),
+                              )
+                            else
+                              Container(color: AppColors.surface),
+                            Container(
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    Color(0xDD0F0F17)
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                    roots[0].name,
+                                      style: const TextStyle(
+                                        color: AppColors.foreground,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  _PublicBadge(isPublic: roots[0].isPublic),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withAlpha(26),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.dashboard_customize,
+                              color: AppColors.primary),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Crea tu primer tablero para empezar a organizar.',
+                            style: TextStyle(
+                              color: AppColors.foreground,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: onCreateBoard,
+                          child: const Text('Crear'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
 
                 // All boards grid
                 const Text(
@@ -220,7 +278,8 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                GridView.builder(
+                if (hasBoards)
+                  GridView.builder(
                   physics: const NeverScrollableScrollPhysics(),
                   shrinkWrap: true,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -229,9 +288,9 @@ class DashboardScreen extends StatelessWidget {
                     mainAxisSpacing: 12,
                     childAspectRatio: 1.1,
                   ),
-                  itemCount: boards.length,
+                  itemCount: roots.length,
                   itemBuilder: (context, i) {
-                    final board = boards[i];
+                    final board = roots[i];
                     return GestureDetector(
                       onTap: () => onBoardSelect(board),
                       child: Container(
@@ -287,7 +346,47 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     );
                   },
-                ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'No boards yet',
+                          style: TextStyle(
+                            color: AppColors.foreground,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Crea un tablero y añade items para verlo aquí.',
+                          style: TextStyle(
+                            color: AppColors.mutedForeground,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ElevatedButton.icon(
+                          onPressed: onCreateBoard,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Crear tablero'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),

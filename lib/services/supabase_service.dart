@@ -12,12 +12,28 @@ class SupabaseService {
 
   Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
 
-  Future<void> signInOrSignUp(String email, String password) async {
-    try {
-      await _supabase.auth.signInWithPassword(email: email, password: password);
-    } catch (e) {
-      await _supabase.auth.signUp(email: email, password: password);
-    }
+  Future<void> signIn(String email, String password) async {
+    await _supabase.auth.signInWithPassword(email: email, password: password);
+  }
+
+  Future<void> signUp({
+    required String email,
+    required String password,
+    required String fullName,
+    required String username,
+  }) async {
+    final res = await _supabase.auth.signUp(email: email, password: password);
+    final user = res.user;
+    if (user == null) throw Exception('No se pudo crear el usuario');
+
+    await _supabase.from('perfiles').insert({
+      'id': user.id,
+      'username': username,
+      'nombre_completo': fullName,
+      'bio': null,
+      'avatar_url': null,
+      'intereses': <String>[],
+    });
   }
 
   Future<void> signOut() async {
@@ -69,13 +85,18 @@ class SupabaseService {
     String? descripcion,
     String? imagenPortada,
     bool isPublic = false,
+    String? parentId,
   }) async {
+    // Asegura que exista el perfil para respetar la FK perfiles(id)
+    await _ensurePerfil();
+
     await _supabase.from('tableros').insert({
       'user_id': userId,
       'titulo': titulo,
       if (descripcion != null) 'descripcion': descripcion,
       if (imagenPortada != null) 'imagen_portada': imagenPortada,
       'is_public': isPublic,
+      'parent_id': parentId,
     });
   }
 
@@ -227,6 +248,124 @@ class SupabaseService {
         .eq('user_id', userId)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(res);
+  }
+
+  Future<List<Map<String, dynamic>>> getItemsPorTablero({
+    required String userId,
+    required String tableroId,
+  }) async {
+    final res = await _supabase
+        .from('items')
+        .select()
+        .eq('user_id', userId)
+        .eq('tablero_id', tableroId)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(res);
+  }
+
+  Future<void> actualizarItem({
+    required String itemId,
+    String? titulo,
+    String? contenido,
+    List<String>? tags,
+    String? tableroId,
+    String? estado, // inbox | organizado | archivado
+    String? tipo, // texto | link | imagen | audio | video | archivo
+    bool? isPublic,
+    Map<String, dynamic>? rawData,
+  }) async {
+    final updates = <String, dynamic>{
+      'id': itemId,
+      if (titulo != null) 'titulo': titulo,
+      if (contenido != null) 'contenido': contenido,
+      if (tags != null) 'tags': tags,
+      if (tableroId != null) 'tablero_id': tableroId,
+      if (estado != null) 'estado': estado,
+      if (tipo != null) 'tipo': tipo,
+      if (isPublic != null) 'is_public': isPublic,
+      if (rawData != null) 'raw_data': rawData,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    await _supabase.from('items').update(updates).eq('id', itemId);
+  }
+
+  Future<void> moverItem({
+    required String itemId,
+    String? nuevoTableroId,
+    String nuevoEstado = 'organizado',
+  }) async {
+    await _supabase.from('items').update({
+      'tablero_id': nuevoTableroId,
+      'estado': nuevoEstado,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', itemId);
+  }
+
+  Future<void> eliminarItem(String itemId) async {
+    await _supabase.from('items').delete().eq('id', itemId);
+  }
+
+  Future<void> cambiarVisibilidadItem({
+    required String itemId,
+    required bool isPublic,
+  }) async {
+    await _supabase.from('items').update({
+      'is_public': isPublic,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', itemId);
+  }
+
+  // ─── TABLEROS ANIDADOS ──────────────────────────
+  Future<List<Map<String, dynamic>>> getTablerosHijos({
+    required String userId,
+    String? parentId,
+  }) async {
+    var query = _supabase.from('tableros').select().eq('user_id', userId);
+    if (parentId == null) {
+      query = query.isFilter('parent_id', null);
+    } else {
+      query = query.eq('parent_id', parentId);
+    }
+    final res = await query.order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(res);
+  }
+
+  Future<void> actualizarTablero({
+    required String tableroId,
+    String? titulo,
+    String? descripcion,
+    String? imagenPortada,
+    bool? isPublic,
+    String? parentId,
+  }) async {
+    final updates = <String, dynamic>{
+      'id': tableroId,
+      if (titulo != null) 'titulo': titulo,
+      if (descripcion != null) 'descripcion': descripcion,
+      if (imagenPortada != null) 'imagen_portada': imagenPortada,
+      if (isPublic != null) 'is_public': isPublic,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    if (parentId != null) {
+      updates['parent_id'] = parentId;
+    } else if (parentId == null && updates.containsKey('parent_id')) {
+      // do nothing, only set if provided; leaving null means no change
+    }
+    await _supabase.from('tableros').update(updates).eq('id', tableroId);
+  }
+
+  Future<void> moverTablero({
+    required String tableroId,
+    String? nuevoParentId,
+  }) async {
+    await _supabase.from('tableros').update({
+      'parent_id': nuevoParentId,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', tableroId);
+  }
+
+  Future<void> eliminarTablero(String tableroId) async {
+    await _supabase.from('tableros').delete().eq('id', tableroId);
   }
 
   // ─── STORAGE HELPERS ────────────────────────────

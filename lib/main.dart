@@ -17,6 +17,7 @@ import 'screens/drift_screen.dart';
 import 'screens/person_boards_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/inbox_screen.dart';
+import 'screens/board_tree_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -95,6 +96,7 @@ class _CollectHomeState extends State<CollectHome> {
   late ContentItem _selectedItem;
   late NearbyPerson _selectedPerson;
   late List<ContentItem> _items;
+  List<Board> _boards = boards;
   List<Map<String, dynamic>> _inboxItems = [];
   bool _loadingInbox = false;
 
@@ -105,6 +107,7 @@ class _CollectHomeState extends State<CollectHome> {
     _selectedBoard = boards.first;
     _selectedItem = _items.first;
     _selectedPerson = nearbyPeople.first;
+    _loadBoards();
   }
 
   void _navigate(Screen s) {
@@ -187,8 +190,10 @@ class _CollectHomeState extends State<CollectHome> {
         return const SizedBox.shrink(); // handled by AuthGate
       case Screen.dashboard:
         return DashboardScreen(
-          boards: boards,
+          boards: _boards,
           onBoardSelect: _handleBoardSelect,
+          onOpenBoardTree: () => _navigate(Screen.boardTree),
+          onCreateBoard: () => _openCreateBoard(),
         );
       case Screen.board:
         return BoardScreen(
@@ -225,6 +230,11 @@ class _CollectHomeState extends State<CollectHome> {
             await _loadInbox();
             _navigate(Screen.inbox);
           },
+        );
+      case Screen.boardTree:
+        return BoardTreeScreen(
+          onBack: _handleBack,
+          onCreateBoard: ({parentId}) => _openCreateBoard(parentId: parentId),
         );
       case Screen.drift:
         return DriftScreen(
@@ -295,6 +305,120 @@ class _CollectHomeState extends State<CollectHome> {
     } finally {
       if (mounted) setState(() => _loadingInbox = false);
     }
+  }
+
+  Future<void> _loadBoards() async {
+    final user = _service.currentUser;
+    if (user == null) return;
+    final res = await _service.getTableros(user.id);
+    setState(() {
+      _boards = res
+          .map((b) => Board(
+                id: b['id'] as String,
+                name: b['titulo'] ?? 'Sin título',
+                description: b['descripcion'],
+                parentId: b['parent_id'],
+                itemCount: 0,
+                coverImage: b['imagen_portada'],
+                color: '#7C5CFC',
+                icon: 'palette',
+                isPublic: (b['is_public'] ?? false) as bool,
+              ))
+          .toList();
+      final roots = _boards.where((b) => b.parentId == null).toList();
+      if (roots.isNotEmpty) _selectedBoard = roots.first;
+    });
+  }
+
+  Future<void> _openCreateBoard({String? parentId}) async {
+    final titleController = TextEditingController();
+    final descController = TextEditingController();
+    bool isPublic = false;
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppColors.card,
+          title: const Text('Nuevo tablero'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: 'Título'),
+              ),
+              TextField(
+                controller: descController,
+                decoration:
+                    const InputDecoration(labelText: 'Descripción (opcional)'),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Checkbox(
+                    value: isPublic,
+                    onChanged: (v) {
+                      isPublic = v ?? false;
+                      (context as Element).markNeedsBuild();
+                    },
+                  ),
+                  const Text('Público'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: parentId,
+                decoration: const InputDecoration(
+                  labelText: 'Dentro de (opcional)',
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Nivel raíz'),
+                  ),
+                  ..._boards.map(
+                    (b) => DropdownMenuItem(
+                      value: b.id,
+                      child: Text(b.name),
+                    ),
+                  ),
+                ],
+                onChanged: (v) {
+                  parentId = v;
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (titleController.text.trim().isEmpty) return;
+                Navigator.pop(context, true);
+              },
+              child: const Text('Crear'),
+            ),
+          ],
+        );
+      },
+    );
+    if (created != true) return;
+
+    final user = _service.currentUser;
+    if (user == null) return;
+    await _service.crearTablero(
+      userId: user.id,
+      titulo: titleController.text.trim(),
+      descripcion: descController.text.trim().isEmpty
+          ? null
+          : descController.text.trim(),
+      isPublic: isPublic,
+      parentId: parentId,
+    );
+    await _loadBoards();
   }
 }
 
