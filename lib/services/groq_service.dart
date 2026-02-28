@@ -335,7 +335,7 @@ Output STRICTLY in the following JSON schema:
     }
 
     final systemPrompt =
-        "You are an AI assistant that writes insightful summaries for boards containing multiple items. You will receive the board's title, description, and the summaries of all the items inside the board. Create an insightful, holistic text summary of the board's entire contents. Provide ONLY the summary text.";
+        "You are an AI assistant that writes insightful summaries for boards containing multiple items. You will receive the board's title, description, and the summaries of all the items inside the board. Create an insightful, holistic text summary of the board's entire contents. The summary should quickly help the user to understand the content of the board. You can include bullet points if it helps to make the summary more insightful. Provide ONLY the summary text.";
 
     String itemsText = "";
     for (var i in items) {
