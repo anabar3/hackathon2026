@@ -23,6 +23,7 @@ class GroqService {
             'id': b['id'] ?? '',
             'name': b['titulo'] ?? '',
             'description': b['descripcion'] ?? '',
+            'ai_summary': b['ai_summary'] ?? '',
           },
         )
         .toList();
@@ -42,6 +43,7 @@ IMPORTANT CLASSIFICATION RULES (STRICTLY ENFORCED):
 2. NO FORMAT BOARDS: UNDER NO CIRCUMSTANCES should you create a board related to file formats, types, or general media categories. DO NOT produce categories like "Images", "Pictures", "Photos", "Videos", "Documents", "Files", or "Links".
 3. NO VAGUE BOARDS: DO NOT use miscellaneous or vague categories like "Miscellaneous", "Random", "Others".
 4. NAMING AND SPECIFICITY: When creating a new board, its name MUST be short (1 or 2 words max). It should be broad enough to hold similar items, but not overly specific (e.g., use "Travel" instead of "Trip to Paris 2024").
+5. USE BOARD AI SUMMARIES: When considering existing boards, pay close attention to each board's "ai_summary". This summary represents the actual contents currently stored in that board. If an item matches the semantic context described in a board's ai_summary, prioritize moving the item to that existing board.
 
 Actions can be:
 - "use_existing": move the item to an existing board.
@@ -58,7 +60,7 @@ Output STRICTLY in the following JSON schema:
          "name": "string",
          "description": "string"
       } or null,
-      "reasoning": "short explanation of why you grouped this item here, referencing its relationship to other inbox items if applicable"
+      "reasoning": "short explanation of why you grouped this item here, referencing its relationship to other inbox items or an existing board's ai_summary if applicable"
     }
   ]
 }
