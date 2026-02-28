@@ -1,8 +1,11 @@
 // lib/services/supabase_service.dart
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'groq_service.dart';
 
 class SupabaseService {
@@ -534,7 +537,26 @@ class SupabaseService {
           rawData['transcription'] = transcription;
         }
       } catch (e) {
-        print('Error transcribing audio: $e');
+        debugPrint('Error transcribing audio: $e');
+      }
+    } else if (tipo == 'archivo') {
+      try {
+        if (mimeType == 'application/pdf') {
+          final PdfDocument document = PdfDocument(inputBytes: bytes);
+          final String text = PdfTextExtractor(document).extractText();
+          document.dispose();
+          if (text.isNotEmpty) {
+            // PostgreSQL db does not support '\u0000' character storage natively in text fields without specialized encoding
+            rawData['extracted_text'] = text.replaceAll('\u0000', '');
+          }
+        } else if (mimeType == 'text/markdown') {
+          final String text = utf8.decode(bytes);
+          if (text.isNotEmpty) {
+            rawData['extracted_text'] = text;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error extracting document text: $e');
       }
     }
 

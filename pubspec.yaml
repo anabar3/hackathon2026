@@ -46,6 +46,7 @@ dependencies:
   html: ^0.15.6
   url_launcher: ^6.3.2
   http_parser: ^4.1.2
+  syncfusion_flutter_pdf: ^32.2.7
 
 dev_dependencies:
   flutter_test:

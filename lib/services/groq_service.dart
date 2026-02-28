@@ -71,6 +71,7 @@ Output STRICTLY in the following JSON schema:
       final isImage = tipo == 'imagen';
       final isLink = tipo == 'link';
       final isAudio = tipo == 'audio';
+      final isArchivo = tipo == 'archivo';
       final contentVal = i['contenido'] ?? '';
       final rawData = i['metadatos'] ?? i['raw_data'] ?? {};
 
@@ -81,6 +82,10 @@ Output STRICTLY in the following JSON schema:
           rawData is Map &&
           rawData.containsKey('transcription')) {
         extraContent = "Audio Transcription:\n${rawData['transcription']}";
+      } else if (isArchivo &&
+          rawData is Map &&
+          rawData.containsKey('extracted_text')) {
+        extraContent = "Document Content:\n${rawData['extracted_text']}";
       }
 
       final itemContext =

@@ -129,6 +129,8 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
         return 'video/quicktime';
       case 'pdf':
         return 'application/pdf';
+      case 'md':
+        return 'text/markdown';
       default:
         return 'application/octet-stream';
     }
