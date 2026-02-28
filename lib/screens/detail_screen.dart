@@ -454,12 +454,15 @@ class _MetaRow extends StatelessWidget {
       children: [
         Icon(icon, size: 20, color: AppColors.mutedForeground),
         const SizedBox(width: 14),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.foreground,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
+        Expanded(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.foreground,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],

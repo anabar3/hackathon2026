@@ -521,13 +521,12 @@ class _CollectHomeState extends State<CollectHome> {
 
               setState(() => uploadingCover = true);
               try {
-                // Determine mime based on extension since PlatformFile.mimeType may not exist in this version
-                final ext = file?.name.split('.').last.toLowerCase() ?? 'jpg';
-                final mime = (ext == 'png')
-                    ? 'image/png'
-                    : ((ext == 'webp') ? 'image/webp' : 'image/jpeg');
-
+                final ext = file?.extension;
+                final mime = ext != null ? 'image/$ext' : 'image/jpeg';
+                final userId = _service.currentUser?.id;
+                if (userId == null) throw Exception('Debes iniciar sesión');
                 final url = await _service.subirImagenPortada(
+                  userId: userId,
                   bytes: bytes as Uint8List,
                   fileName: file?.name ?? 'cover.jpg',
                   mimeType: mime,
