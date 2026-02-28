@@ -42,8 +42,11 @@ class ContentCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border, width: 1),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border, width: 3),
+          boxShadow: const [
+            BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
+          ],
         ),
         clipBehavior: Clip.hardEdge,
         child: Column(
@@ -91,7 +94,7 @@ class ContentCard extends StatelessWidget {
                         width: 26,
                         height: 26,
                         decoration: BoxDecoration(
-                          color: Colors.black54,
+                          color: AppColors.card.withAlpha(200),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Icon(

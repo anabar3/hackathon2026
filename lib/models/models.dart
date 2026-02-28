@@ -4,6 +4,7 @@ enum Screen {
   login,
   dashboard,
   inbox,
+  letters,
   boardTree,
   cards,
   board,
@@ -114,4 +115,40 @@ class NearbyPerson {
     required this.sharedInterests,
     required this.publicBoards,
   });
+
+  /// Build from a Supabase encounter row with joined profile.
+  factory NearbyPerson.fromEncuentro(
+    Map<String, dynamic> row, {
+    List<Board> boards = const [],
+    List<String> myInterests = const [],
+  }) {
+    final perfil = row['usuario_encontrado'] as Map<String, dynamic>? ?? {};
+    final vistoEn = DateTime.tryParse(row['visto_en'] ?? '') ?? DateTime.now();
+    final diff = DateTime.now().difference(vistoEn);
+
+    String timeAgo;
+    if (diff.inMinutes < 60) {
+      timeAgo = '${diff.inMinutes} min ago';
+    } else if (diff.inHours < 24) {
+      timeAgo = '${diff.inHours}h ago';
+    } else {
+      timeAgo = '${diff.inDays}d ago';
+    }
+
+    final theirInterests = List<String>.from(perfil['intereses'] ?? []);
+    final shared = theirInterests
+        .where((i) => myInterests.contains(i))
+        .toList();
+
+    return NearbyPerson(
+      id: perfil['id'] ?? row['usuario_encontrado_id'] ?? '',
+      name: perfil['nombre_completo'] ?? perfil['username'] ?? 'Unknown',
+      avatar: perfil['avatar_url'] ?? '',
+      bio: perfil['bio'] ?? '',
+      lastSeenLocation: row['ubicacion'] ?? 'Nearby',
+      lastSeenTime: timeAgo,
+      sharedInterests: shared,
+      publicBoards: boards,
+    );
+  }
 }

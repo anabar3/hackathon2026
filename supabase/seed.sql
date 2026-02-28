@@ -4,6 +4,32 @@
 -- Solo se guardan REFERENCIAS (URLs) para imágenes, audio y video.
 -- ═══════════════════════════════════════════════════════
 
+CREATE TABLE IF NOT EXISTS encuentros (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  usuario_encontrado_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  visto_en TIMESTAMPTZ DEFAULT now(),
+  ubicacion TEXT,
+  CONSTRAINT encuentros_unique_users UNIQUE(user_id, usuario_encontrado_id)
+);
+
+ALTER TABLE encuentros ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow users to read their own encounters"
+  ON encuentros FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow users to insert their own encounters"
+  ON encuentros FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow users to update their own encounters"
+  ON encuentros FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
 DO $$
 DECLARE
   uid UUID;

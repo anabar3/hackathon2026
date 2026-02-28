@@ -12,7 +12,7 @@ import { AddScreen } from "@/components/screens/add-screen"
 import { EditScreen } from "@/components/screens/edit-screen"
 import { AiOrganizeScreen } from "@/components/screens/ai-organize-screen"
 import { DriftScreen } from "@/components/screens/drift-screen"
-import { SavedScreen } from "@/components/screens/saved-screen"
+import { LettersScreen } from "@/components/screens/letters-screen"
 import { PersonBoardsScreen } from "@/components/screens/person-boards-screen"
 import { ScreenSelector } from "@/components/screen-selector"
 
@@ -113,18 +113,17 @@ export function Showcase() {
     screen !== "person-boards"
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center">
+    <div className="min-h-screen ac-pattern-bg flex flex-col items-center">
       {/* Page Header */}
       <header className="w-full max-w-4xl mx-auto px-6 pt-12 pb-8 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold mb-4">
-          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-          Mobile App UI
+        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-primary text-primary-foreground text-xs font-bold mb-4 border-[3px] border-border">
+          🌱 Cozy Collection App
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight text-balance">
-          Collect
+        <h1 className="text-4xl md:text-5xl font-extrabold text-foreground tracking-tight text-balance">
+          Mee
         </h1>
-        <p className="text-base text-muted-foreground mt-3 max-w-md mx-auto leading-relaxed">
-          Organize images, videos, links, audio, notes, and documents in visual boards.
+        <p className="text-base text-muted-foreground mt-3 max-w-md mx-auto leading-relaxed font-bold">
+          Your warm little corner to gather and organize everything you love ✨
         </p>
       </header>
 
@@ -183,11 +182,8 @@ export function Showcase() {
                   onPersonSelect={handlePersonSelect}
                 />
               )}
-              {screen === "saved" && (
-                <SavedScreen
-                  items={items}
-                  onItemSelect={handleItemSelect}
-                />
+              {screen === "letters" && (
+                <LettersScreen />
               )}
               {screen === "person-boards" && selectedPerson && (
                 <PersonBoardsScreen
@@ -210,7 +206,7 @@ export function Showcase() {
 
       {/* Footer info */}
       <footer className="w-full max-w-2xl mx-auto px-6 pb-12 text-center">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground font-medium">
           Interactive prototype. Navigate between screens using the buttons above or interact directly with the phone.
         </p>
       </footer>

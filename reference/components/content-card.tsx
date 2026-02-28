@@ -61,17 +61,13 @@ export function ContentCard({ item, onClick }: ContentCardProps) {
   if (hasImage) {
     return (
       <button
-        onClick={onClick}
-        className="group relative w-full rounded-xl overflow-hidden bg-card border border-border/50 text-left transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="group relative w-full mb-4 break-inside-avoid overflow-hidden text-left ac-card ac-button active:translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <div className="relative">
           <img
             src={item.thumbnail}
             alt={item.title}
             className="w-full object-cover"
-            style={{
-              height: item.id === "1" || item.id === "6" ? 200 : item.id === "8" ? 160 : 140,
-            }}
           />
           {item.type !== "image" && (
             <div className="absolute top-2 left-2">
@@ -121,8 +117,7 @@ export function ContentCard({ item, onClick }: ContentCardProps) {
 
   return (
     <button
-      onClick={onClick}
-      className="group relative w-full rounded-xl overflow-hidden bg-card border border-border/50 text-left transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group relative w-full mb-4 break-inside-avoid overflow-hidden text-left ac-card ac-button active:translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className={`p-4 ${bgClasses[item.type] || "bg-secondary"}`}>
         <div className="flex items-start justify-between mb-3">

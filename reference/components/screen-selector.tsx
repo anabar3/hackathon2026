@@ -25,8 +25,8 @@ const screens: { id: Screen; label: string; icon: React.ReactNode }[] = [
   { id: "add", label: "Inbox", icon: <Inbox className="w-4 h-4" /> },
   { id: "edit", label: "Edit", icon: <Edit3 className="w-4 h-4" /> },
   { id: "ai-organize", label: "AI Organize", icon: <Sparkles className="w-4 h-4" /> },
-  { id: "drift", label: "Drift", icon: <Radio className="w-4 h-4" /> },
-  { id: "saved", label: "Saved", icon: <Bookmark className="w-4 h-4" /> },
+  { id: "drift", label: "Street", icon: <Radio className="w-4 h-4" /> },
+  { id: "letters", label: "Letters", icon: <Bookmark className="w-4 h-4" /> },
   { id: "person-boards", label: "Profile", icon: <User className="w-4 h-4" /> },
 ]
 
@@ -37,11 +37,10 @@ export function ScreenSelector({ activeScreen, onSelect }: ScreenSelectorProps) 
         <button
           key={s.id}
           onClick={() => onSelect(s.id)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-            activeScreen === s.id
-              ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-              : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-colors ac-button ${activeScreen === s.id
+            ? "bg-foreground text-card shadow-md"
+            : "bg-background text-foreground hover:bg-secondary border border-border/50"
+            }`}
         >
           {s.icon}
           {s.label}

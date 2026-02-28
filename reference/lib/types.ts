@@ -50,3 +50,4 @@ export type Screen =
   | "saved"
   | "ai-organize"
   | "person-boards"
+  | "letters"

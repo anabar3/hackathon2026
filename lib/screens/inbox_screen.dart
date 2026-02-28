@@ -40,7 +40,6 @@ class _InboxScreenState extends State<InboxScreen> {
   @override
   void didUpdateWidget(InboxScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Optionally trigger analysis again if items list fundamentally changes
     if (oldWidget.items.length != widget.items.length) {
       _analyzeInbox();
     }
@@ -144,169 +143,266 @@ class _InboxScreenState extends State<InboxScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        title: const Text(
-          'Inbox',
-          style: TextStyle(
-            color: AppColors.foreground,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        actions: [
-          if (_analyzing)
-            const Padding(
-              padding: EdgeInsets.only(right: 16.0),
-              child: Center(
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            color: AppColors.primary,
-            onPressed: widget.onAdd,
-          ),
-        ],
-      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: widget.onRefresh,
           color: AppColors.primary,
-          child: widget.loading
-              ? const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+            children: [
+              // Title
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Inbox',
+                    style: TextStyle(
+                      color: AppColors.foreground,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 24,
+                    ),
+                  ),
+                  if (_analyzing)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Drop anything here — AI will organize it',
+                style: TextStyle(
+                  color: AppColors.mutedForeground,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // ─── Large Drop Zone ───
+              GestureDetector(
+                onTap: widget.onAdd,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  decoration: BoxDecoration(
+                    color: AppColors.muted.withAlpha(50),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border, width: 1.5),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withAlpha(25),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: const Icon(
+                          Icons.add_rounded,
+                          color: AppColors.primary,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Añadir al Inbox',
+                        style: TextStyle(
+                          color: AppColors.foreground,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Links, notas, fotos, audios, archivos...',
+                        style: TextStyle(
+                          color: AppColors.mutedForeground,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Quick action row
+              Row(
+                children: [
+                  _QuickAction(
+                    icon: Icons.link,
+                    label: 'Link',
+                    onTap: widget.onAdd,
+                  ),
+                  const SizedBox(width: 8),
+                  _QuickAction(
+                    icon: Icons.sticky_note_2_outlined,
+                    label: 'Nota',
+                    onTap: widget.onAdd,
+                  ),
+                  const SizedBox(width: 8),
+                  _QuickAction(
+                    icon: Icons.attach_file_rounded,
+                    label: 'Archivo',
+                    onTap: widget.onAdd,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // ─── Items Section ───
+              if (widget.loading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 40),
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
                 )
-              : widget.items.isEmpty
-              ? ListView(
-                  children: const [
-                    SizedBox(height: 120),
-                    Center(
-                      child: Text(
+              else if (widget.items.isEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 40),
+                  decoration: BoxDecoration(
+                    color: AppColors.muted.withAlpha(40),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border, width: 1.5),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.inbox_rounded,
+                        color: AppColors.mutedForeground.withAlpha(120),
+                        size: 40,
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
                         'Tu inbox está vacío',
                         style: TextStyle(
                           color: AppColors.mutedForeground,
                           fontSize: 14,
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  itemCount: widget.items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final item = widget.items[index];
-                    final itemId = item['id'] as String;
-                    final tipo = item['tipo'] as String? ?? 'texto';
-                    final titulo = item['titulo'] as String?;
-                    final contenido = item['contenido'] as String? ?? '';
-                    final createdAt = DateTime.tryParse(
-                      item['created_at']?.toString() ?? '',
-                    );
-
-                    final suggestion = _suggestions[itemId];
-                    String actionText = '';
-                    if (suggestion != null) {
-                      if (suggestion.action == 'create_new') {
-                        actionText =
-                            '✨ Crear tablero "${suggestion.newBoardSuggestion?.name ?? ''}"';
-                      } else {
-                        final bName = _boards.firstWhere(
-                          (b) => b['id'] == suggestion.boardId,
-                          orElse: () => {'titulo': 'Tablero'},
-                        )['titulo'];
-                        actionText = '✨ Mover a "$bName"';
-                      }
-                    }
-
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ListTile(
-                            leading: Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                _iconFor(tipo),
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            title: Text(
-                              titulo?.isNotEmpty == true
-                                  ? titulo!
-                                  : (tipo == 'texto'
-                                        ? contenido
-                                        : tipo.toUpperCase()),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.foreground,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Text(
-                              contenido,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.mutedForeground,
-                                fontSize: 12,
-                              ),
-                            ),
-                            trailing: createdAt == null
-                                ? null
-                                : Text(
-                                    _timeAgo(createdAt),
-                                    style: const TextStyle(
-                                      color: AppColors.mutedForeground,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                          ),
-                          if (suggestion != null)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                              child: SuggestionCard(
-                                suggestion: suggestion,
-                                actionText: actionText,
-                                onConfirm: () => _applySuggestion(suggestion),
-                                onDismiss: () {
-                                  setState(() {
-                                    _suggestions.remove(itemId);
-                                  });
-                                },
-                              ),
-                            ),
-                        ],
-                      ),
-                    );
-                  },
+              else ...[
+                Text(
+                  'PENDIENTES (${widget.items.length})',
+                  style: const TextStyle(
+                    color: AppColors.mutedForeground,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
                 ),
+                const SizedBox(height: 10),
+                ...widget.items.asMap().entries.map((entry) {
+                  final item = entry.value;
+                  final itemId = item['id'] as String;
+                  final tipo = item['tipo'] as String? ?? 'texto';
+                  final titulo = item['titulo'] as String?;
+                  final contenido = item['contenido'] as String? ?? '';
+                  final createdAt = DateTime.tryParse(
+                    item['created_at']?.toString() ?? '',
+                  );
+
+                  final suggestion = _suggestions[itemId];
+                  String actionText = '';
+                  if (suggestion != null) {
+                    if (suggestion.action == 'create_new') {
+                      actionText =
+                          '✨ Crear tablero "${suggestion.newBoardSuggestion?.name ?? ''}"';
+                    } else {
+                      final bName = _boards.firstWhere(
+                        (b) => b['id'] == suggestion.boardId,
+                        orElse: () => {'titulo': 'Tablero'},
+                      )['titulo'];
+                      actionText = '✨ Mover a "$bName"';
+                    }
+                  }
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(20),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              _iconFor(tipo),
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          title: Text(
+                            titulo?.isNotEmpty == true
+                                ? titulo!
+                                : (tipo == 'texto'
+                                      ? contenido
+                                      : tipo.toUpperCase()),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.foreground,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            contenido,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.mutedForeground,
+                              fontSize: 12,
+                            ),
+                          ),
+                          trailing: createdAt == null
+                              ? null
+                              : Text(
+                                  _timeAgo(createdAt),
+                                  style: const TextStyle(
+                                    color: AppColors.mutedForeground,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                        ),
+                        if (suggestion != null)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                            child: SuggestionCard(
+                              suggestion: suggestion,
+                              actionText: actionText,
+                              onConfirm: () => _applySuggestion(suggestion),
+                              onDismiss: () {
+                                setState(() {
+                                  _suggestions.remove(itemId);
+                                });
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: widget.onAdd,
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
@@ -317,5 +413,49 @@ class _InboxScreenState extends State<InboxScreen> {
     if (diff.inHours < 1) return '${diff.inMinutes}m';
     if (diff.inDays < 1) return '${diff.inHours}h';
     return '${diff.inDays}d';
+  }
+}
+
+class _QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: AppColors.primary, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.foreground,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -212,7 +212,7 @@ class PersonBoardsScreen extends StatelessWidget {
                                     end: Alignment.bottomCenter,
                                     colors: [
                                       Colors.transparent,
-                                      Color(0xCC1E1E32),
+                                      Color(0x88352F20),
                                     ],
                                   ),
                                 ),

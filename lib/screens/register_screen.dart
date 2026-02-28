@@ -54,7 +54,11 @@ class _RegisterScreenState extends State<RegisterScreen>
     final password = _passwordCtrl.text.trim();
     final confirm = _confirmCtrl.text.trim();
 
-    if (name.isEmpty || username.isEmpty || email.isEmpty || password.isEmpty || confirm.isEmpty) {
+    if (name.isEmpty ||
+        username.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirm.isEmpty) {
       setState(() => _error = 'Rellena todos los campos');
       return;
     }
@@ -123,10 +127,7 @@ class _RegisterScreenState extends State<RegisterScreen>
             controller: controller,
             obscureText: obscure ?? false,
             keyboardType: type,
-            style: const TextStyle(
-              color: AppColors.foreground,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: AppColors.foreground, fontSize: 14),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: const TextStyle(color: AppColors.mutedForeground),
@@ -214,14 +215,14 @@ class _RegisterScreenState extends State<RegisterScreen>
                   hint: 'Tu nombre',
                   icon: Icons.person_outline,
                 ),
-                
+
                 _buildTextField(
                   label: 'NOMBRE DE USUARIO',
                   controller: _usernameCtrl,
                   hint: '@tu_usuario',
                   icon: Icons.alternate_email,
                 ),
-                
+
                 _buildTextField(
                   label: 'EMAIL',
                   controller: _emailCtrl,
@@ -247,7 +248,8 @@ class _RegisterScreenState extends State<RegisterScreen>
                   icon: Icons.lock_outline,
                   isPassword: true,
                   obscure: _obscureConfirm,
-                  onToggleObscure: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                  onToggleObscure: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
 
                 if (_error != null) ...[
@@ -255,15 +257,15 @@ class _RegisterScreenState extends State<RegisterScreen>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3D1E1E),
+                      color: const Color(0xFFFEE2E2),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF5C2020)),
+                      border: Border.all(color: const Color(0xFFFCA5A5)),
                     ),
                     child: Row(
                       children: [
                         const Icon(
                           Icons.error_outline,
-                          color: Color(0xFFEF4444),
+                          color: Color(0xFFC75050),
                           size: 16,
                         ),
                         const SizedBox(width: 8),
@@ -271,7 +273,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                           child: Text(
                             _error!,
                             style: const TextStyle(
-                              color: Color(0xFFFCA5A5),
+                              color: Color(0xFFC75050),
                               fontSize: 12,
                             ),
                           ),

@@ -163,15 +163,15 @@ class _BioScreenState extends State<BioScreen>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3D1E1E),
+                      color: const Color(0xFFFEE2E2),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF5C2020)),
+                      border: Border.all(color: const Color(0xFFFCA5A5)),
                     ),
                     child: Row(
                       children: [
                         const Icon(
                           Icons.error_outline,
-                          color: Color(0xFFEF4444),
+                          color: Color(0xFFC75050),
                           size: 16,
                         ),
                         const SizedBox(width: 8),
@@ -179,7 +179,7 @@ class _BioScreenState extends State<BioScreen>
                           child: Text(
                             _error!,
                             style: const TextStyle(
-                              color: Color(0xFFFCA5A5),
+                              color: Color(0xFFC75050),
                               fontSize: 12,
                             ),
                           ),

@@ -26,74 +26,92 @@ export function BoardScreen({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <header className="px-4 pt-2 pb-3">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={onBack}
-            className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="w-5 h-5 text-foreground" />
-          </button>
-          <div className="flex items-center gap-2">
-            {onAiOrganize && (
-              <button
-                onClick={onAiOrganize}
-                className="h-9 px-3 rounded-full bg-primary/15 border border-primary/25 flex items-center justify-center gap-1.5 hover:bg-primary/25 transition-colors"
-                aria-label="AI organize board"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-primary" />
-                <span className="text-[11px] font-semibold text-primary">AI</span>
-              </button>
-            )}
-            <button
-              className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
-              aria-label="Filter content"
-            >
-              <SlidersHorizontal className="w-4 h-4 text-foreground" />
-            </button>
-            <button
-              onClick={onEdit}
-              className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
-              aria-label="Board options"
-            >
-              <MoreHorizontal className="w-4 h-4 text-foreground" />
-            </button>
+      {/* Header Container */}
+      <div className="relative w-full">
+        {/* Optional Hero Image */}
+        {board.coverImage && (
+          <div className="absolute inset-0 w-full h-48 sm:h-56 z-0 overflow-hidden rounded-b-[2.5rem]">
+            <img
+              src={board.coverImage}
+              alt={board.name}
+              className="w-full h-full object-cover opacity-90"
+            />
+            <div className="absolute inset-0 bg-linear-to-t from-background via-background/60 to-transparent" />
           </div>
-        </div>
-        <div className="mt-3">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-foreground">{board.name}</h1>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-secondary text-muted-foreground">
-              {board.isPublic ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-              {board.isPublic ? "Public" : "Private"}
-            </span>
-          </div>
-          {board.description && (
-            <p className="text-xs text-muted-foreground mt-0.5">{board.description}</p>
-          )}
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-muted-foreground font-medium">
-              {boardItems.length} items
-            </span>
-            <div className="flex items-center gap-1.5">
-              {["All", "Images", "Videos", "Links", "Notes"].map((filter) => (
+        )}
+
+        <header className="relative z-10 px-4 pt-12 pb-3">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={onBack}
+              className="w-10 h-10 rounded-full bg-secondary/80 backdrop-blur-md flex items-center justify-center ac-button ac-toon-shadow-sm"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5 text-foreground" strokeWidth={2.5} />
+            </button>
+            <div className="flex items-center gap-2">
+              {onAiOrganize && (
                 <button
-                  key={filter}
-                  className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
-                    filter === "All"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-muted-foreground hover:text-foreground"
-                  }`}
+                  onClick={onAiOrganize}
+                  className="h-10 px-4 rounded-full bg-primary/90 text-primary-foreground backdrop-blur-md flex items-center justify-center gap-1.5 ac-button ac-toon-shadow-sm"
+                  aria-label="AI organize board"
                 >
-                  {filter}
+                  <Sparkles className="w-4 h-4" strokeWidth={2.5} />
+                  <span className="text-xs font-bold">AI</span>
                 </button>
-              ))}
+              )}
+              <button
+                className="w-10 h-10 rounded-full bg-secondary/80 backdrop-blur-md flex items-center justify-center ac-button ac-toon-shadow-sm"
+                aria-label="Filter"
+              >
+                <SlidersHorizontal className="w-5 h-5 text-foreground" strokeWidth={2.5} />
+              </button>
+              <button
+                onClick={onEdit}
+                className="w-10 h-10 rounded-full bg-secondary/80 backdrop-blur-md flex items-center justify-center ac-button ac-toon-shadow-sm"
+                aria-label="Board options"
+              >
+                <MoreHorizontal className="w-5 h-5 text-foreground" strokeWidth={2.5} />
+              </button>
             </div>
           </div>
+
+          <div className={`mt-${board.coverImage ? '16' : '3'}`}>
+            <div className="flex flex-col gap-1.5">
+              <h1 className="text-3xl font-extrabold text-foreground tracking-tight">{board.name}</h1>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold rounded-full bg-foreground/10 text-foreground">
+                  {board.isPublic ? <Globe className="w-3.5 h-3.5" strokeWidth={2.5} /> : <Lock className="w-3.5 h-3.5" strokeWidth={2.5} />}
+                  {board.isPublic ? "Public" : "Private"}
+                </span>
+                <span className="text-xs text-muted-foreground font-medium bg-background/50 px-2 py-0.5 rounded-full">
+                  {boardItems.length} items
+                </span>
+              </div>
+            </div>
+            {board.description && (
+              <p className="text-sm text-muted-foreground font-medium mt-2 max-w-[90%]">{board.description}</p>
+            )}
+          </div>
+        </header>
+      </div>
+
+      <div className="px-4">
+        <div className="flex items-center gap-2 mt-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+          {["All", "Images", "Videos", "Links", "Notes"].map((filter) => (
+            <button
+              key={filter}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ac-button ${filter === "All"
+                ? "bg-primary text-primary-foreground ac-toon-shadow-sm"
+                : "bg-secondary text-muted-foreground"
+                }`}
+            >
+              {filter}
+            </button>
+          ))}
         </div>
-      </header>
+      </div>
+
 
       <ScrollArea className="flex-1 min-h-0 pb-24">
         <div className="px-4">

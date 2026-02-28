@@ -5,36 +5,33 @@ import '../theme/app_theme.dart';
 class BottomNav extends StatelessWidget {
   final Screen activeScreen;
   final void Function(Screen) onNavigate;
-  final VoidCallback onAdd;
-  final VoidCallback onAddInbox;
-  final VoidCallback onOpenCards;
 
   const BottomNav({
     super.key,
     required this.activeScreen,
     required this.onNavigate,
-    required this.onAdd,
-    required this.onAddInbox,
-    required this.onOpenCards,
   });
 
   bool get _isDashboard => activeScreen == Screen.dashboard;
   bool get _isDrift =>
       activeScreen == Screen.drift || activeScreen == Screen.personBoards;
   bool get _isInbox => activeScreen == Screen.inbox;
-  bool get _isCards => activeScreen == Screen.cards;
+  bool get _isLetters => activeScreen == Screen.letters;
   bool get _isProfile => activeScreen == Screen.profile;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.card.withAlpha(242),
-        border: const Border(top: BorderSide(color: AppColors.border)),
+        color: AppColors.card,
+        border: const Border(
+          top: BorderSide(color: AppColors.border, width: 1),
+        ),
       ),
       child: SafeArea(
+        top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -45,47 +42,26 @@ class BottomNav extends StatelessWidget {
                 onTap: () => onNavigate(Screen.dashboard),
               ),
               _NavItem(
-                icon: Icons.inbox_outlined,
+                icon: Icons.wifi_tethering_rounded,
+                label: 'Street',
+                active: _isDrift,
+                onTap: () => onNavigate(Screen.drift),
+              ),
+              _NavItem(
+                icon: Icons.inbox_rounded,
                 label: 'Inbox',
                 active: _isInbox,
                 onTap: () => onNavigate(Screen.inbox),
               ),
               _NavItem(
-                icon: Icons.waves_rounded,
-                label: 'Drift',
-                active: _isDrift,
-                onTap: () => onNavigate(Screen.drift),
-              ),
-              _NavItem(
-                icon: Icons.mail_outline,
-                label: 'Cartas',
-                active: _isCards,
-                onTap: onOpenCards,
-              ),
-              // Center FAB
-              GestureDetector(
-                onTap: _isInbox ? onAddInbox : onAdd,
-                child: Container(
-                  width: 52,
-                  height: 52,
-                  margin: const EdgeInsets.only(bottom: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withAlpha(77),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 26),
-                ),
+                icon: Icons.bookmark_border_rounded,
+                label: 'Letters',
+                active: _isLetters,
+                onTap: () => onNavigate(Screen.letters),
               ),
               _NavItem(
                 icon: Icons.person_outline_rounded,
-                label: 'Perfil',
+                label: 'Profile',
                 active: _isProfile,
                 onTap: () => onNavigate(Screen.profile),
               ),
@@ -112,23 +88,30 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.primary : AppColors.mutedForeground;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 22),
+            Icon(
+              icon,
+              color: active ? Colors.white : AppColors.mutedForeground,
+              size: 22,
+            ),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                color: color,
+                color: active ? Colors.white : AppColors.mutedForeground,
                 fontSize: 10,
-                fontWeight: FontWeight.w500,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ],

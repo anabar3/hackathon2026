@@ -55,8 +55,7 @@ class SupabaseService {
     String? userId,
     String? username,
   }) async {
-    assert(userId != null || username != null,
-        'Debes pasar userId o username');
+    assert(userId != null || username != null, 'Debes pasar userId o username');
     var query = _supabase.from('perfiles').select();
     if (userId != null) {
       query = query.eq('id', userId);
@@ -188,8 +187,11 @@ class SupabaseService {
       'raw_data': item['raw_data'],
     };
 
-    final res =
-        await _supabase.from('sugerencias').insert(payload).select().single();
+    final res = await _supabase
+        .from('sugerencias')
+        .insert(payload)
+        .select()
+        .single();
     return res;
   }
 
@@ -207,8 +209,11 @@ class SupabaseService {
       'alcance': targetUserId == null ? 'cercanos' : 'directa',
       'target_user_id': targetUserId,
     };
-    final res =
-        await _supabase.from('cartas').insert(payload).select().single();
+    final res = await _supabase
+        .from('cartas')
+        .insert(payload)
+        .select()
+        .single();
     return res;
   }
 
@@ -226,7 +231,9 @@ class SupabaseService {
     var query = _supabase
         .from('cartas')
         .select()
-        .or('target_user_id.eq.${user.id},and(target_user_id.is.null,alcance.eq.cercanos)')
+        .or(
+          'target_user_id.eq.${user.id},and(target_user_id.is.null,alcance.eq.cercanos)',
+        )
         .order('created_at', ascending: false);
 
     final cartas = List<Map<String, dynamic>>.from(await query);
@@ -236,10 +243,13 @@ class SupabaseService {
         .from('cartas_borradas')
         .select('carta_id')
         .eq('user_id', user.id);
-    final borradasIds =
-        borradasRes.map<String>((e) => e['carta_id'] as String).toSet();
+    final borradasIds = borradasRes
+        .map<String>((e) => e['carta_id'] as String)
+        .toSet();
 
-    final filtered = cartas.where((c) => !borradasIds.contains(c['id'])).toList();
+    final filtered = cartas
+        .where((c) => !borradasIds.contains(c['id']))
+        .toList();
 
     // Ordenar: directas > cercanos; dentro de cercanos priorizar autores cercanos si se pasa nearbyUserIds; luego fecha desc
     final nearbySet = nearbyUserIds != null ? nearbyUserIds.toSet() : null;
@@ -247,13 +257,12 @@ class SupabaseService {
       int score(Map<String, dynamic> c) {
         final isDirect = c['target_user_id'] != null;
         final autor = c['autor_id'] as String?;
-        final isNear = nearbySet != null && autor != null && nearbySet.contains(autor);
+        final isNear =
+            nearbySet != null && autor != null && nearbySet.contains(autor);
         final ts =
             DateTime.tryParse(c['created_at'] ?? '')?.millisecondsSinceEpoch ??
-                0;
-        return (isDirect ? 1000000000 : 0) +
-            (isNear ? 1000000 : 0) +
-            ts;
+            0;
+        return (isDirect ? 1000000000 : 0) + (isNear ? 1000000 : 0) + ts;
       }
 
       return score(b).compareTo(score(a));
@@ -296,14 +305,18 @@ class SupabaseService {
       'tipo': tipo,
       if (rawData != null) 'raw_data': rawData,
     };
-    final res =
-        await _supabase.from('sugerencias').insert(payload).select().single();
+    final res = await _supabase
+        .from('sugerencias')
+        .insert(payload)
+        .select()
+        .single();
     return res;
   }
 
   /// Lista sugerencias recibidas para un tablero del usuario actual.
   Future<List<Map<String, dynamic>>> getSugerenciasTablero(
-      String tableroId) async {
+    String tableroId,
+  ) async {
     final user = currentUser;
     if (user == null) throw Exception('Debes iniciar sesión primero');
 
@@ -348,15 +361,21 @@ class SupabaseService {
           'original_raw_data': sug['raw_data'],
         },
       });
-      await _supabase.from('sugerencias').update({
-        'estado': 'aceptada',
-        'accepted_at': DateTime.now().toIso8601String(),
-      }).eq('id', sugerenciaId);
+      await _supabase
+          .from('sugerencias')
+          .update({
+            'estado': 'aceptada',
+            'accepted_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', sugerenciaId);
     } else {
-      await _supabase.from('sugerencias').update({
-        'estado': 'rechazada',
-        'rejected_at': DateTime.now().toIso8601String(),
-      }).eq('id', sugerenciaId);
+      await _supabase
+          .from('sugerencias')
+          .update({
+            'estado': 'rechazada',
+            'rejected_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', sugerenciaId);
     }
   }
 
@@ -575,11 +594,14 @@ class SupabaseService {
     String? nuevoTableroId,
     String nuevoEstado = 'organizado',
   }) async {
-    await _supabase.from('items').update({
-      'tablero_id': nuevoTableroId,
-      'estado': nuevoEstado,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', itemId);
+    await _supabase
+        .from('items')
+        .update({
+          'tablero_id': nuevoTableroId,
+          'estado': nuevoEstado,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', itemId);
   }
 
   Future<void> eliminarItem(String itemId) async {
@@ -590,10 +612,13 @@ class SupabaseService {
     required String itemId,
     required bool isPublic,
   }) async {
-    await _supabase.from('items').update({
-      'is_public': isPublic,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', itemId);
+    await _supabase
+        .from('items')
+        .update({
+          'is_public': isPublic,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', itemId);
   }
 
   // ─── TABLEROS ANIDADOS ──────────────────────────
@@ -639,10 +664,13 @@ class SupabaseService {
     required String tableroId,
     String? nuevoParentId,
   }) async {
-    await _supabase.from('tableros').update({
-      'parent_id': nuevoParentId,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', tableroId);
+    await _supabase
+        .from('tableros')
+        .update({
+          'parent_id': nuevoParentId,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', tableroId);
   }
 
   Future<void> eliminarTablero(String tableroId) async {
@@ -662,13 +690,12 @@ class SupabaseService {
     final objectPath =
         '$userId/${DateTime.now().millisecondsSinceEpoch}-$randomSuffix-$safeName';
 
-    await _supabase.storage.from('inbox-uploads').uploadBinary(
+    await _supabase.storage
+        .from('inbox-uploads')
+        .uploadBinary(
           objectPath,
           bytes,
-          fileOptions: FileOptions(
-            contentType: mimeType,
-            upsert: false,
-          ),
+          fileOptions: FileOptions(contentType: mimeType, upsert: false),
         );
 
     // URL firmada por 7 días. El front puede renovarla o usar getPublicUrl si el bucket se marca como público.
@@ -676,10 +703,7 @@ class SupabaseService {
         .from('inbox-uploads')
         .createSignedUrl(objectPath, 60 * 60 * 24 * 7);
 
-    return {
-      'path': objectPath,
-      'signedUrl': signedUrl,
-    };
+    return {'path': objectPath, 'signedUrl': signedUrl};
   }
 
   // Imagenes mock para ahorrar espacio
@@ -694,6 +718,19 @@ class SupabaseService {
   }
 
   // ─── ENCUENTROS ─────────────────────────────────
+  /// Register or update an encounter with another user.
+  Future<void> registrarEncuentro(String otherUserId) async {
+    final user = currentUser;
+    if (user == null) return;
+
+    await _supabase.from('encuentros').upsert({
+      'user_id': user.id,
+      'usuario_encontrado_id': otherUserId,
+      'visto_en': DateTime.now().toIso8601String(),
+    }, onConflict: 'encuentros_unique_users');
+  }
+
+  /// Get all encounters for the current user, with profile info.
   Future<List<Map<String, dynamic>>> getEncuentros(String userId) async {
     final res = await _supabase
         .from('encuentros')

@@ -61,9 +61,10 @@ const quickActions = [
 ]
 
 const recentDrops = [
-  { name: "IMG_2847.jpg", time: "2 min ago", board: "Travel Inspo", status: "sorted" },
-  { name: "recipe-link.url", time: "15 min ago", board: "Recipes", status: "sorted" },
-  { name: "voice-memo-03.m4a", time: "1h ago", board: "Reading List", status: "sorted" },
+  { name: "IMG_2847.jpg", desc: "Added to Travel Inspo", icon: <Image className="w-5 h-5" />, color: "bg-[#e58f62]/20 text-[#e58f62]" },
+  { name: "Vintage Lamp", desc: "Added to Wishlist", icon: <Link2 className="w-5 h-5" />, color: "bg-[#879ceb]/20 text-[#879ceb]" },
+  { name: "Brownie Recipe", desc: "Added to Recipes", icon: <FileUp className="w-5 h-5" />, color: "bg-[#8bcfa1]/20 text-[#8bcfa1]" },
+  { name: "Voice Note", desc: "Added to Ideas", icon: <Mic className="w-5 h-5" />, color: "bg-[#e895af]/20 text-[#e895af]" },
 ]
 
 export function AddScreen({ onClose }: AddScreenProps) {
@@ -121,13 +122,13 @@ export function AddScreen({ onClose }: AddScreenProps) {
   }, [])
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background ac-pattern-bg">
       {/* Header */}
       <header className="px-5 pt-2 pb-3">
         <div className="flex items-center justify-between">
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+            className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center ac-button shadow-sm"
             aria-label="Close"
           >
             <X className="w-5 h-5 text-foreground" />
@@ -142,87 +143,48 @@ export function AddScreen({ onClose }: AddScreenProps) {
           {/* Phase: Idle -- drop zone */}
           {phase === "idle" && (
             <>
-              {/* Drop zone */}
+              {/* Drop zone hero */}
               <button
                 onClick={simulateProcessing}
-                className="w-full mb-5 border-2 border-dashed border-primary/30 rounded-2xl p-8 flex flex-col items-center gap-3 bg-primary/5 hover:bg-primary/8 hover:border-primary/50 transition-all active:scale-[0.98]"
+                className="w-full mb-8 border-3 border-border rounded-[2rem] p-8 flex flex-col items-center gap-3 bg-card hover:bg-card/80 transition-colors ac-button ac-toon-shadow active:translate-y-1"
               >
-                <div className="w-14 h-14 rounded-2xl bg-primary/15 flex items-center justify-center text-primary mb-1">
-                  <Sparkles className="w-7 h-7" />
+                <div className="w-20 h-20 ac-icon-bg bg-primary/20 flex items-center justify-center text-primary mb-2 shadow-sm border-[3px] border-border">
+                  <Sparkles className="w-10 h-10" strokeWidth={2.5} />
                 </div>
-                <p className="text-sm font-semibold text-foreground">Drop anything here</p>
-                <p className="text-[11px] text-muted-foreground text-center leading-relaxed max-w-[200px]">
-                  Photos, links, files, voice memos... AI will name, describe, tag, and sort it for you.
+                <h2 className="text-xl font-extrabold text-foreground">Drop anything here</h2>
+                <p className="text-xs text-muted-foreground text-center font-medium max-w-[220px]">
+                  Photos, links, files... AI will name, tag, and organize it for you.
                 </p>
               </button>
 
-              {/* Quick capture */}
-              <div className="mb-6">
-                <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3 px-1">
-                  Quick Capture
-                </h2>
-                <div className="grid grid-cols-5 gap-2">
-                  {quickActions.map((action) => (
-                    <button
-                      key={action.label}
-                      onClick={simulateProcessing}
-                      className={`flex flex-col items-center gap-1.5 py-3 rounded-xl transition-colors ${
-                        action.accent
-                          ? "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15"
-                          : "bg-secondary text-foreground border border-border/50 hover:bg-secondary/80"
-                      }`}
-                    >
-                      {action.icon}
-                      <span className="text-[10px] font-medium">{action.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Paste a link inline */}
-              <div className="mb-6">
-                <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3 px-1">
-                  Paste Link
-                </h2>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 relative">
-                    <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                      type="url"
-                      placeholder="https://..."
-                      className="w-full pl-9 pr-4 py-3 rounded-xl bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-                  <button
-                    onClick={simulateProcessing}
-                    className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center text-primary-foreground flex-shrink-0 hover:bg-primary/90 transition-colors"
-                    aria-label="Submit link"
-                  >
-                    <ArrowRight className="w-5 h-5" />
+              {/* Inventory List (Recent) */}
+              <div>
+                <div className="flex items-center justify-between mb-4 px-1">
+                  <h2 className="text-sm font-bold text-foreground tracking-wider">Recently Added</h2>
+                  <button className="text-xs font-bold text-primary flex items-center gap-1 bg-primary/10 px-3 py-1 rounded-full">
+                    View full history
+                    <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
-              </div>
 
-              {/* Recent activity */}
-              <div>
-                <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3 px-1">
-                  Recent
-                </h2>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   {recentDrops.map((drop) => (
                     <div
                       key={drop.name}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-secondary/60 border border-border/30"
+                      className="flex items-center gap-4 p-3 rounded-2xl bg-card border-[3px] border-border shadow-sm group"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Check className="w-3.5 h-3.5 text-primary" />
+                      <div className={`w-12 h-12 rounded-[1rem] flex items-center justify-center shrink-0 border-2 border-border/50 ${drop.color}`}>
+                        {drop.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{drop.name}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {drop.time} &middot; {drop.board}
+                        <p className="text-sm font-bold text-foreground truncate">{drop.name}</p>
+                        <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">
+                          {drop.desc}
                         </p>
                       </div>
+                      <button className="w-10 h-10 rounded-full bg-secondary text-foreground flex items-center justify-center shrink-0 ac-button border-2 border-border/50 group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-colors">
+                        <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -288,8 +250,8 @@ export function AddScreen({ onClose }: AddScreenProps) {
             <div className="pt-2">
               {/* Success header */}
               <div className="flex flex-col items-center mb-6">
-                <div className="w-14 h-14 rounded-full bg-primary/15 flex items-center justify-center mb-3">
-                  <Check className="w-7 h-7 text-primary" />
+                <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-3 shadow-md">
+                  <Check className="w-8 h-8 text-primary-foreground" strokeWidth={3} />
                 </div>
                 <h2 className="text-base font-semibold text-foreground">Sorted by AI</h2>
                 <p className="text-xs text-muted-foreground">Review and confirm, or edit the details</p>
@@ -393,13 +355,13 @@ export function AddScreen({ onClose }: AddScreenProps) {
                 <div className="flex gap-3">
                   <button
                     onClick={handleReset}
-                    className="flex-1 py-3 rounded-xl bg-secondary text-foreground font-semibold text-sm hover:bg-secondary/80 transition-colors border border-border/50"
+                    className="flex-1 py-3.5 rounded-full bg-card text-foreground font-bold text-sm ac-button shadow-sm border border-border/50"
                   >
                     Discard
                   </button>
                   <button
                     onClick={handleReset}
-                    className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
+                    className="flex-1 py-3.5 rounded-full bg-primary text-primary-foreground font-bold text-sm ac-button shadow-md"
                   >
                     Confirm
                   </button>
@@ -408,7 +370,7 @@ export function AddScreen({ onClose }: AddScreenProps) {
             </div>
           )}
         </div>
-      </ScrollArea>
-    </div>
+      </ScrollArea >
+    </div >
   )
 }
