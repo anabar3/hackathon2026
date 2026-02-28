@@ -321,12 +321,13 @@ class _CollectHomeState extends State<CollectHome> {
       case Screen.profile:
         return ProfileScreen(onBack: _handleBack, onLogout: _handleLogout);
       case Screen.edit:
-        if (_selectedBoard == null) return DashboardScreen(
-          boards: _boards,
-          onBoardSelect: _handleBoardSelect,
-          onOpenBoardTree: () => _navigate(Screen.boardTree),
-          onCreateBoard: () => _openCreateBoard(),
-        );
+        if (_selectedBoard == null)
+          return DashboardScreen(
+            boards: _boards,
+            onBoardSelect: _handleBoardSelect,
+            onOpenBoardTree: () => _navigate(Screen.boardTree),
+            onCreateBoard: () => _openCreateBoard(),
+          );
         return _EditPlaceholder(board: _selectedBoard!, onBack: _handleBack);
       case Screen.aiOrganize:
         return _AiOrganizePlaceholder(
@@ -520,10 +521,16 @@ class _CollectHomeState extends State<CollectHome> {
 
               setState(() => uploadingCover = true);
               try {
+                // Determine mime based on extension since PlatformFile.mimeType may not exist in this version
+                final ext = file?.name.split('.').last.toLowerCase() ?? 'jpg';
+                final mime = (ext == 'png')
+                    ? 'image/png'
+                    : ((ext == 'webp') ? 'image/webp' : 'image/jpeg');
+
                 final url = await _service.subirImagenPortada(
                   bytes: bytes as Uint8List,
                   fileName: file?.name ?? 'cover.jpg',
-                  mimeType: file?.mimeType ?? 'image/jpeg',
+                  mimeType: mime,
                 );
                 if (!dialogContext.mounted) return;
                 setState(() => coverUrl = url);
@@ -570,7 +577,10 @@ class _CollectHomeState extends State<CollectHome> {
                         decoration: BoxDecoration(
                           color: AppColors.background,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border, width: 1.5),
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1.5,
+                          ),
                         ),
                         child: Stack(
                           children: [
@@ -589,11 +599,18 @@ class _CollectHomeState extends State<CollectHome> {
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: const [
-                                    Icon(Icons.image_outlined, size: 30, color: AppColors.mutedForeground),
+                                    Icon(
+                                      Icons.image_outlined,
+                                      size: 30,
+                                      color: AppColors.mutedForeground,
+                                    ),
                                     SizedBox(height: 6),
                                     Text(
                                       'Sube una portada (opcional)',
-                                      style: TextStyle(color: AppColors.mutedForeground, fontWeight: FontWeight.w700),
+                                      style: TextStyle(
+                                        color: AppColors.mutedForeground,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -610,9 +627,7 @@ class _CollectHomeState extends State<CollectHome> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String?>(
                       value: parentId,
-                      decoration: const InputDecoration(
-                        labelText: 'Ubicación',
-                      ),
+                      decoration: const InputDecoration(labelText: 'Ubicación'),
                       items: [
                         const DropdownMenuItem<String?>(
                           value: null,
@@ -632,7 +647,8 @@ class _CollectHomeState extends State<CollectHome> {
                       children: [
                         Checkbox(
                           value: isPublic,
-                          onChanged: (v) => setState(() => isPublic = v ?? false),
+                          onChanged: (v) =>
+                              setState(() => isPublic = v ?? false),
                         ),
                         const Text('Público'),
                       ],
@@ -646,7 +662,8 @@ class _CollectHomeState extends State<CollectHome> {
                   child: const Text('Cancelar'),
                 ),
                 ElevatedButton(
-                  onPressed: titleController.text.trim().isEmpty || uploadingCover
+                  onPressed:
+                      titleController.text.trim().isEmpty || uploadingCover
                       ? null
                       : () => Navigator.pop(dialogContext, true),
                   child: const Text('Crear'),
