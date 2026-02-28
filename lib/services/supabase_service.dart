@@ -1,9 +1,12 @@
 // lib/services/supabase_service.dart
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:postgrest/postgrest.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'groq_service.dart';
 
 class SupabaseService {
   final _supabase = Supabase.instance.client;
@@ -161,11 +164,11 @@ class SupabaseService {
       'estado': 'inbox',
       'tags': origen['tags'],
       'is_public': false,
-      'raw_data': {
+      'metadatos': {
         'source_user_id': origen['user_id'],
         'source_item_id': origen['id'],
         'copied_at': DateTime.now().toIso8601String(),
-        'original_raw_data': origen['raw_data'],
+        'original_raw_data': origen['metadatos'],
       },
     };
 
@@ -197,7 +200,7 @@ class SupabaseService {
       'titulo': item['titulo'],
       'contenido': item['contenido'],
       'tipo': item['tipo'],
-      'raw_data': item['raw_data'],
+      'raw_data': item['metadatos'],
     };
 
     final res = await _supabase
@@ -367,7 +370,7 @@ class SupabaseService {
         'tipo': sug['tipo'],
         'estado': 'organizado',
         'is_public': false,
-        'raw_data': {
+        'metadatos': {
           'from_suggestion_id': sugerenciaId,
           'autor_id': sug['autor_id'],
           'copied_at': DateTime.now().toIso8601String(),
@@ -451,7 +454,7 @@ class SupabaseService {
       'tipo': 'texto',
       'estado': 'inbox',
       if (tags != null) 'tags': tags,
-      'raw_data': contenido,
+      'metadatos': contenido,
     };
 
     return await _insertItemConFallback(payload);
@@ -470,6 +473,15 @@ class SupabaseService {
     if (user == null) throw Exception('Debes iniciar sesión primero');
     await _ensurePerfil();
 
+    // Fetch link content for AI parsing
+    final groq = GroqService();
+    final scrapedText = await groq.fetchLinkContent(url);
+
+    final rawData = Map<String, dynamic>.from(linkMeta ?? {});
+    if (scrapedText != null) {
+      rawData['scraped_text'] = scrapedText;
+    }
+
     final payload = {
       'user_id': user.id,
       'tablero_id': tableroId,
@@ -479,7 +491,7 @@ class SupabaseService {
       'tipo': 'link',
       'estado': 'inbox',
       if (tags != null) 'tags': tags,
-      if (linkMeta != null) 'raw_data': linkMeta,
+      'metadatos': rawData,
     };
 
     return await _insertItemConFallback(payload);
@@ -506,33 +518,55 @@ class SupabaseService {
       throw Exception('Tipo inválido para archivo: $tipo');
     }
 
-    // Para imágenes usamos un mock para ahorrar espacio en el bucket.
+    // Para imágenes y otros archivos subimos a Storage.
     String contenidoUrl;
     Map<String, dynamic> rawData;
 
-    if (tipo == 'imagen') {
-      contenidoUrl = _mockImageUrl();
-      rawData = {
-        'mocked': true,
-        'file_name': fileName,
-        'mime_type': mimeType,
-        'size_bytes': bytes.lengthInBytes,
-      };
-    } else {
-      final uploadInfo = await _subirAStorageInbox(
-        bytes: bytes,
-        userId: user.id,
-        fileName: fileName,
-        mimeType: mimeType,
-      );
-      contenidoUrl = uploadInfo['signedUrl']!;
-      rawData = {
-        'storage_path': uploadInfo['path'],
-        'mime_type': mimeType,
-        'file_name': fileName,
-        'size_bytes': bytes.lengthInBytes,
-        if (duracion != null) 'duration_ms': duracion.inMilliseconds,
-      };
+    final uploadInfo = await _subirAStorageInbox(
+      bytes: bytes,
+      userId: user.id,
+      fileName: fileName,
+      mimeType: mimeType,
+    );
+    contenidoUrl = uploadInfo['signedUrl']!;
+
+    rawData = {
+      'storage_path': uploadInfo['path'],
+      'mime_type': mimeType,
+      'file_name': fileName,
+      'size_bytes': bytes.lengthInBytes,
+      if (duracion != null) 'duration_ms': duracion.inMilliseconds,
+    };
+
+    if (tipo == 'audio') {
+      try {
+        final groq = GroqService();
+        final transcription = await groq.transcribeAudio(bytes, fileName);
+        if (transcription.isNotEmpty) {
+          rawData['transcription'] = transcription;
+        }
+      } catch (e) {
+        debugPrint('Error transcribing audio: $e');
+      }
+    } else if (tipo == 'archivo') {
+      try {
+        if (mimeType == 'application/pdf') {
+          final PdfDocument document = PdfDocument(inputBytes: bytes);
+          final String text = PdfTextExtractor(document).extractText();
+          document.dispose();
+          if (text.isNotEmpty) {
+            // PostgreSQL db does not support '\u0000' character storage natively in text fields without specialized encoding
+            rawData['extracted_text'] = text.replaceAll('\u0000', '');
+          }
+        } else if (mimeType == 'text/markdown') {
+          final String text = utf8.decode(bytes);
+          if (text.isNotEmpty) {
+            rawData['extracted_text'] = text;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error extracting document text: $e');
+      }
     }
 
     final payload = {
@@ -544,7 +578,7 @@ class SupabaseService {
       'tipo': tipo,
       'estado': 'inbox',
       if (tags != null) 'tags': tags,
-      'raw_data': rawData,
+      'metadatos': rawData,
     };
 
     return await _insertItemConFallback(payload);
@@ -615,7 +649,7 @@ class SupabaseService {
       if (estado != null) 'estado': estado,
       if (tipo != null) 'tipo': tipo,
       if (isPublic != null) 'is_public': isPublic,
-      if (rawData != null) 'raw_data': rawData,
+      if (rawData != null) 'metadatos': rawData,
       'updated_at': DateTime.now().toIso8601String(),
     };
     await _updateItemConFallback(updates, itemId);
@@ -706,15 +740,15 @@ class SupabaseService {
     await _supabase.from('tableros').delete().eq('id', tableroId);
   }
 
-  // ─── INSERT/UPDATE HELPERS (graceful fallback si falta raw_data) ────────────
+  // ─── INSERT/UPDATE HELPERS (graceful fallback si falta raw_data / metadatos) ────────────
   Future<Map<String, dynamic>> _insertItemConFallback(
     Map<String, dynamic> payload,
   ) async {
     try {
       return await _supabase.from('items').insert(payload).select().single();
     } on PostgrestException catch (e) {
-      if ((e.message ?? '').contains('raw_data')) {
-        payload.remove('raw_data');
+      if ((e.message ?? '').contains('metadatos')) {
+        payload.remove('metadatos');
         return await _supabase.from('items').insert(payload).select().single();
       }
       rethrow;
@@ -728,8 +762,8 @@ class SupabaseService {
     try {
       await _supabase.from('items').update(updates).eq('id', itemId);
     } on PostgrestException catch (e) {
-      if ((e.message ?? '').contains('raw_data')) {
-        updates.remove('raw_data');
+      if ((e.message ?? '').contains('metadatos')) {
+        updates.remove('metadatos');
         await _supabase.from('items').update(updates).eq('id', itemId);
         return;
       }
@@ -764,17 +798,6 @@ class SupabaseService {
         .createSignedUrl(objectPath, 60 * 60 * 24 * 7);
 
     return {'path': objectPath, 'signedUrl': signedUrl};
-  }
-
-  // Imagenes mock para ahorrar espacio
-  String _mockImageUrl() {
-    const urls = [
-      'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&q=80',
-      'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&q=80',
-      'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800&q=80',
-      'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=800&q=80',
-    ];
-    return urls[Random().nextInt(urls.length)];
   }
 
   // ─── ENCUENTROS ─────────────────────────────────

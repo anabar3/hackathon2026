@@ -227,6 +227,8 @@ class _CollectHomeState extends State<CollectHome> {
         _screen = Screen.drift;
       } else if (_screen == Screen.profile) {
         _screen = Screen.dashboard;
+      } else if (_screen == Screen.board) {
+        _screen = _prevScreen;
       } else {
         _screen = Screen.dashboard;
       }
@@ -313,6 +315,7 @@ class _CollectHomeState extends State<CollectHome> {
           items: _items,
           boards: _boards,
           onBack: _handleBack,
+          onBoardSelect: _handleBoardSelect,
           onItemSelect: _handleItemSelect,
           onEdit: () => _navigate(Screen.edit),
           onAiOrganize: () => _navigate(Screen.aiOrganize),
