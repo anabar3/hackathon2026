@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/ai_suggestion.dart';
 
@@ -25,29 +26,6 @@ class GroqService {
           },
         )
         .toList();
-
-    final inboxItemsJson = inboxItems.map((i) {
-      final tipo = i['tipo'] ?? '';
-      final isImage = tipo == 'imagen';
-      final contentVal = i['contenido'] ?? '';
-
-      return {
-        'id': i['id'] ?? '',
-        'type': tipo,
-        // For vision models, OpenAI format requires passing a list of content blocks if there is an image
-        'content': isImage
-            ? [
-                {"type": "text", "text": i['titulo'] ?? ''},
-                {
-                  "type": "image_url",
-                  "image_url": {"url": contentVal},
-                },
-              ]
-            : contentVal,
-        'title': i['titulo'] ?? '',
-        'raw_data': i['raw_data'] ?? '',
-      };
-    }).toList();
 
     final systemPrompt = """
 You are an AI assistant that organizes an inbox of digital content into boards.
@@ -79,10 +57,51 @@ Output STRICTLY in the following JSON schema:
 }
 """;
 
-    final userContent = jsonEncode({
-      "user_boards": userBoardsJson,
-      "inbox_items": inboxItemsJson,
-    });
+    // Reconstruct the message content as a vision-compatible array
+    final List<Map<String, dynamic>> userContentArray = [
+      {
+        "type": "text",
+        "text":
+            "User Boards:\n${jsonEncode(userBoardsJson)}\n\nInbox Items to analyze:\n",
+      },
+    ];
+
+    for (var i in inboxItems) {
+      final tipo = i['tipo'] ?? '';
+      final isImage = tipo == 'imagen';
+      final isLink = tipo == 'link';
+      final isAudio = tipo == 'audio';
+      final contentVal = i['contenido'] ?? '';
+      final rawData = i['metadatos'] ?? i['raw_data'] ?? {};
+
+      String extraContent = "";
+      if (isLink && rawData is Map && rawData.containsKey('scraped_text')) {
+        extraContent = "Scraped Link Content:\n${rawData['scraped_text']}";
+      } else if (isAudio &&
+          rawData is Map &&
+          rawData.containsKey('transcription')) {
+        extraContent = "Audio Transcription:\n${rawData['transcription']}";
+      }
+
+      final itemContext =
+          "Item ID: ${i['id']}\nType: $tipo\nTitle: ${i['titulo'] ?? ''}\n$extraContent\n";
+
+      if (isImage && contentVal.toString().isNotEmpty) {
+        userContentArray.add({
+          "type": "text",
+          "text": itemContext + "Image content:\n",
+        });
+        userContentArray.add({
+          "type": "image_url",
+          "image_url": {"url": contentVal},
+        });
+      } else {
+        userContentArray.add({
+          "type": "text",
+          "text": itemContext + "Content: $contentVal\n",
+        });
+      }
+    }
 
     final response = await http.post(
       Uri.parse(_baseUrl),
@@ -95,7 +114,7 @@ Output STRICTLY in the following JSON schema:
         "response_format": {"type": "json_object"},
         "messages": [
           {"role": "system", "content": systemPrompt},
-          {"role": "user", "content": userContent},
+          {"role": "user", "content": userContentArray},
         ],
         "temperature": 0.3,
       }),
@@ -128,8 +147,28 @@ Output STRICTLY in the following JSON schema:
     request.fields['temperature'] = '0';
     request.fields['response_format'] = 'verbose_json';
 
+    final ext = fileName.split('.').last.toLowerCase();
+    String mimeType = 'audio/mpeg'; // default
+    if (ext == 'ogg')
+      mimeType = 'audio/ogg';
+    else if (ext == 'wav')
+      mimeType = 'audio/wav';
+    else if (ext == 'm4a')
+      mimeType = 'audio/mp4';
+    else if (ext == 'mp4')
+      mimeType = 'video/mp4';
+    else if (ext == 'webm')
+      mimeType = 'audio/webm';
+
+    final mimeParts = mimeType.split('/');
+
     request.files.add(
-      http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+      http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: fileName,
+        contentType: MediaType(mimeParts[0], mimeParts[1]),
+      ),
     );
 
     final streamedResponse = await request.send();

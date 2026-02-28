@@ -148,11 +148,11 @@ class SupabaseService {
       'estado': 'inbox',
       'tags': origen['tags'],
       'is_public': false,
-      'raw_data': {
+      'metadatos': {
         'source_user_id': origen['user_id'],
         'source_item_id': origen['id'],
         'copied_at': DateTime.now().toIso8601String(),
-        'original_raw_data': origen['raw_data'],
+        'original_raw_data': origen['metadatos'],
       },
     };
 
@@ -184,7 +184,7 @@ class SupabaseService {
       'titulo': item['titulo'],
       'contenido': item['contenido'],
       'tipo': item['tipo'],
-      'raw_data': item['raw_data'],
+      'raw_data': item['metadatos'],
     };
 
     final res = await _supabase
@@ -354,7 +354,7 @@ class SupabaseService {
         'tipo': sug['tipo'],
         'estado': 'organizado',
         'is_public': false,
-        'raw_data': {
+        'metadatos': {
           'from_suggestion_id': sugerenciaId,
           'autor_id': sug['autor_id'],
           'copied_at': DateTime.now().toIso8601String(),
@@ -445,7 +445,7 @@ class SupabaseService {
       'tipo': 'texto',
       'estado': 'inbox',
       if (tags != null) 'tags': tags,
-      'raw_data': contenido,
+      'metadatos': contenido,
     };
 
     return await _insertItemConFallback(payload);
@@ -480,7 +480,7 @@ class SupabaseService {
       'tipo': 'link',
       'estado': 'inbox',
       if (tags != null) 'tags': tags,
-      'raw_data': rawData,
+      'metadatos': rawData,
     };
 
     return await _insertItemConFallback(payload);
@@ -546,7 +546,7 @@ class SupabaseService {
       'tipo': tipo,
       'estado': 'inbox',
       if (tags != null) 'tags': tags,
-      'raw_data': rawData,
+      'metadatos': rawData,
     };
 
     return await _insertItemConFallback(payload);
@@ -617,7 +617,7 @@ class SupabaseService {
       if (estado != null) 'estado': estado,
       if (tipo != null) 'tipo': tipo,
       if (isPublic != null) 'is_public': isPublic,
-      if (rawData != null) 'raw_data': rawData,
+      if (rawData != null) 'metadatos': rawData,
       'updated_at': DateTime.now().toIso8601String(),
     };
     await _updateItemConFallback(updates, itemId);
@@ -708,15 +708,15 @@ class SupabaseService {
     await _supabase.from('tableros').delete().eq('id', tableroId);
   }
 
-  // ─── INSERT/UPDATE HELPERS (graceful fallback si falta raw_data) ────────────
+  // ─── INSERT/UPDATE HELPERS (graceful fallback si falta raw_data / metadatos) ────────────
   Future<Map<String, dynamic>> _insertItemConFallback(
     Map<String, dynamic> payload,
   ) async {
     try {
       return await _supabase.from('items').insert(payload).select().single();
     } on PostgrestException catch (e) {
-      if ((e.message ?? '').contains('raw_data')) {
-        payload.remove('raw_data');
+      if ((e.message ?? '').contains('metadatos')) {
+        payload.remove('metadatos');
         return await _supabase.from('items').insert(payload).select().single();
       }
       rethrow;
@@ -730,8 +730,8 @@ class SupabaseService {
     try {
       await _supabase.from('items').update(updates).eq('id', itemId);
     } on PostgrestException catch (e) {
-      if ((e.message ?? '').contains('raw_data')) {
-        updates.remove('raw_data');
+      if ((e.message ?? '').contains('metadatos')) {
+        updates.remove('metadatos');
         await _supabase.from('items').update(updates).eq('id', itemId);
         return;
       }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../models/ai_suggestion.dart';
 import '../services/groq_service.dart';
@@ -337,48 +338,70 @@ class _InboxScreenState extends State<InboxScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        ListTile(
-                          leading: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withAlpha(20),
-                              borderRadius: BorderRadius.circular(12),
+                        InkWell(
+                          onTap: () async {
+                            if (tipo == 'link' && contenido.isNotEmpty) {
+                              final uri = Uri.tryParse(contenido);
+                              if (uri != null && await canLaunchUrl(uri)) {
+                                await launchUrl(uri);
+                              } else {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'No se puede abrir el enlace',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                          child: ListTile(
+                            leading: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withAlpha(20),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                _iconFor(tipo),
+                                color: AppColors.primary,
+                              ),
                             ),
-                            child: Icon(
-                              _iconFor(tipo),
-                              color: AppColors.primary,
+                            title: Text(
+                              titulo?.isNotEmpty == true
+                                  ? titulo!
+                                  : (tipo == 'texto'
+                                        ? contenido
+                                        : tipo.toUpperCase()),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.foreground,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          title: Text(
-                            titulo?.isNotEmpty == true
-                                ? titulo!
-                                : (tipo == 'texto'
-                                      ? contenido
-                                      : tipo.toUpperCase()),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.foreground,
-                              fontWeight: FontWeight.w600,
+                            subtitle: Text(
+                              contenido,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.mutedForeground,
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
-                          subtitle: Text(
-                            contenido,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.mutedForeground,
-                              fontSize: 12,
-                            ),
-                          ),
-                          trailing: TextButton.icon(
-                            onPressed: () => _pickBoardAndMove(itemId),
-                            icon: const Icon(Icons.drive_file_move_outline,
-                                size: 18),
-                            label: const Text('Mover'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.primary,
+                            trailing: TextButton.icon(
+                              onPressed: () => _pickBoardAndMove(itemId),
+                              icon: const Icon(
+                                Icons.drive_file_move_outline,
+                                size: 18,
+                              ),
+                              label: const Text('Mover'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                              ),
                             ),
                           ),
                         ),
