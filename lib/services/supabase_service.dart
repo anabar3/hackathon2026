@@ -98,11 +98,11 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(res);
   }
 
-  /// Tableros públicos de otro usuario
+  /// Tableros públicos de otro usuario (con conteo de items)
   Future<List<Map<String, dynamic>>> getTablerosPublicos(String userId) async {
     final res = await _supabase
         .from('tableros')
-        .select()
+        .select('*, items(count)')
         .eq('user_id', userId)
         .eq('is_public', true)
         .order('created_at', ascending: false);
@@ -126,20 +126,33 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(res);
   }
 
-  /// Copia un item público de otro usuario a tu inbox (tablero null) para editarlo.
+  /// Todos los items de un tablero público (los items heredan visibilidad del tablero)
+  Future<List<Map<String, dynamic>>> getItemsDeTableroPublico({
+    required String userId,
+    required String tableroId,
+  }) async {
+    final res = await _supabase
+        .from('items')
+        .select()
+        .eq('user_id', userId)
+        .eq('tablero_id', tableroId)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(res);
+  }
+
+  /// Copia un item de un tablero público de otro usuario a tu inbox.
   Future<Map<String, dynamic>> copiarItemPublicoAInbox(String itemId) async {
     final user = currentUser;
     if (user == null) throw Exception('Debes iniciar sesión primero');
 
-    // Obtener item público
+    // Obtener item (RLS ya garantiza que solo se acceden items visibles)
     final origen = await _supabase
         .from('items')
         .select()
         .eq('id', itemId)
-        .eq('is_public', true)
         .maybeSingle();
     if (origen == null) {
-      throw Exception('Item no encontrado o no es público');
+      throw Exception('Item no encontrado o no accesible');
     }
 
     final payload = {

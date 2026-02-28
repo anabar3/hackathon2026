@@ -5,11 +5,13 @@ import '../theme/app_theme.dart';
 class PersonBoardsScreen extends StatelessWidget {
   final NearbyPerson person;
   final VoidCallback onBack;
+  final void Function(Board)? onBoardSelect;
 
   const PersonBoardsScreen({
     super.key,
     required this.person,
     required this.onBack,
+    this.onBoardSelect,
   });
 
   IconData _boardIcon(String icon) {
@@ -195,7 +197,9 @@ class PersonBoardsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   ...person.publicBoards.map(
-                    (board) => Container(
+                    (board) => GestureDetector(
+                      onTap: onBoardSelect != null ? () => onBoardSelect!(board) : null,
+                      child: Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
                         color: AppColors.card,
@@ -292,6 +296,7 @@ class PersonBoardsScreen extends StatelessWidget {
                             ),
                         ],
                       ),
+                    ),
                     ),
                   ),
                 ],

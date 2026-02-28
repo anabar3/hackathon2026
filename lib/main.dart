@@ -20,6 +20,7 @@ import 'screens/inbox_screen.dart';
 import 'screens/letters_screen.dart';
 import 'screens/drift_screen.dart';
 import 'screens/person_boards_screen.dart';
+import 'screens/public_board_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/permissions_screen.dart';
 import 'services/ble_service.dart';
@@ -182,6 +183,8 @@ class _CollectHomeState extends State<CollectHome> {
   List<Board> _boards = [];
   List<Map<String, dynamic>> _inboxItems = [];
   bool _loadingInbox = false;
+  Board? _selectedPublicBoard;
+  List<ContentItem> _publicBoardItems = [];
 
   @override
   void initState() {
@@ -222,6 +225,8 @@ class _CollectHomeState extends State<CollectHome> {
         _screen = _prevScreen == Screen.detail ? Screen.board : _prevScreen;
       } else if (_screen == Screen.edit || _screen == Screen.aiOrganize) {
         _screen = Screen.board;
+      } else if (_screen == Screen.publicBoard) {
+        _screen = Screen.personBoards;
       } else if (_screen == Screen.personBoards) {
         _screen = Screen.drift;
       } else if (_screen == Screen.profile) {
@@ -258,6 +263,32 @@ class _CollectHomeState extends State<CollectHome> {
     });
   }
 
+  Future<void> _handlePublicBoardSelect(Board board, NearbyPerson person) async {
+    setState(() {
+      _selectedPublicBoard = board;
+      _publicBoardItems = [];
+      _prevScreen = _screen;
+      _screen = Screen.publicBoard;
+    });
+    try {
+      final rawItems = await _service.getItemsDeTableroPublico(
+        userId: person.id,
+        tableroId: board.id,
+      );
+      if (mounted) {
+        setState(() {
+          _publicBoardItems = rawItems.map(_mapToContentItem).toList();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading items: $e')),
+        );
+      }
+    }
+  }
+
   void _handleToggleSaved(String itemId) {
     setState(() {
       _items = _items.map((item) {
@@ -284,6 +315,7 @@ class _CollectHomeState extends State<CollectHome> {
       _screen != Screen.edit &&
       _screen != Screen.addInbox &&
       _screen != Screen.personBoards &&
+      _screen != Screen.publicBoard &&
       _screen != Screen.login &&
       _screen != Screen.boardTree;
 
@@ -360,6 +392,15 @@ class _CollectHomeState extends State<CollectHome> {
         if (_selectedPerson == null) return const SizedBox.shrink();
         return PersonBoardsScreen(
           person: _selectedPerson!,
+          onBack: _handleBack,
+          onBoardSelect: (board) => _handlePublicBoardSelect(board, _selectedPerson!),
+        );
+      case Screen.publicBoard:
+        if (_selectedPublicBoard == null) return const SizedBox.shrink();
+        return PublicBoardScreen(
+          board: _selectedPublicBoard!,
+          ownerName: _selectedPerson?.name ?? 'Unknown',
+          items: _publicBoardItems,
           onBack: _handleBack,
         );
       case Screen.profile:
