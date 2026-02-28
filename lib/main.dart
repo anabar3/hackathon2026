@@ -306,6 +306,7 @@ class _CollectHomeState extends State<CollectHome> {
         return BoardScreen(
           board: _selectedBoard!,
           items: _items,
+          boards: _boards,
           onBack: _handleBack,
           onItemSelect: _handleItemSelect,
           onEdit: () => _navigate(Screen.edit),
