@@ -21,7 +21,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _usernameCtrl = TextEditingController();
   final _nombreCtrl = TextEditingController();
   final _bioCtrl = TextEditingController();
-  final _interesesCtrl = TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
@@ -38,7 +37,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _usernameCtrl.dispose();
     _nombreCtrl.dispose();
     _bioCtrl.dispose();
-    _interesesCtrl.dispose();
     super.dispose();
   }
 
@@ -51,10 +49,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _usernameCtrl.text = perfil['username'] ?? '';
         _nombreCtrl.text = perfil['nombre_completo'] ?? '';
         _bioCtrl.text = perfil['bio'] ?? '';
-        final intereses = perfil['intereses'];
-        if (intereses is List) {
-          _interesesCtrl.text = intereses.join(', ');
-        }
       }
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
@@ -70,11 +64,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      final intereses = _interesesCtrl.text
-          .split(',')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
 
       await _service.upsertPerfil(
         userId: user.id,
@@ -85,10 +74,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ? _nombreCtrl.text.trim()
             : null,
         bio: _bioCtrl.text.trim().isNotEmpty ? _bioCtrl.text.trim() : null,
-        intereses: intereses.isNotEmpty ? intereses : null,
       );
+      await _loadPerfil();
+
       setState(() => _message = '✓ Perfil guardado');
     } catch (e) {
+
       setState(
         () => _message = 'Error: ${e.toString().split(']').last.trim()}',
       );
@@ -188,9 +179,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 28),
 
-                      _buildField('USERNAME', _usernameCtrl, 'tu_username'),
+                      _buildField('USERNAME', _usernameCtrl, 'Username'),
                       const SizedBox(height: 16),
-                      _buildField('NOMBRE COMPLETO', _nombreCtrl, 'Tu nombre'),
+                      _buildField('NOMBRE COMPLETO', _nombreCtrl, 'Nombre completo'),
                       const SizedBox(height: 16),
                       _buildField(
                         'BIO',
@@ -198,20 +189,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         'Algo sobre ti...',
                         maxLines: 3,
                       ),
-                      const SizedBox(height: 16),
-                      _buildField(
-                        'INTERESES',
-                        _interesesCtrl,
-                        'travel, tech, art...',
-                      ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'Separados por comas. Usados por la IA para coincidir con otros',
-                        style: TextStyle(
-                          color: AppColors.mutedForeground,
-                          fontSize: 10,
-                        ),
-                      ),
 
                       if (_message != null) ...[
                         const SizedBox(height: 14),
@@ -269,7 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                 )
                               : const Text(
-                                  'Guardar Perfil',
+                                  'Editar Perfil',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
