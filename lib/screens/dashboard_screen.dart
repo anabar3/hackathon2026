@@ -9,6 +9,7 @@ class DashboardScreen extends StatefulWidget {
   final void Function(Board) onBoardSelect;
   final VoidCallback? onOpenBoardTree;
   final VoidCallback? onCreateBoard;
+  final bool isLoading;
 
   const DashboardScreen({
     super.key,
@@ -16,6 +17,7 @@ class DashboardScreen extends StatefulWidget {
     required this.onBoardSelect,
     this.onOpenBoardTree,
     this.onCreateBoard,
+    this.isLoading = false,
   });
 
   @override
@@ -29,6 +31,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    // Use cached name immediately (no flash)
+    _userName = SupabaseService.cachedUserName;
+    _userAvatar = SupabaseService.cachedUserAvatar;
     _loadProfile();
   }
 
@@ -84,6 +89,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final hasBoards = roots.isNotEmpty;
+    final isLoading = widget.isLoading;
 
     return Column(
       children: [
@@ -210,7 +216,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Empty State for missing boards
-                  if (!hasBoards) ...[
+                  // Show loading state instead of empty state while fetching
+                  if (isLoading) ...[
+                    const SizedBox(height: 40),
+                    const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                        strokeWidth: 3,
+                      ),
+                    ),
+                  ] else if (!hasBoards) ...[
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -611,7 +626,7 @@ class _ModernBoardCard extends StatelessWidget {
     return Container(
       color: AppColors.secondary,
       child: Center(
-        child: Icon(iconData, size: 36, color: AppColors.primary.withAlpha(50)),
+        child: Icon(iconData, size: 60, color: AppColors.primary.withAlpha(50)),
       ),
     );
   }

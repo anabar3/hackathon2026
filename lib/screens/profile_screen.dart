@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/supabase_service.dart';
 import '../widgets/animated_entry.dart';
@@ -76,9 +77,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         bio: _bioCtrl.text.trim().isNotEmpty ? _bioCtrl.text.trim() : null,
       );
       await _loadPerfil();
-
-      setState(() {
-        _message = '✓ Perfil guardado';
+      setState(() => _message = '✓ Perfil guardado');
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted && _message != null && _message!.startsWith('✓')) {
+          setState(() => _message = null);
+        }
       });
     } catch (e) {
       setState(
@@ -99,112 +102,203 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final user = _service.currentUser;
     final email = user?.email ?? '';
+    final displayName = _nombreCtrl.text.isNotEmpty
+        ? _nombreCtrl.text
+        : (email.isNotEmpty ? email.split('@').first : '?');
+    final displayUsername = _usernameCtrl.text.isNotEmpty
+        ? '@${_usernameCtrl.text}'
+        : '';
+    final initial = _nombreCtrl.text.isNotEmpty
+        ? _nombreCtrl.text[0].toUpperCase()
+        : (email.isNotEmpty ? email[0].toUpperCase() : '?');
 
     return SafeArea(
       child: AnimatedEntry(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 100),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: widget.onBack,
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.border, width: 2),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: AppColors.border,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: AppColors.foreground,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const Text(
-                    'My Profile',
-                    style: TextStyle(
-                      color: AppColors.foreground,
-                      fontSize: 34,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -1.0,
-                    ),
-                  ),
-                  const SizedBox(width: 44),
-                ],
-              ),
-              const SizedBox(height: 32),
-
-              // Profile Card with Editable Fields
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 32,
+              // ── Title — left aligned like reference ──
+              Text(
+                'My Profile',
+                style: GoogleFonts.dmSans(
+                  color: AppColors.foreground,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 ),
+              ),
+              const SizedBox(height: 20),
+
+              // ── Profile Card — matches reference layout ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.border, width: 2),
-                  boxShadow: const [
-                    BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(8),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
                   ],
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Avatar
-                    Stack(
-                      alignment: Alignment.center,
+                    // Avatar row — avatar left, edit button right (like reference)
+                    Row(
                       children: [
+                        // Avatar with thin border
                         Container(
-                          width: 80,
-                          height: 80,
+                          width: 72,
+                          height: 72,
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withAlpha(50),
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: AppColors.border,
                               width: 2,
                             ),
+                            color: AppColors.primary.withAlpha(18),
                           ),
                           child: Center(
                             child: Text(
-                              _nombreCtrl.text.isNotEmpty
-                                  ? _nombreCtrl.text[0].toUpperCase()
-                                  : (email.isNotEmpty
-                                        ? email[0].toUpperCase()
-                                        : '?'),
-                              style: const TextStyle(
+                              initial,
+                              style: GoogleFonts.dmSans(
                                 color: AppColors.primary,
-                                fontSize: 36,
-                                fontWeight: FontWeight.w900,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
                               ),
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        // Edit Image button (like reference)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: AppColors.border,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            'Edit Image',
+                            style: GoogleFonts.dmSans(
+                              color: AppColors.foreground,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
 
+                    const SizedBox(height: 20),
+
+                    // Full name — large and bold, left aligned (like reference)
+                    Text(
+                      displayName,
+                      style: GoogleFonts.dmSans(
+                        color: AppColors.foreground,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // Username + bio row
+                    if (displayUsername.isNotEmpty)
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            displayUsername,
+                            style: GoogleFonts.dmSans(
+                              color: AppColors.mutedForeground,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (_bioCtrl.text.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              child: Container(
+                                width: 1,
+                                height: 14,
+                                color: AppColors.border,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                _bioCtrl.text,
+                                style: GoogleFonts.dmSans(
+                                  color: AppColors.mutedForeground,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // ── Edit fields section ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(8),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     _buildField(
                       'NOMBRE COMPLETO',
                       _nombreCtrl,
-                      'Nombre completo',
+                      'Tu nombre completo',
                     ),
                     const SizedBox(height: 16),
-                    _buildField('USERNAME', _usernameCtrl, 'Username'),
+                    _buildField(
+                      'USERNAME',
+                      _usernameCtrl,
+                      'Tu nombre de usuario',
+                    ),
                     const SizedBox(height: 16),
                     _buildField(
                       'BIO',
@@ -213,42 +307,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       maxLines: 3,
                     ),
 
+                    // Status message
                     if (_message != null) ...[
                       const SizedBox(height: 16),
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: _message!.startsWith('✓')
-                              ? AppColors.primary.withAlpha(26)
+                              ? AppColors.primary.withAlpha(20)
                               : const Color(0xFFFEE2E2),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: _message!.startsWith('✓')
-                                ? AppColors.primary.withAlpha(51)
-                                : const Color(0xFFFCA5A5),
-                            width: 2,
-                          ),
                         ),
-                        child: Text(
-                          _message!,
-                          style: TextStyle(
-                            color: _message!.startsWith('✓')
-                                ? AppColors.primary
-                                : const Color(0xFFC75050),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _message!.startsWith('✓')
+                                  ? Icons.check_circle_rounded
+                                  : Icons.error_outline_rounded,
+                              color: _message!.startsWith('✓')
+                                  ? AppColors.primary
+                                  : const Color(0xFFC75050),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _message!.startsWith('✓')
+                                    ? 'Perfil guardado'
+                                    : _message!,
+                                style: GoogleFonts.dmSans(
+                                  color: _message!.startsWith('✓')
+                                      ? AppColors.primary
+                                      : const Color(0xFFC75050),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
                     // Save Button
                     SizedBox(
                       width: double.infinity,
-                      height: 56,
+                      height: 50,
                       child: ElevatedButton(
                         onPressed: _saving ? null : _guardar,
                         style: ElevatedButton.styleFrom(
@@ -258,24 +368,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             128,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                           elevation: 0,
                         ),
                         child: _saving
                             ? const SizedBox(
-                                width: 24,
-                                height: 24,
+                                width: 22,
+                                height: 22,
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 3,
+                                  strokeWidth: 2.5,
                                   color: Colors.white,
                                 ),
                               )
-                            : const Text(
+                            : Text(
                                 'Guardar Cambios',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                       ),
@@ -284,43 +394,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
-              const SizedBox(height: 48),
+              const SizedBox(height: 24),
 
-              // Logout
+              // ── Logout ──
               Center(
                 child: GestureDetector(
                   onTap: widget.onLogout,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
+                      horizontal: 28,
                       vertical: 14,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(16),
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: const Color(0xFFFCA5A5),
-                        width: 2,
+                        color: const Color(0xFFFECACA),
+                        width: 1,
                       ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0xFFFCA5A5),
-                          offset: Offset(0, 4),
-                        ),
-                      ],
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.logout, color: Color(0xFFC75050), size: 18),
-                        SizedBox(width: 8),
+                        const Icon(
+                          Icons.logout_rounded,
+                          color: Color(0xFFDC2626),
+                          size: 17,
+                        ),
+                        const SizedBox(width: 10),
                         Text(
                           'Cerrar Sesión',
-                          style: TextStyle(
-                            color: Color(0xFFC75050),
+                          style: GoogleFonts.dmSans(
+                            color: const Color(0xFFDC2626),
                             fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -344,43 +451,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.mutedForeground,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1,
+        Padding(
+          padding: const EdgeInsets.only(left: 2),
+          child: Text(
+            label,
+            style: GoogleFonts.dmSans(
+              color: AppColors.mutedForeground,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border, width: 2),
-            boxShadow: const [
-              BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
-            ],
+            color: const Color(0xFFF7F4EE),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: TextField(
             controller: ctrl,
             maxLines: maxLines,
-            style: const TextStyle(
+            onChanged: (_) => setState(() {}),
+            style: GoogleFonts.dmSans(
               color: AppColors.foreground,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(
-                color: AppColors.mutedForeground,
-                fontWeight: FontWeight.normal,
+              hintStyle: GoogleFonts.dmSans(
+                color: AppColors.mutedForeground.withAlpha(150),
+                fontWeight: FontWeight.w400,
+                fontSize: 14,
               ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
-                vertical: 16,
+                vertical: 14,
               ),
             ),
           ),

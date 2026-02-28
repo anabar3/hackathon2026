@@ -183,6 +183,7 @@ class _CollectHomeState extends State<CollectHome> {
   final List<String> _boardHistory = [];
   List<Map<String, dynamic>> _inboxItems = [];
   bool _loadingInbox = false;
+  bool _loadingBoards = true;
 
   @override
   void initState() {
@@ -310,6 +311,7 @@ class _CollectHomeState extends State<CollectHome> {
       case Screen.dashboard:
         return DashboardScreen(
           boards: _boards,
+          isLoading: _loadingBoards,
           onBoardSelect: _handleBoardSelect,
           onOpenBoardTree: () => _navigate(Screen.boardTree),
           onCreateBoard: () => _openCreateBoard(),
@@ -318,6 +320,7 @@ class _CollectHomeState extends State<CollectHome> {
         if (_selectedBoard == null) {
           return DashboardScreen(
             boards: _boards,
+            isLoading: _loadingBoards,
             onBoardSelect: _handleBoardSelect,
             onOpenBoardTree: () => _navigate(Screen.boardTree),
             onCreateBoard: () => _openCreateBoard(),
@@ -384,6 +387,7 @@ class _CollectHomeState extends State<CollectHome> {
         if (_selectedBoard == null)
           return DashboardScreen(
             boards: _boards,
+            isLoading: _loadingBoards,
             onBoardSelect: _handleBoardSelect,
             onOpenBoardTree: () => _navigate(Screen.boardTree),
             onCreateBoard: () => _openCreateBoard(),
@@ -476,6 +480,7 @@ class _CollectHomeState extends State<CollectHome> {
           .toList();
       final roots = _boards.where((b) => b.parentId == null).toList();
       _selectedBoard = roots.isNotEmpty ? roots.first : null;
+      _loadingBoards = false;
     });
     await _syncItems();
   }
@@ -519,11 +524,9 @@ class _CollectHomeState extends State<CollectHome> {
   }
 
   void _handleAiSummarize() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('AI Summarize coming soon'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('AI Summarize coming soon')));
   }
 
   ContentItem _mapToContentItem(Map<String, dynamic> i) {
@@ -552,7 +555,8 @@ class _CollectHomeState extends State<CollectHome> {
 
     final title = i['titulo'] as String?;
     final contenido = i['contenido']?.toString() ?? '';
-    final description = i['descripcion'] as String? ??
+    final description =
+        i['descripcion'] as String? ??
         (ct == ContentType.note || tipo == 'texto' ? contenido : null);
     return ContentItem(
       id: i['id'] ?? '',

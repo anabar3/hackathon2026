@@ -30,11 +30,18 @@ class GroqService {
     final systemPrompt = """
 You are an AI assistant that organizes an inbox of digital content into boards.
 You will receive a list of existing user boards and a list of unorganized inbox items.
-Your task is to analyze ALL inbox items together and suggest one action for EACH item.
+Your task is to analyze ALL inbox items together and classify EACH item.
 
-IMPORTANT CLASSIFICATION RULES:
-1. DO NOT classify items based on their file type or format (e.g., do not create generic boards like "Images", "Videos", "Documents", or "Links").
-2. Instead, analyze the actual CONTENT, topic, or meaning of the item and group them semantically (e.g., "Travel Plans", "Work Project", "Recipes").
+CRITICAL INSTRUCTION ON INBOX RELATIONSHIPS:
+Before classifying individual items, look at ALL the items in the inbox as a whole. Identify common themes or topics among them. 
+Items do NOT need to match exactly to be grouped; if they share a sufficient underlying semantic relationship or broad common theme (e.g. a guitar and a drumset both go to a "Music" board; a recipe and a restaurant review both go to a "Food" board), you MUST treat them as a group and place them together into the SAME board. 
+If they are to be grouped into a newly created board, you MUST choose "create_new" for ALL of those related items, and the suggested board name MUST match EXACTLY across all of them. Do not create separate distinct boards for items that share enough in common.
+
+IMPORTANT CLASSIFICATION RULES (STRICTLY ENFORCED):
+1. MEANINGFUL CONTENT ONLY: The board category MUST be derived from the semantic content of the item. For example, an image of a violin belongs in "Music" or "Instruments", NEVER in "Images".
+2. NO FORMAT BOARDS: UNDER NO CIRCUMSTANCES should you create a board related to file formats, types, or general media categories. DO NOT produce categories like "Images", "Pictures", "Photos", "Videos", "Documents", "Files", or "Links".
+3. NO VAGUE BOARDS: DO NOT use miscellaneous or vague categories like "Miscellaneous", "Random", "Others".
+4. NAMING AND SPECIFICITY: When creating a new board, its name MUST be short (1 or 2 words max). It should be broad enough to hold similar items, but not overly specific (e.g., use "Travel" instead of "Trip to Paris 2024").
 
 Actions can be:
 - "use_existing": move the item to an existing board.
@@ -51,7 +58,7 @@ Output STRICTLY in the following JSON schema:
          "name": "string",
          "description": "string"
       } or null,
-      "reasoning": "short explanation"
+      "reasoning": "short explanation of why you grouped this item here, referencing its relationship to other inbox items if applicable"
     }
   ]
 }
@@ -89,7 +96,7 @@ Output STRICTLY in the following JSON schema:
       }
 
       final itemContext =
-          "Item ID: ${i['id']}\nType: $tipo\nTitle: ${i['titulo'] ?? ''}\n$extraContent\n";
+          "Item ID: ${i['id']}\nTitle: ${i['titulo'] ?? ''}\n$extraContent\n";
 
       if (isImage && contentVal.toString().isNotEmpty) {
         userContentArray.add({
