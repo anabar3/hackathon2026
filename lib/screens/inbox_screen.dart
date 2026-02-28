@@ -311,6 +311,8 @@ class _InboxScreenState extends State<InboxScreen> {
                   final createdAt = DateTime.tryParse(
                     item['created_at']?.toString() ?? '',
                   );
+                  final hasImagePreview =
+                      tipo == 'imagen' && contenido.startsWith('http');
 
                   final suggestion = _suggestions[itemId];
                   String actionText = '';
@@ -337,6 +339,54 @@ class _InboxScreenState extends State<InboxScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (hasImagePreview)
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(16),
+                            ),
+                            child: Stack(
+                              children: [
+                                AspectRatio(
+                                  aspectRatio: 16 / 10,
+                                  child: Image.network(
+                                    contenido,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      color: AppColors.muted.withAlpha(40),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.broken_image_outlined,
+                                          color: AppColors.mutedForeground,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  left: 10,
+                                  top: 10,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.card.withAlpha(220),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: const Text(
+                                      'Imagen',
+                                      style: TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ListTile(
                           leading: Container(
                             width: 42,
@@ -364,7 +414,9 @@ class _InboxScreenState extends State<InboxScreen> {
                             ),
                           ),
                           subtitle: Text(
-                            contenido,
+                            hasImagePreview
+                                ? 'Foto adjunta'
+                                : contenido,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
