@@ -11,6 +11,10 @@ import 'groq_service.dart';
 class SupabaseService {
   final _supabase = Supabase.instance.client;
 
+  // ─── PROFILE CACHE (in-memory, survives screen rebuilds) ──
+  static String? cachedUserName;
+  static String? cachedUserAvatar;
+
   // ─── AUTH ────────────────────────────────────────
   User? get currentUser => _supabase.auth.currentUser;
 
@@ -38,9 +42,13 @@ class SupabaseService {
       username: username,
       nombreCompleto: fullName,
     );
+    // Cache immediately after signup
+    cachedUserName = fullName;
   }
 
   Future<void> signOut() async {
+    cachedUserName = null;
+    cachedUserAvatar = null;
     await _supabase.auth.signOut();
   }
 
@@ -51,6 +59,11 @@ class SupabaseService {
         .select()
         .eq('id', userId)
         .maybeSingle();
+    // Update cache
+    if (res != null) {
+      cachedUserName = res['nombre_completo'] ?? res['username'];
+      cachedUserAvatar = res['avatar_url'];
+    }
     return res;
   }
 
@@ -450,7 +463,6 @@ class SupabaseService {
       'tablero_id': tableroId,
       'titulo': titulo,
       'contenido': contenido,
-      'descripcion': contenido,
       'tipo': 'texto',
       'estado': 'inbox',
       if (tags != null) 'tags': tags,
@@ -486,7 +498,6 @@ class SupabaseService {
       'user_id': user.id,
       'tablero_id': tableroId,
       'titulo': titulo,
-      if (descripcion != null) 'descripcion': descripcion,
       'contenido': url,
       'tipo': 'link',
       'estado': 'inbox',
@@ -558,8 +569,8 @@ class SupabaseService {
             // PostgreSQL db does not support '\u0000' character storage natively in text fields without specialized encoding
             rawData['extracted_text'] = text.replaceAll('\u0000', '');
           }
-        } else if (mimeType == 'text/markdown') {
-          final String text = utf8.decode(bytes);
+        } else if (mimeType == 'text/markdown' || mimeType == 'text/plain') {
+          final String text = utf8.decode(bytes, allowMalformed: true);
           if (text.isNotEmpty) {
             rawData['extracted_text'] = text;
           }
@@ -573,7 +584,6 @@ class SupabaseService {
       'user_id': user.id,
       'tablero_id': tableroId,
       'titulo': titulo ?? fileName,
-      if (descripcion != null) 'descripcion': descripcion,
       'contenido': contenidoUrl,
       'tipo': tipo,
       'estado': 'inbox',

@@ -97,7 +97,7 @@ class _BoardPickerScreenState extends State<BoardPickerScreen> {
   }
 }
 
-class _BoardTile extends StatelessWidget {
+class _BoardTile extends StatefulWidget {
   final Map<String, dynamic> board;
   final List<Widget> children;
   final ValueChanged<String> onSelect;
@@ -109,15 +109,23 @@ class _BoardTile extends StatelessWidget {
   });
 
   @override
+  State<_BoardTile> createState() => _BoardTileState();
+}
+
+class _BoardTileState extends State<_BoardTile> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    final title = board['titulo'] ?? 'Sin título';
-    final isPublic = (board['is_public'] ?? false) as bool;
+    final title = widget.board['titulo'] ?? 'Sin título';
+    final isPublic = (widget.board['is_public'] ?? false) as bool;
     return ExpansionTile(
       collapsedBackgroundColor: AppColors.card,
       backgroundColor: AppColors.card,
       textColor: AppColors.foreground,
       iconColor: AppColors.primary,
       collapsedIconColor: AppColors.mutedForeground,
+      onExpansionChanged: (v) => setState(() => _expanded = v),
       title: Text(
         title,
         style: const TextStyle(
@@ -130,11 +138,21 @@ class _BoardTile extends StatelessWidget {
         style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
       ),
       childrenPadding: const EdgeInsets.only(left: 16),
-      trailing: TextButton(
-        onPressed: () => onSelect(board['id'] as String),
-        child: const Text('Elegir'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+            color: AppColors.mutedForeground,
+            size: 20,
+          ),
+          TextButton(
+            onPressed: () => widget.onSelect(widget.board['id'] as String),
+            child: const Text('Elegir'),
+          ),
+        ],
       ),
-      children: children,
+      children: widget.children,
     );
   }
 }
