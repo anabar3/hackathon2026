@@ -84,11 +84,17 @@ class _InboxScreenState extends State<InboxScreen> {
 
       if (suggestion.action == 'create_new' &&
           suggestion.newBoardSuggestion != null) {
-        tableroId = await _supabaseService.crearTableroConRetornoId(
+        await _supabaseService.crearTablero(
           userId: user.id,
           titulo: suggestion.newBoardSuggestion!.name,
           descripcion: suggestion.newBoardSuggestion!.description,
         );
+        final boards = await _supabaseService.getTableros(user.id);
+        final newBoard = boards.firstWhere(
+          (b) => b['titulo'] == suggestion.newBoardSuggestion!.name,
+          orElse: () => <String, dynamic>{},
+        );
+        tableroId = newBoard['id'] as String?;
       }
 
       if (tableroId != null) {
