@@ -50,6 +50,22 @@ class SupabaseService {
     return res;
   }
 
+  /// Perfil público por username (o id si solo tienes eso).
+  Future<Map<String, dynamic>?> getPerfilPublico({
+    String? userId,
+    String? username,
+  }) async {
+    assert(userId != null || username != null,
+        'Debes pasar userId o username');
+    var query = _supabase.from('perfiles').select();
+    if (userId != null) {
+      query = query.eq('id', userId);
+    } else if (username != null) {
+      query = query.eq('username', username);
+    }
+    return await query.maybeSingle();
+  }
+
   Future<void> upsertPerfil({
     required String userId,
     String? username,
@@ -77,6 +93,189 @@ class SupabaseService {
         .eq('user_id', userId)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(res);
+  }
+
+  /// Tableros públicos de otro usuario
+  Future<List<Map<String, dynamic>>> getTablerosPublicos(String userId) async {
+    final res = await _supabase
+        .from('tableros')
+        .select()
+        .eq('user_id', userId)
+        .eq('is_public', true)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(res);
+  }
+
+  /// Items públicos de un usuario (opcionalmente filtrados por tablero)
+  Future<List<Map<String, dynamic>>> getItemsPublicos({
+    required String userId,
+    String? tableroId,
+  }) async {
+    var query = _supabase
+        .from('items')
+        .select()
+        .eq('user_id', userId)
+        .eq('is_public', true);
+    if (tableroId != null) {
+      query = query.eq('tablero_id', tableroId);
+    }
+    final res = await query.order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(res);
+  }
+
+  /// Copia un item público de otro usuario a tu inbox (tablero null) para editarlo.
+  Future<Map<String, dynamic>> copiarItemPublicoAInbox(String itemId) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+
+    // Obtener item público
+    final origen = await _supabase
+        .from('items')
+        .select()
+        .eq('id', itemId)
+        .eq('is_public', true)
+        .maybeSingle();
+    if (origen == null) {
+      throw Exception('Item no encontrado o no es público');
+    }
+
+    final payload = {
+      'user_id': user.id,
+      'tablero_id': null,
+      'titulo': origen['titulo'],
+      'contenido': origen['contenido'],
+      'tipo': origen['tipo'],
+      'estado': 'inbox',
+      'tags': origen['tags'],
+      'is_public': false,
+      'raw_data': {
+        'source_user_id': origen['user_id'],
+        'source_item_id': origen['id'],
+        'copied_at': DateTime.now().toIso8601String(),
+        'original_raw_data': origen['raw_data'],
+      },
+    };
+
+    final res = await _supabase.from('items').insert(payload).select().single();
+    return res;
+  }
+
+  // ─── SUGERENCIAS ─────────────────────────────────
+  /// Sugiere un item existente tuyo a un tablero de otro usuario.
+  Future<Map<String, dynamic>> sugerirItemExistente({
+    required String itemId,
+    required String targetUserId,
+    required String targetTableroId,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+
+    final item = await _supabase
+        .from('items')
+        .select()
+        .eq('id', itemId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+    if (item == null) throw Exception('Item no encontrado o no es tuyo');
+
+    final payload = {
+      'autor_id': user.id,
+      'target_user_id': targetUserId,
+      'target_tablero_id': targetTableroId,
+      'titulo': item['titulo'],
+      'contenido': item['contenido'],
+      'tipo': item['tipo'],
+      'raw_data': item['raw_data'],
+    };
+
+    final res =
+        await _supabase.from('sugerencias').insert(payload).select().single();
+    return res;
+  }
+
+  /// Sugiere un item nuevo “ad-hoc” (no existe en tus tableros).
+  Future<Map<String, dynamic>> sugerirItemNuevo({
+    required String targetUserId,
+    required String targetTableroId,
+    required String titulo,
+    required String contenido,
+    required String tipo, // texto | link | imagen | audio | video | archivo
+    Map<String, dynamic>? rawData,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+
+    final payload = {
+      'autor_id': user.id,
+      'target_user_id': targetUserId,
+      'target_tablero_id': targetTableroId,
+      'titulo': titulo,
+      'contenido': contenido,
+      'tipo': tipo,
+      if (rawData != null) 'raw_data': rawData,
+    };
+    final res =
+        await _supabase.from('sugerencias').insert(payload).select().single();
+    return res;
+  }
+
+  /// Lista sugerencias recibidas para un tablero del usuario actual.
+  Future<List<Map<String, dynamic>>> getSugerenciasTablero(
+      String tableroId) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+
+    final res = await _supabase
+        .from('sugerencias')
+        .select()
+        .eq('target_user_id', user.id)
+        .eq('target_tablero_id', tableroId)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(res);
+  }
+
+  /// Aceptar o rechazar una sugerencia. Si se acepta, se crea el item en el tablero destino.
+  Future<void> resolverSugerencia({
+    required String sugerenciaId,
+    required bool aceptar,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+
+    final sug = await _supabase
+        .from('sugerencias')
+        .select()
+        .eq('id', sugerenciaId)
+        .eq('target_user_id', user.id)
+        .maybeSingle();
+    if (sug == null) throw Exception('Sugerencia no encontrada');
+
+    if (aceptar) {
+      await _supabase.from('items').insert({
+        'user_id': user.id,
+        'tablero_id': sug['target_tablero_id'],
+        'titulo': sug['titulo'],
+        'contenido': sug['contenido'],
+        'tipo': sug['tipo'],
+        'estado': 'organizado',
+        'is_public': false,
+        'raw_data': {
+          'from_suggestion_id': sugerenciaId,
+          'autor_id': sug['autor_id'],
+          'copied_at': DateTime.now().toIso8601String(),
+          'original_raw_data': sug['raw_data'],
+        },
+      });
+      await _supabase.from('sugerencias').update({
+        'estado': 'aceptada',
+        'accepted_at': DateTime.now().toIso8601String(),
+      }).eq('id', sugerenciaId);
+    } else {
+      await _supabase.from('sugerencias').update({
+        'estado': 'rechazada',
+        'rejected_at': DateTime.now().toIso8601String(),
+      }).eq('id', sugerenciaId);
+    }
   }
 
   Future<void> crearTablero({
