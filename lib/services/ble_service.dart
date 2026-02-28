@@ -29,6 +29,9 @@ class BleService {
   /// Callback fired when a new encounter is detected.
   void Function(String encounteredUserId)? onEncounterDetected;
 
+  /// Callback fired when a user leaves the nearby radius (stale cleanup).
+  void Function(String leftUserId)? onUserLeft;
+
   // ─── PERMISSIONS ───────────────────────────────────
 
   Future<bool> requestPermissions() async {
@@ -215,21 +218,30 @@ class BleService {
   void _cleanupStaleDevices() {
     if (_recentEncounters.isEmpty) return;
     final now = DateTime.now();
-    bool changed = false;
 
-    // Remove users not seen in the last 4 seconds from the live UI
+    // Remove users not seen in the last 10 seconds from the live UI
     final currentList = nearbyUsers.value.toList();
+    final removedIds = <String>[];
     currentList.removeWhere((id) {
       final lastSeen = _recentEncounters[id];
-      if (lastSeen == null) return true;
-      if (now.difference(lastSeen).inSeconds > 4) {
-        changed = true;
+      if (lastSeen == null) {
+        removedIds.add(id);
+        return true;
+      }
+      if (now.difference(lastSeen).inSeconds > 10) {
+        removedIds.add(id);
         return true;
       }
       return false;
     });
 
-    if (changed) {
+    if (removedIds.isNotEmpty) {
+      // IMPORTANT: Notify about departures BEFORE updating nearbyUsers,
+      // because the ValueNotifier listener will remove them from _nearPeople.
+      // The onUserLeft callback needs them still in _nearPeople to move them to walked.
+      for (final id in removedIds) {
+        onUserLeft?.call(id);
+      }
       nearbyUsers.value = currentList;
     }
   }
@@ -242,7 +254,7 @@ class BleService {
   void _processScanResult(ScanResult result) {
     // flutter_blue_plus stream accumulates all devices seen since startScan.
     // We must ignore cached results that haven't been updated recently.
-    if (DateTime.now().difference(result.timeStamp).inSeconds > 5) {
+    if (DateTime.now().difference(result.timeStamp).inSeconds > 12) {
       return;
     }
 

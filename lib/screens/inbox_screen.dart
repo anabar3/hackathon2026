@@ -5,6 +5,7 @@ import '../models/ai_suggestion.dart';
 import '../services/groq_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/suggestion_card.dart';
+import '../widgets/animated_entry.dart';
 import 'board_picker_screen.dart';
 
 class InboxScreen extends StatefulWidget {
@@ -144,7 +145,7 @@ class _InboxScreenState extends State<InboxScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: widget.onRefresh,
@@ -160,8 +161,9 @@ class _InboxScreenState extends State<InboxScreen> {
                     'Inbox',
                     style: TextStyle(
                       color: AppColors.foreground,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 34,
+                      letterSpacing: -1.0,
                     ),
                   ),
                   if (_analyzing)
@@ -180,7 +182,9 @@ class _InboxScreenState extends State<InboxScreen> {
                 'Drop anything here — AI will organize it',
                 style: TextStyle(
                   color: AppColors.mutedForeground,
-                  fontSize: 13,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
                 ),
               ),
               const SizedBox(height: 20),
@@ -192,9 +196,12 @@ class _InboxScreenState extends State<InboxScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 32),
                   decoration: BoxDecoration(
-                    color: AppColors.muted.withAlpha(50),
+                    color: const Color(0xFFF8F9FA),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border, width: 1.5),
+                    border: Border.all(color: AppColors.border, width: 2),
+                    boxShadow: const [
+                      BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
+                    ],
                   ),
                   child: Column(
                     children: [
@@ -270,9 +277,9 @@ class _InboxScreenState extends State<InboxScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 40),
                   decoration: BoxDecoration(
-                    color: AppColors.muted.withAlpha(40),
+                    color: const Color(0xFFF8F9FA),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border, width: 1.5),
+                    border: Border.all(color: AppColors.border, width: 2),
                   ),
                   child: Column(
                     children: [
@@ -312,6 +319,8 @@ class _InboxScreenState extends State<InboxScreen> {
                   final createdAt = DateTime.tryParse(
                     item['created_at']?.toString() ?? '',
                   );
+                  final hasImagePreview =
+                      tipo == 'imagen' && contenido.startsWith('http');
 
                   final suggestion = _suggestions[itemId];
                   String actionText = '';
@@ -328,36 +337,67 @@ class _InboxScreenState extends State<InboxScreen> {
                     }
                   }
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        InkWell(
-                          onTap: () async {
-                            if (tipo == 'link' && contenido.isNotEmpty) {
-                              final uri = Uri.tryParse(contenido);
-                              if (uri != null && await canLaunchUrl(uri)) {
-                                await launchUrl(uri);
-                              } else {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'No se puede abrir el enlace',
+                  return AnimatedEntry(
+                    index: entry.key,
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (hasImagePreview)
+                            ClipRRect(
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(16),
+                              ),
+                              child: Stack(
+                                children: [
+                                  AspectRatio(
+                                    aspectRatio: 16 / 10,
+                                    child: Image.network(
+                                      contenido,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        color: AppColors.muted.withAlpha(40),
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.broken_image_outlined,
+                                            color: AppColors.mutedForeground,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  );
-                                }
-                              }
-                            }
-                          },
-                          child: ListTile(
+                                  ),
+                                  Positioned(
+                                    left: 10,
+                                    top: 10,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.card.withAlpha(220),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: const Text(
+                                        'Imagen',
+                                        style: TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ListTile(
                             leading: Container(
                               width: 42,
                               height: 42,
@@ -384,7 +424,7 @@ class _InboxScreenState extends State<InboxScreen> {
                               ),
                             ),
                             subtitle: Text(
-                              contenido,
+                              hasImagePreview ? 'Foto adjunta' : contenido,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -404,22 +444,22 @@ class _InboxScreenState extends State<InboxScreen> {
                               ),
                             ),
                           ),
-                        ),
-                        if (suggestion != null)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                            child: SuggestionCard(
-                              suggestion: suggestion,
-                              actionText: actionText,
-                              onConfirm: () => _applySuggestion(suggestion),
-                              onDismiss: () {
-                                setState(() {
-                                  _suggestions.remove(itemId);
-                                });
-                              },
+                          if (suggestion != null)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                              child: SuggestionCard(
+                                suggestion: suggestion,
+                                actionText: actionText,
+                                onConfirm: () => _applySuggestion(suggestion),
+                                onDismiss: () {
+                                  setState(() {
+                                    _suggestions.remove(itemId);
+                                  });
+                                },
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 }),

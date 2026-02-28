@@ -410,22 +410,14 @@ class SupabaseService {
     required String fileName,
     String mimeType = 'image/jpeg',
   }) async {
-    final safeName = fileName.replaceAll(' ', '-');
-    final randomSuffix = Random().nextInt(1 << 32);
-    final objectPath =
-        '$userId/board-covers/${DateTime.now().millisecondsSinceEpoch}-$randomSuffix-$safeName';
-
-    await _supabase.storage
-        .from('inbox-uploads')
-        .uploadBinary(
-          objectPath,
-          bytes,
-          fileOptions: FileOptions(contentType: mimeType, upsert: false),
-        );
-
-    return await _supabase.storage
-        .from('inbox-uploads')
-        .createSignedUrl(objectPath, 60 * 60 * 24 * 7);
+    // Reutilizamos la misma política de Storage que ya permite uploads bajo el prefijo userId/.
+    final upload = await _subirAStorageInbox(
+      bytes: bytes,
+      userId: userId,
+      fileName: fileName,
+      mimeType: mimeType,
+    );
+    return upload['signedUrl']!;
   }
 
   // ─── ITEMS (INBOX) ──────────────────────────────
@@ -445,6 +437,7 @@ class SupabaseService {
       'tablero_id': tableroId,
       'titulo': titulo,
       'contenido': contenido,
+      'descripcion': contenido,
       'tipo': 'texto',
       'estado': 'inbox',
       if (tags != null) 'tags': tags,
@@ -458,6 +451,7 @@ class SupabaseService {
   Future<Map<String, dynamic>> guardarLinkEnInbox({
     required String url,
     String? titulo,
+    String? descripcion,
     String? tableroId,
     List<String>? tags,
     Map<String, dynamic>? linkMeta,
@@ -479,6 +473,7 @@ class SupabaseService {
       'user_id': user.id,
       'tablero_id': tableroId,
       'titulo': titulo,
+      if (descripcion != null) 'descripcion': descripcion,
       'contenido': url,
       'tipo': 'link',
       'estado': 'inbox',
@@ -497,6 +492,7 @@ class SupabaseService {
     required String mimeType,
     required String tipo,
     String? titulo,
+    String? descripcion,
     String? tableroId,
     List<String>? tags,
     Duration? duracion,
@@ -564,6 +560,7 @@ class SupabaseService {
       'user_id': user.id,
       'tablero_id': tableroId,
       'titulo': titulo ?? fileName,
+      if (descripcion != null) 'descripcion': descripcion,
       'contenido': contenidoUrl,
       'tipo': tipo,
       'estado': 'inbox',
@@ -796,11 +793,28 @@ class SupabaseService {
     final user = currentUser;
     if (user == null) return;
 
-    await _supabase.from('encuentros').upsert({
-      'user_id': user.id,
-      'usuario_encontrado_id': otherUserId,
-      'visto_en': DateTime.now().toIso8601String(),
-    }, onConflict: 'encuentros_unique_users');
+    try {
+      // Try upsert with column-based conflict (user_id, usuario_encontrado_id)
+      await _supabase.from('encuentros').upsert({
+        'user_id': user.id,
+        'usuario_encontrado_id': otherUserId,
+        'visto_en': DateTime.now().toIso8601String(),
+      }, onConflict: 'user_id,usuario_encontrado_id');
+      print('[Supabase] Encounter recorded: ${user.id} -> $otherUserId');
+    } catch (e) {
+      // If upsert fails (e.g. no unique constraint), try plain insert
+      print('[Supabase] Upsert failed ($e), trying insert...');
+      try {
+        await _supabase.from('encuentros').insert({
+          'user_id': user.id,
+          'usuario_encontrado_id': otherUserId,
+          'visto_en': DateTime.now().toIso8601String(),
+        });
+        print('[Supabase] Encounter inserted via fallback');
+      } catch (e2) {
+        print('[Supabase] Fallback insert also failed: $e2');
+      }
+    }
   }
 
   /// Get all encounters for the current user, with profile info.
