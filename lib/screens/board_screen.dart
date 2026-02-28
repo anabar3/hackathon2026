@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/content_card.dart';
+import '../widgets/animated_entry.dart';
 
 class BoardScreen extends StatefulWidget {
   final Board board;
@@ -91,8 +92,9 @@ class _BoardScreenState extends State<BoardScreen> {
                   widget.board.name,
                   style: const TextStyle(
                     color: AppColors.foreground,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 34,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1.0,
                   ),
                 ),
               ),
@@ -128,7 +130,10 @@ class _BoardScreenState extends State<BoardScreen> {
                   itemCount: childrenBoards.length,
                   itemBuilder: (context, i) {
                     final board = childrenBoards[i];
-                    return _SubBoardCard(board: board);
+                    return AnimatedEntry(
+                      index: i,
+                      child: _SubBoardCard(board: board),
+                    );
                   },
                 ),
               ],
@@ -317,12 +322,17 @@ class _MasonryGrid extends StatelessWidget {
         Expanded(
           child: Column(
             children: left
+                .asMap()
+                .entries
                 .map(
-                  (item) => Padding(
+                  (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: ContentCard(
-                      item: item,
-                      onTap: () => onItemTap(item),
+                    child: AnimatedEntry(
+                      index: entry.key * 2,
+                      child: ContentCard(
+                        item: entry.value,
+                        onTap: () => onItemTap(entry.value),
+                      ),
                     ),
                   ),
                 )
@@ -333,12 +343,17 @@ class _MasonryGrid extends StatelessWidget {
         Expanded(
           child: Column(
             children: right
+                .asMap()
+                .entries
                 .map(
-                  (item) => Padding(
+                  (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: ContentCard(
-                      item: item,
-                      onTap: () => onItemTap(item),
+                    child: AnimatedEntry(
+                      index: entry.key * 2 + 1,
+                      child: ContentCard(
+                        item: entry.value,
+                        onTap: () => onItemTap(entry.value),
+                      ),
                     ),
                   ),
                 )
@@ -364,11 +379,8 @@ class _SubBoardCard extends StatelessWidget {
           color: AppColors.card,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.border, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.border.withAlpha(80),
-              offset: const Offset(0, 3),
-            ),
+          boxShadow: const [
+            BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
           ],
         ),
         child: Column(
@@ -376,12 +388,11 @@ class _SubBoardCard extends StatelessWidget {
           children: [
             Expanded(
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(18),
+                ),
                 child: board.coverImage != null
-                    ? Image.network(
-                        board.coverImage!,
-                        fit: BoxFit.cover,
-                      )
+                    ? Image.network(board.coverImage!, fit: BoxFit.cover)
                     : Container(
                         color: AppColors.secondary,
                         child: Icon(
@@ -413,7 +424,11 @@ class _SubBoardCard extends StatelessWidget {
                         ),
                       ),
                       if (board.isPinned)
-                        const Icon(Icons.push_pin, size: 14, color: AppColors.primary),
+                        const Icon(
+                          Icons.push_pin,
+                          size: 14,
+                          color: AppColors.primary,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -450,12 +465,9 @@ class _CircleBtn extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.card,
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.border, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.border.withAlpha(100),
-              offset: const Offset(0, 2),
-            ),
+          border: Border.all(color: AppColors.border, width: 2),
+          boxShadow: const [
+            BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
           ],
         ),
         child: Icon(icon, color: AppColors.foreground, size: 20),
@@ -484,21 +496,14 @@ class _PrimaryBtn extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.primary,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.border.withAlpha(100),
-              offset: const Offset(0, 2),
-            ),
+          border: Border.all(color: AppColors.border, width: 2),
+          boxShadow: const [
+            BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
           ],
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: AppColors.primaryForeground,
-              size: 16,
-            ),
+            Icon(icon, color: AppColors.primaryForeground, size: 16),
             const SizedBox(width: 6),
             Text(
               label,

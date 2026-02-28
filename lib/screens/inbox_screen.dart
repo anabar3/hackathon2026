@@ -4,6 +4,7 @@ import '../models/ai_suggestion.dart';
 import '../services/groq_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/suggestion_card.dart';
+import '../widgets/animated_entry.dart';
 import 'board_picker_screen.dart';
 
 class InboxScreen extends StatefulWidget {
@@ -143,7 +144,7 @@ class _InboxScreenState extends State<InboxScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: widget.onRefresh,
@@ -159,8 +160,9 @@ class _InboxScreenState extends State<InboxScreen> {
                     'Inbox',
                     style: TextStyle(
                       color: AppColors.foreground,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 34,
+                      letterSpacing: -1.0,
                     ),
                   ),
                   if (_analyzing)
@@ -179,7 +181,9 @@ class _InboxScreenState extends State<InboxScreen> {
                 'Drop anything here — AI will organize it',
                 style: TextStyle(
                   color: AppColors.mutedForeground,
-                  fontSize: 13,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
                 ),
               ),
               const SizedBox(height: 20),
@@ -191,9 +195,12 @@ class _InboxScreenState extends State<InboxScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 32),
                   decoration: BoxDecoration(
-                    color: AppColors.muted.withAlpha(50),
+                    color: const Color(0xFFF8F9FA),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border, width: 1.5),
+                    border: Border.all(color: AppColors.border, width: 2),
+                    boxShadow: const [
+                      BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
+                    ],
                   ),
                   child: Column(
                     children: [
@@ -269,9 +276,9 @@ class _InboxScreenState extends State<InboxScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 40),
                   decoration: BoxDecoration(
-                    color: AppColors.muted.withAlpha(40),
+                    color: const Color(0xFFF8F9FA),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border, width: 1.5),
+                    border: Border.all(color: AppColors.border, width: 2),
                   ),
                   child: Column(
                     children: [
@@ -327,76 +334,87 @@ class _InboxScreenState extends State<InboxScreen> {
                     }
                   }
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ListTile(
-                          leading: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withAlpha(20),
-                              borderRadius: BorderRadius.circular(12),
+                  return AnimatedEntry(
+                    index: entry.key,
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border, width: 2),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: AppColors.border,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withAlpha(20),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                _iconFor(tipo),
+                                color: AppColors.primary,
+                              ),
                             ),
-                            child: Icon(
-                              _iconFor(tipo),
-                              color: AppColors.primary,
+                            title: Text(
+                              titulo?.isNotEmpty == true
+                                  ? titulo!
+                                  : (tipo == 'texto'
+                                        ? contenido
+                                        : tipo.toUpperCase()),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.foreground,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              contenido,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.mutedForeground,
+                                fontSize: 12,
+                              ),
+                            ),
+                            trailing: TextButton.icon(
+                              onPressed: () => _pickBoardAndMove(itemId),
+                              icon: const Icon(
+                                Icons.drive_file_move_outline,
+                                size: 18,
+                              ),
+                              label: const Text('Mover'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                              ),
                             ),
                           ),
-                          title: Text(
-                            titulo?.isNotEmpty == true
-                                ? titulo!
-                                : (tipo == 'texto'
-                                      ? contenido
-                                      : tipo.toUpperCase()),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.foreground,
-                              fontWeight: FontWeight.w600,
+                          if (suggestion != null)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                              child: SuggestionCard(
+                                suggestion: suggestion,
+                                actionText: actionText,
+                                onConfirm: () => _applySuggestion(suggestion),
+                                onDismiss: () {
+                                  setState(() {
+                                    _suggestions.remove(itemId);
+                                  });
+                                },
+                              ),
                             ),
-                          ),
-                          subtitle: Text(
-                            contenido,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.mutedForeground,
-                              fontSize: 12,
-                            ),
-                          ),
-                          trailing: TextButton.icon(
-                            onPressed: () => _pickBoardAndMove(itemId),
-                            icon: const Icon(Icons.drive_file_move_outline,
-                                size: 18),
-                            label: const Text('Mover'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                        if (suggestion != null)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                            child: SuggestionCard(
-                              suggestion: suggestion,
-                              actionText: actionText,
-                              onConfirm: () => _applySuggestion(suggestion),
-                              onDismiss: () {
-                                setState(() {
-                                  _suggestions.remove(itemId);
-                                });
-                              },
-                            ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 }),

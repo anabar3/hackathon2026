@@ -4,6 +4,7 @@ import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../services/supabase_service.dart';
 import '../services/ble_service.dart';
+import '../widgets/animated_entry.dart';
 
 class DriftScreen extends StatefulWidget {
   final void Function(NearbyPerson) onPersonSelect;
@@ -310,105 +311,138 @@ class _DriftScreenState extends State<DriftScreen> {
 
     return Column(
       children: [
-        // Header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // Header with decorative background
+        Stack(
+          children: [
+            // Decorative elements
+            Positioned(
+              top: -30,
+              right: -20,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(12),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 80,
+              left: -40,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withAlpha(50),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Drift',
-                        style: TextStyle(
-                          color: AppColors.foreground,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Street',
+                            style: TextStyle(
+                              color: AppColors.foreground,
+                              fontSize: 34, // h1 style
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1.0,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'People who crossed your path',
+                            style: TextStyle(
+                              color: AppColors.mutedForeground,
+                              fontSize: 14, // h2 style
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'People who crossed your path',
-                        style: TextStyle(
-                          color: AppColors.mutedForeground,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withAlpha(20),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.primary.withAlpha(40),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.tune,
+                          color: AppColors.primary,
+                          size: 22,
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 20),
+
+                  // Status Pill
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withAlpha(20),
-                      shape: BoxShape.circle,
+                      color: AppColors.primary.withAlpha(15),
+                      borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: AppColors.primary.withAlpha(40),
+                        color: AppColors.primary.withAlpha(30),
                       ),
                     ),
-                    child: const Icon(
-                      Icons.tune,
-                      color: AppColors.primary,
-                      size: 22,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          _nearPeople.isEmpty
+                              ? 'Scanning your surroundings...'
+                              : '${activeNow.length} people nearby share your interests',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Only boards matching your interests are shown. Tap someone to see all their public boards.',
+                    style: TextStyle(
+                      color: AppColors.mutedForeground,
+                      fontSize: 12,
+                      height: 1.5,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-
-              // Status Pill
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(15),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.primary.withAlpha(30)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      _nearPeople.isEmpty
-                          ? 'Scanning your surroundings...'
-                          : '${activeNow.length} people nearby share your interests',
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Only boards matching your interests are shown. Tap someone to see all their public boards.',
-                style: TextStyle(
-                  color: AppColors.mutedForeground,
-                  fontSize: 12,
-                  height: 1.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
         const SizedBox(height: 20),
         Expanded(
@@ -423,18 +457,8 @@ class _DriftScreenState extends State<DriftScreen> {
                     return const LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black,
-                        Colors.black,
-                        Colors.transparent,
-                      ],
-                      stops: [
-                        0.0,
-                        0.05,
-                        0.9,
-                        1.0,
-                      ], // Fade at top 5% and bottom 10%
+                      colors: [Colors.black, Colors.transparent],
+                      stops: [0.9, 1.0], // Fade only at bottom 10%
                     ).createShader(bounds);
                   },
                   blendMode: BlendMode.dstIn,
@@ -456,10 +480,14 @@ class _DriftScreenState extends State<DriftScreen> {
                               ),
                             ),
                           ),
-                          ...activeNow.map(
-                            (p) => _PersonCard(
-                              person: p,
-                              onSelect: () => widget.onPersonSelect(p),
+                          ...activeNow.asMap().entries.map(
+                            (entry) => AnimatedEntry(
+                              index: entry.key,
+                              child: _PersonCard(
+                                person: entry.value,
+                                onSelect: () =>
+                                    widget.onPersonSelect(entry.value),
+                              ),
                             ),
                           ),
                         ],
@@ -477,37 +505,41 @@ class _DriftScreenState extends State<DriftScreen> {
                               ),
                             ),
                           ),
-                          ...earlier.map(
-                            (p) => Dismissible(
-                              key: Key('walked_${p.id}'),
-                              direction: DismissDirection.endToStart,
-                              onDismissed: (direction) async {
-                                setState(() {
-                                  _walkedPeople.removeWhere(
-                                    (e) => e.id == p.id,
-                                  );
-                                });
-                                await _service.eliminarEncuentro(p.id);
-                              },
-                              background: Container(
-                                alignment: Alignment.centerRight,
-                                padding: const EdgeInsets.only(right: 20),
-                                decoration: BoxDecoration(
-                                  color: AppColors.destruct.withAlpha(50),
-                                  borderRadius: BorderRadius.circular(24),
+                          ...earlier.asMap().entries.map((entry) {
+                            final p = entry.value;
+                            return AnimatedEntry(
+                              index: activeNow.length + entry.key,
+                              child: Dismissible(
+                                key: Key('walked_${p.id}'),
+                                direction: DismissDirection.endToStart,
+                                onDismissed: (direction) async {
+                                  setState(() {
+                                    _walkedPeople.removeWhere(
+                                      (e) => e.id == p.id,
+                                    );
+                                  });
+                                  await _service.eliminarEncuentro(p.id);
+                                },
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.destruct.withAlpha(50),
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  child: const Icon(
+                                    Icons.delete_outline,
+                                    color: AppColors.destruct,
+                                  ),
                                 ),
-                                margin: const EdgeInsets.only(bottom: 16),
-                                child: const Icon(
-                                  Icons.delete_outline,
-                                  color: AppColors.destruct,
+                                child: _PersonCard(
+                                  person: p,
+                                  onSelect: () => widget.onPersonSelect(p),
                                 ),
                               ),
-                              child: _PersonCard(
-                                person: p,
-                                onSelect: () => widget.onPersonSelect(p),
-                              ),
-                            ),
-                          ),
+                            );
+                          }),
                         ],
                       ],
                     ),
@@ -696,12 +728,9 @@ class _PersonCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(10),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+          border: Border.all(color: AppColors.border, width: 2),
+          boxShadow: const [
+            BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
           ],
         ),
         child: Column(
@@ -863,6 +892,13 @@ class _PersonCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.secondary,
                         borderRadius: BorderRadius.circular(40),
+                        border: Border.all(color: AppColors.border, width: 2),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: AppColors.border,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Row(
                         children: [
