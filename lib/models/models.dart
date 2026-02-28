@@ -81,6 +81,7 @@ class Board {
   final String color;
   final String icon;
   final bool isPublic;
+  final bool isPinned;
 
   const Board({
     required this.id,
@@ -92,6 +93,7 @@ class Board {
     required this.color,
     required this.icon,
     required this.isPublic,
+    this.isPinned = false,
   });
 }
 

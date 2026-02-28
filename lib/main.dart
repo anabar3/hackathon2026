@@ -1,7 +1,9 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:file_picker/file_picker.dart';
 import 'models/models.dart';
 import 'data/mock_data.dart';
 import 'theme/app_theme.dart';
@@ -99,19 +101,19 @@ class _CollectHomeState extends State<CollectHome> {
   final _service = SupabaseService();
   Screen _screen = Screen.dashboard;
   Screen _prevScreen = Screen.dashboard;
-  late Board _selectedBoard;
+  Board? _selectedBoard;
   late ContentItem _selectedItem;
-  late NearbyPerson? _selectedPerson;
+  NearbyPerson? _selectedPerson;
   late List<ContentItem> _items;
-  List<Board> _boards = boards;
+  List<Board> _boards = [];
   List<Map<String, dynamic>> _inboxItems = [];
   bool _loadingInbox = false;
 
   @override
   void initState() {
     super.initState();
-    _items = buildContentItems();
-    _selectedBoard = boards.first;
+    _items = [];
+    _selectedBoard = null;
     _selectedPerson = null;
 
     // Initialize BLE if we have a user
@@ -120,6 +122,9 @@ class _CollectHomeState extends State<CollectHome> {
       BleService.instance.init(userId);
       FlutterBackgroundService().startService();
     }
+
+    _loadBoards();
+    _loadInbox();
   }
 
   @override
@@ -217,8 +222,16 @@ class _CollectHomeState extends State<CollectHome> {
           onCreateBoard: () => _openCreateBoard(),
         );
       case Screen.board:
+        if (_selectedBoard == null) {
+          return DashboardScreen(
+            boards: _boards,
+            onBoardSelect: _handleBoardSelect,
+            onOpenBoardTree: () => _navigate(Screen.boardTree),
+            onCreateBoard: () => _openCreateBoard(),
+          );
+        }
         return BoardScreen(
-          board: _selectedBoard,
+          board: _selectedBoard!,
           items: _items,
           onBack: _handleBack,
           onItemSelect: _handleItemSelect,
@@ -272,10 +285,16 @@ class _CollectHomeState extends State<CollectHome> {
       case Screen.profile:
         return ProfileScreen(onBack: _handleBack, onLogout: _handleLogout);
       case Screen.edit:
-        return _EditPlaceholder(board: _selectedBoard, onBack: _handleBack);
+        if (_selectedBoard == null) return DashboardScreen(
+          boards: _boards,
+          onBoardSelect: _handleBoardSelect,
+          onOpenBoardTree: () => _navigate(Screen.boardTree),
+          onCreateBoard: () => _openCreateBoard(),
+        );
+        return _EditPlaceholder(board: _selectedBoard!, onBack: _handleBack);
       case Screen.aiOrganize:
         return _AiOrganizePlaceholder(
-          board: _selectedBoard,
+          board: _selectedBoard ?? boards.first,
           items: _items,
           onBack: _handleBack,
         );
@@ -327,6 +346,7 @@ class _CollectHomeState extends State<CollectHome> {
             ).compareTo(DateTime.parse(a['created_at'])),
           );
       });
+      await _syncItems(res);
     } finally {
       if (mounted) setState(() => _loadingInbox = false);
     }
@@ -349,84 +369,255 @@ class _CollectHomeState extends State<CollectHome> {
               color: '#7C5CFC',
               icon: 'palette',
               isPublic: (b['is_public'] ?? false) as bool,
+              isPinned: (b['is_pinned'] ?? false) as bool? ?? false,
             ),
           )
           .toList();
       final roots = _boards.where((b) => b.parentId == null).toList();
-      if (roots.isNotEmpty) _selectedBoard = roots.first;
+      _selectedBoard = roots.isNotEmpty ? roots.first : null;
     });
+    await _syncItems();
+  }
+
+  Future<void> _syncItems([List<Map<String, dynamic>>? items]) async {
+    final user = _service.currentUser;
+    if (user == null) return;
+    final data = items ?? await _service.getItems(user.id);
+    final mappedItems = data.map(_mapToContentItem).toList();
+
+    // Rebuild board item counts from fetched items
+    final counts = <String, int>{};
+    for (final item in mappedItems) {
+      if (item.boardId.isEmpty) continue; // inbox items have tablero_id null
+      counts[item.boardId] = (counts[item.boardId] ?? 0) + 1;
+    }
+
+    setState(() {
+      _items = mappedItems;
+      _boards = _boards
+          .map(
+            (b) => Board(
+              id: b.id,
+              name: b.name,
+              description: b.description,
+              parentId: b.parentId,
+              itemCount: counts[b.id] ?? 0,
+              coverImage: b.coverImage,
+              color: b.color,
+              icon: b.icon,
+              isPublic: b.isPublic,
+              isPinned: b.isPinned,
+            ),
+          )
+          .toList();
+
+      if (_selectedBoard == null && _boards.isNotEmpty) {
+        _selectedBoard = _boards.first;
+      }
+    });
+  }
+
+  ContentItem _mapToContentItem(Map<String, dynamic> i) {
+    final tipo = (i['tipo'] as String? ?? 'texto').toLowerCase();
+    ContentType ct;
+    switch (tipo) {
+      case 'imagen':
+        ct = ContentType.image;
+        break;
+      case 'audio':
+        ct = ContentType.audio;
+        break;
+      case 'video':
+        ct = ContentType.video;
+        break;
+      case 'link':
+        ct = ContentType.link;
+        break;
+      case 'archivo':
+      case 'file':
+        ct = ContentType.file;
+        break;
+      default:
+        ct = ContentType.note;
+    }
+
+    final title = i['titulo'] as String?;
+    final contenido = i['contenido']?.toString() ?? '';
+    return ContentItem(
+      id: i['id'] ?? '',
+      type: ct,
+      title: title?.isNotEmpty == true ? title! : contenido,
+      description: null,
+      thumbnail: null,
+      url: ct == ContentType.link ? contenido : null,
+      tags: (i['tags'] as List?)?.cast<String>() ?? [],
+      boardId: i['tablero_id'] ?? '',
+      createdAt: i['created_at'] ?? '',
+      color: null,
+      duration: null,
+      size: null,
+      author: null,
+      saved: false,
+    );
   }
 
   Future<void> _openCreateBoard({String? parentId}) async {
     final titleController = TextEditingController();
     final descController = TextEditingController();
     bool isPublic = false;
+    String? coverUrl;
+    bool uploadingCover = false;
     final created = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppColors.card,
-          title: const Text('Nuevo tablero'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: 'Título'),
+        return StatefulBuilder(
+          builder: (dialogContext, setState) {
+            Future<void> _pickCover() async {
+              final result = await FilePicker.platform.pickFiles(
+                type: FileType.image,
+                withData: true,
+              );
+              final file = result?.files.first;
+              final bytes = file?.bytes;
+              if (bytes == null) return;
+
+              setState(() => uploadingCover = true);
+              try {
+                final url = await _service.subirImagenPortada(
+                  bytes: bytes as Uint8List,
+                  fileName: file?.name ?? 'cover.jpg',
+                  mimeType: file?.mimeType ?? 'image/jpeg',
+                );
+                if (!dialogContext.mounted) return;
+                setState(() => coverUrl = url);
+              } finally {
+                if (dialogContext.mounted) {
+                  setState(() => uploadingCover = false);
+                }
+              }
+            }
+
+            return AlertDialog(
+              backgroundColor: AppColors.card,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-              TextField(
-                controller: descController,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción (opcional)',
+              title: const Text('Nuevo tablero'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: titleController,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(
+                        labelText: 'Título',
+                        hintText: 'Ej. Recetas de la semana',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Descripción',
+                        hintText: 'Opcional, cuéntale a otros de qué va',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: uploadingCover ? null : _pickCover,
+                      child: Container(
+                        height: 150,
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border, width: 1.5),
+                        ),
+                        child: Stack(
+                          children: [
+                            if (coverUrl != null)
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: Image.network(
+                                  coverUrl!,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                ),
+                              )
+                            else
+                              Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(Icons.image_outlined, size: 30, color: AppColors.mutedForeground),
+                                    SizedBox(height: 6),
+                                    Text(
+                                      'Sube una portada (opcional)',
+                                      style: TextStyle(color: AppColors.mutedForeground, fontWeight: FontWeight.w700),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (uploadingCover)
+                              const Align(
+                                alignment: Alignment.bottomCenter,
+                                child: LinearProgressIndicator(minHeight: 4),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String?>(
+                      value: parentId,
+                      decoration: const InputDecoration(
+                        labelText: 'Ubicación',
+                      ),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Nivel raíz'),
+                        ),
+                        ..._boards.map(
+                          (b) => DropdownMenuItem<String?>(
+                            value: b.id,
+                            child: Text(b.name),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => parentId = v),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: isPublic,
+                          onChanged: (v) => setState(() => isPublic = v ?? false),
+                        ),
+                        const Text('Público'),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Checkbox(
-                    value: isPublic,
-                    onChanged: (v) {
-                      isPublic = v ?? false;
-                      (context as Element).markNeedsBuild();
-                    },
-                  ),
-                  const Text('Público'),
-                ],
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: parentId,
-                decoration: const InputDecoration(
-                  labelText: 'Dentro de (opcional)',
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancelar'),
                 ),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('Nivel raíz'),
-                  ),
-                  ..._boards.map(
-                    (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
-                  ),
-                ],
-                onChanged: (v) {
-                  parentId = v;
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (titleController.text.trim().isEmpty) return;
-                Navigator.pop(context, true);
-              },
-              child: const Text('Crear'),
-            ),
-          ],
+                ElevatedButton(
+                  onPressed: titleController.text.trim().isEmpty || uploadingCover
+                      ? null
+                      : () => Navigator.pop(dialogContext, true),
+                  child: const Text('Crear'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -440,6 +631,7 @@ class _CollectHomeState extends State<CollectHome> {
       descripcion: descController.text.trim().isEmpty
           ? null
           : descController.text.trim(),
+      imagenPortada: coverUrl,
       isPublic: isPublic,
       parentId: parentId,
     );
