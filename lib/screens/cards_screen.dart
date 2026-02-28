@@ -158,87 +158,92 @@ class _CardsScreenState extends State<CardsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(builder: (context, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Enviar carta',
-                    style: TextStyle(
-                      color: AppColors.foreground,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Enviar carta',
+                        style: TextStyle(
+                          color: AppColors.foreground,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      IconButton(
+                        icon:
+                            const Icon(Icons.close, color: AppColors.mutedForeground),
+                        onPressed: () => Navigator.pop(context, false),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _textController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      hintText: 'Escribe tu mensaje...',
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: AppColors.mutedForeground),
-                    onPressed: () => Navigator.pop(context, false),
-                  )
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    value: _isDirect,
+                    onChanged: (v) => setSheetState(() {
+                      _isDirect = v;
+                    }),
+                    activeColor: AppColors.primary,
+                    title: const Text(
+                      'Enviar directo a un usuario',
+                      style: TextStyle(color: AppColors.foreground),
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  if (_isDirect)
+                    TextField(
+                      controller: _targetController,
+                      decoration: const InputDecoration(
+                        labelText: 'User ID destino',
+                        hintText: 'uuid del destinatario',
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        if (_textController.text.trim().isEmpty) return;
+                        await _service.enviarCarta(
+                          contenido: _textController.text.trim(),
+                          targetUserId:
+                              _isDirect ? _targetController.text.trim() : null,
+                        );
+                        Navigator.pop(context, true);
+                      },
+                      icon: const Icon(Icons.send),
+                      label: const Text('Enviar'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _textController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  hintText: 'Escribe tu mensaje...',
-                ),
-              ),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                value: _isDirect,
-                onChanged: (v) => setState(() {
-                  _isDirect = v;
-                }),
-                activeColor: AppColors.primary,
-                title: const Text(
-                  'Enviar directo a un usuario',
-                  style: TextStyle(color: AppColors.foreground),
-                ),
-                contentPadding: EdgeInsets.zero,
-              ),
-              if (_isDirect)
-                TextField(
-                  controller: _targetController,
-                  decoration: const InputDecoration(
-                    labelText: 'User ID destino',
-                    hintText: 'uuid del destinatario',
-                  ),
-                ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    if (_textController.text.trim().isEmpty) return;
-                    await _service.enviarCarta(
-                      contenido: _textController.text.trim(),
-                      targetUserId:
-                          _isDirect ? _targetController.text.trim() : null,
-                    );
-                    Navigator.pop(context, true);
-                  },
-                  icon: const Icon(Icons.send),
-                  label: const Text('Enviar'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
+            ),
+          );
+        });
       },
     );
     if (sent == true) {

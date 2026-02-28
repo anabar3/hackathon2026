@@ -401,6 +401,30 @@ class SupabaseService {
     });
   }
 
+  /// Sube una imagen de portada y devuelve una URL firmada.
+  Future<String> subirImagenPortada({
+    required Uint8List bytes,
+    required String fileName,
+    String mimeType = 'image/jpeg',
+  }) async {
+    final safeName = fileName.replaceAll(' ', '-');
+    final randomSuffix = Random().nextInt(1 << 32);
+    final objectPath =
+        'board-covers/${DateTime.now().millisecondsSinceEpoch}-$randomSuffix-$safeName';
+
+    await _supabase.storage
+        .from('inbox-uploads')
+        .uploadBinary(
+          objectPath,
+          bytes,
+          fileOptions: FileOptions(contentType: mimeType, upsert: false),
+        );
+
+    return await _supabase.storage
+        .from('inbox-uploads')
+        .createSignedUrl(objectPath, 60 * 60 * 24 * 7);
+  }
+
   // ─── ITEMS (INBOX) ──────────────────────────────
   /// Guarda texto libre en el inbox (sin tablero por defecto).
   Future<Map<String, dynamic>> guardarTextoEnInbox({

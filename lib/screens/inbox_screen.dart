@@ -4,6 +4,7 @@ import '../models/ai_suggestion.dart';
 import '../services/groq_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/suggestion_card.dart';
+import 'board_picker_screen.dart';
 
 class InboxScreen extends StatefulWidget {
   final List<Map<String, dynamic>> items;
@@ -371,15 +372,15 @@ class _InboxScreenState extends State<InboxScreen> {
                               fontSize: 12,
                             ),
                           ),
-                          trailing: createdAt == null
-                              ? null
-                              : Text(
-                                  _timeAgo(createdAt),
-                                  style: const TextStyle(
-                                    color: AppColors.mutedForeground,
-                                    fontSize: 12,
-                                  ),
-                                ),
+                          trailing: TextButton.icon(
+                            onPressed: () => _pickBoardAndMove(itemId),
+                            icon: const Icon(Icons.drive_file_move_outline,
+                                size: 18),
+                            label: const Text('Mover'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                            ),
+                          ),
                         ),
                         if (suggestion != null)
                           Padding(
@@ -413,6 +414,29 @@ class _InboxScreenState extends State<InboxScreen> {
     if (diff.inHours < 1) return '${diff.inMinutes}m';
     if (diff.inDays < 1) return '${diff.inHours}h';
     return '${diff.inDays}d';
+  }
+
+  Future<void> _pickBoardAndMove(String itemId) async {
+    final user = _supabaseService.currentUser;
+    if (user == null) return;
+    // refresh boards to be sure
+    final boards = await _supabaseService.getTableros(user.id);
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BoardPickerScreen(
+          boards: boards,
+          onSelect: (boardId) async {
+            await _supabaseService.moverItem(
+              itemId: itemId,
+              nuevoTableroId: boardId,
+            );
+            await widget.onRefresh();
+          },
+        ),
+      ),
+    );
   }
 }
 

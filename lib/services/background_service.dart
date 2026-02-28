@@ -63,6 +63,13 @@ void onStart(ServiceInstance service) async {
   final supabase = Supabase.instance.client;
 
   if (service is AndroidServiceInstance) {
+    // Ponemos en primer plano al inicio para evitar el crash de timeout
+    await service.setAsForegroundService();
+    await service.setForegroundNotificationInfo(
+      title: "Collect",
+      content: "Iniciando servicio...",
+    );
+
     service.on('setAsForeground').listen((event) {
       service.setAsForegroundService();
     });
@@ -81,7 +88,7 @@ void onStart(ServiceInstance service) async {
   final user = supabase.auth.currentUser;
   if (user != null) {
     if (service is AndroidServiceInstance) {
-      service.setForegroundNotificationInfo(
+      await service.setForegroundNotificationInfo(
         title: "Collect / Drift Radar",
         content: "Scanning for nearby people...",
       );
