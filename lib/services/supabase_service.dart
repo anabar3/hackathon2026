@@ -26,14 +26,14 @@ class SupabaseService {
     final user = res.user;
     if (user == null) throw Exception('No se pudo crear el usuario');
 
-    await _supabase.from('perfiles').insert({
-      'id': user.id,
-      'username': username,
-      'nombre_completo': fullName,
-      'bio': null,
-      'avatar_url': null,
-      'intereses': <String>[],
-    });
+    // Módificado: el trigger de la base de datos (handle_new_user)
+    // crea una fila por defecto en "perfiles", por lo que aquí hacemos upsert
+    // para rellenar los datos extra sin saltar error de duplicado.
+    await upsertPerfil(
+      userId: user.id,
+      username: username,
+      nombreCompleto: fullName,
+    );
   }
 
   Future<void> signOut() async {
@@ -762,5 +762,16 @@ class SupabaseService {
         .eq('user_id', userId)
         .order('visto_en', ascending: false);
     return List<Map<String, dynamic>>.from(res);
+  }
+
+  /// Remove an encounter from the 'Walked' list
+  Future<void> eliminarEncuentro(String otherUserId) async {
+    final user = currentUser;
+    if (user == null) return;
+    await _supabase
+        .from('encuentros')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('usuario_encontrado_id', otherUserId);
   }
 }

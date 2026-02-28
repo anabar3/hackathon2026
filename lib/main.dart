@@ -20,6 +20,7 @@ import 'screens/letters_screen.dart';
 import 'screens/drift_screen.dart';
 import 'screens/person_boards_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/permissions_screen.dart';
 import 'services/ble_service.dart';
 import 'services/background_service.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -36,7 +37,6 @@ void main() async {
   await dotenv.load(fileName: ".env");
 
   await initializeBackgroundService();
-
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -76,10 +76,46 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   final _service = SupabaseService();
+  bool _permissionsGranted = false;
+  bool _isCheckingPermissions = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPermissions();
+  }
+
+  Future<void> _checkPermissions() async {
+    final granted = await BleService.instance.checkPermissionsSilently();
+    if (mounted) {
+      setState(() {
+        _permissionsGranted = granted;
+        _isCheckingPermissions = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isCheckingPermissions) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
     if (_service.currentUser != null) {
+      if (!_permissionsGranted) {
+        return PermissionsScreen(
+          onGranted: () {
+            setState(() {
+              _permissionsGranted = true;
+            });
+          },
+        );
+      }
       return CollectHome(onLogout: () => setState(() {}));
     }
     return LoginScreen(onLoginSuccess: () => setState(() {}));

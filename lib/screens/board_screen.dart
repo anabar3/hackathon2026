@@ -240,67 +240,94 @@ class _BoardScreenState extends State<BoardScreen> {
         Expanded(
           child: items.isEmpty
               ? Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    margin: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(32),
-                      border: Border.all(color: AppColors.border, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.border.withAlpha(100),
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            color: AppColors.secondary,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.border,
-                              width: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.8, end: 1.0),
+                      duration: const Duration(milliseconds: 1000),
+                      curve: Curves.elasticOut,
+                      builder: (context, scale, child) {
+                        return Transform.scale(scale: scale, child: child);
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.border,
+                                width: 4,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.border.withAlpha(50),
+                                  blurRadius: 20,
+                                  spreadRadius: 5,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.explore_off_rounded,
+                              color: AppColors.primary,
+                              size: 48,
                             ),
                           ),
-                          child: const Icon(
-                            Icons.explore_off_rounded,
-                            color: AppColors.mutedForeground,
-                            size: 28,
+                          const SizedBox(height: 24),
+                          const Text(
+                            'No items yet',
+                            style: TextStyle(
+                              color: AppColors.foreground,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No items yet',
-                          style: TextStyle(
-                            color: AppColors.foreground,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Add some cool stuff here to start building your collection!',
+                            style: TextStyle(
+                              color: AppColors.mutedForeground,
+                              fontSize: 15,
+                              height: 1.4,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Add some cool stuff here!',
-                          style: TextStyle(
-                            color: AppColors.mutedForeground,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                  child: _MasonryGrid(
-                    items: items,
-                    onItemTap: widget.onItemSelect,
+              : ShaderMask(
+                  shaderCallback: (Rect bounds) {
+                    return const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black,
+                        Colors.black,
+                        Colors.transparent,
+                      ],
+                      stops: [
+                        0.0,
+                        0.05,
+                        0.9,
+                        1.0,
+                      ], // Fade at top 5% and bottom 10%
+                    ).createShader(bounds);
+                  },
+                  blendMode: BlendMode.dstIn,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+                    child: _MasonryGrid(
+                      items: items,
+                      onItemTap: widget.onItemSelect,
+                    ),
                   ),
                 ),
         ),
