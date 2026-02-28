@@ -7,12 +7,14 @@ class DetailScreen extends StatelessWidget {
   final ContentItem item;
   final VoidCallback onBack;
   final void Function(String) onToggleSaved;
+  final VoidCallback? onAiSummarize;
 
   const DetailScreen({
     super.key,
     required this.item,
     required this.onBack,
     required this.onToggleSaved,
+    this.onAiSummarize,
   });
 
   IconData _typeIcon() {
@@ -383,6 +385,27 @@ class DetailScreen extends StatelessWidget {
                                 ),
                                 label: const Text(
                                   'Open Link',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (onAiSummarize != null) ...[
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 56,
+                              child: OutlinedButton.icon(
+                                onPressed: onAiSummarize,
+                                icon: const Icon(
+                                  Icons.auto_awesome_rounded,
+                                  size: 20,
+                                ),
+                                label: const Text(
+                                  'AI Summarize',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w800,

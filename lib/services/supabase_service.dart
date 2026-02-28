@@ -648,6 +648,7 @@ class SupabaseService {
     String? estado, // inbox | organizado | archivado
     String? tipo, // texto | link | imagen | audio | video | archivo
     bool? isPublic,
+    String? aiSummary,
     Map<String, dynamic>? rawData,
   }) async {
     final updates = <String, dynamic>{
@@ -659,6 +660,7 @@ class SupabaseService {
       if (estado != null) 'estado': estado,
       if (tipo != null) 'tipo': tipo,
       if (isPublic != null) 'is_public': isPublic,
+      if (aiSummary != null) 'ai_summary': aiSummary,
       if (rawData != null) 'metadatos': rawData,
       'updated_at': DateTime.now().toIso8601String(),
     };
@@ -716,6 +718,7 @@ class SupabaseService {
     String? imagenPortada,
     bool? isPublic,
     String? parentId,
+    String? aiSummary,
   }) async {
     final updates = <String, dynamic>{
       'id': tableroId,
@@ -723,6 +726,7 @@ class SupabaseService {
       if (descripcion != null) 'descripcion': descripcion,
       if (imagenPortada != null) 'imagen_portada': imagenPortada,
       if (isPublic != null) 'is_public': isPublic,
+      if (aiSummary != null) 'ai_summary': aiSummary,
       'updated_at': DateTime.now().toIso8601String(),
     };
     if (parentId != null) {

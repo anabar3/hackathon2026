@@ -8,6 +8,7 @@ import 'models/models.dart';
 import 'data/mock_data.dart';
 import 'theme/app_theme.dart';
 import 'services/supabase_service.dart';
+import 'services/groq_service.dart';
 import 'widgets/bottom_nav.dart';
 import 'widgets/pattern_background.dart';
 import 'screens/login_screen.dart';
@@ -262,6 +263,8 @@ class _CollectHomeState extends State<CollectHome> {
       _prevScreen = _screen;
       _screen = Screen.board;
     });
+    // Trigger board summarize automatically when board is changed
+    _backgroundAiSummarize(board.id);
   }
 
   void _handleItemSelect(ContentItem item) {
@@ -417,6 +420,7 @@ class _CollectHomeState extends State<CollectHome> {
           item: currentItem,
           onBack: _handleBack,
           onToggleSaved: _handleToggleSaved,
+          onAiSummarize: () => _handleAiSummarizeItem(currentItem.id),
         );
       case Screen.add:
         return AddScreen(onClose: _handleBack);
@@ -560,6 +564,7 @@ class _CollectHomeState extends State<CollectHome> {
               icon: 'palette',
               isPublic: (b['is_public'] ?? false) as bool,
               isPinned: (b['is_pinned'] ?? false) as bool? ?? false,
+              aiSummary: b['ai_summary'],
             ),
           )
           .toList();
@@ -610,6 +615,7 @@ class _CollectHomeState extends State<CollectHome> {
               icon: b.icon,
               isPublic: b.isPublic,
               isPinned: b.isPinned,
+              aiSummary: b.aiSummary,
             ),
           )
           .toList();
@@ -620,10 +626,102 @@ class _CollectHomeState extends State<CollectHome> {
     });
   }
 
-  void _handleAiSummarize() {
+  Future<void> _handleAiSummarize() async {
+    final board = _selectedBoard;
+    if (board == null) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Generating board summary...')),
+    );
+
+    try {
+      await _backgroundAiSummarize(board.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Board summary generated!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error generating summary: $e')));
+      }
+    }
+  }
+
+  Future<void> _backgroundAiSummarize(String boardId) async {
+    final user = _service.currentUser;
+    if (user == null) return;
+
+    final dbBoards = await _service.getTableros(user.id);
+    final dbBoard = dbBoards.firstWhere(
+      (b) => b['id'] == boardId,
+      orElse: () => <String, dynamic>{},
+    );
+    if (dbBoard.isEmpty) return;
+
+    final dbItems = await _service.getItemsPorTablero(
+      userId: user.id,
+      tableroId: boardId,
+    );
+    final groq = GroqService();
+
+    // summarize items
+    for (var i = 0; i < dbItems.length; i++) {
+      final itemMap = dbItems[i];
+      if (itemMap['ai_summary'] == null ||
+          itemMap['ai_summary'].toString().isEmpty) {
+        try {
+          final summary = await groq.summarizeItem(itemMap);
+          await _service.actualizarItem(
+            itemId: itemMap['id'],
+            aiSummary: summary,
+          );
+          itemMap['ai_summary'] = summary; // update map
+        } catch (e) {
+          /* ignore individual item failure in background */
+        }
+      }
+    }
+
+    // summarize board
+    final boardSummary = await groq.summarizeBoard(dbBoard, dbItems);
+    await _service.actualizarTablero(
+      tableroId: boardId,
+      aiSummary: boardSummary,
+    );
+    await _loadBoards();
+  }
+
+  Future<void> _handleAiSummarizeItem(String itemId) async {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('AI Summarize coming soon')));
+    ).showSnackBar(const SnackBar(content: Text('Generating item summary...')));
+    try {
+      final user = _service.currentUser;
+      if (user == null) return;
+
+      final dbItems = await _service.getItems(user.id);
+      final itemMap = dbItems.firstWhere((i) => i['id'] == itemId);
+
+      final groq = GroqService();
+      final summary = await groq.summarizeItem(itemMap);
+      await _service.actualizarItem(itemId: itemId, aiSummary: summary);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item summary generated!')),
+        );
+      }
+      await _syncItems();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error generating summary: $e')));
+      }
+    }
   }
 
   ContentItem _mapToContentItem(Map<String, dynamic> i) {
@@ -669,6 +767,7 @@ class _CollectHomeState extends State<CollectHome> {
       duration: null,
       size: null,
       author: null,
+      aiSummary: i['ai_summary'],
       saved: false,
     );
   }
