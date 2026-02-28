@@ -133,6 +133,43 @@ class CollectHome extends StatefulWidget {
   State<CollectHome> createState() => _CollectHomeState();
 }
 
+class _ModalRoundedField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final int maxLines;
+  final ValueChanged<String>? onChanged;
+
+  const _ModalRoundedField({
+    required this.controller,
+    required this.hint,
+    this.maxLines = 1,
+    this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        onChanged: onChanged,
+        style: const TextStyle(color: AppColors.foreground),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: AppColors.mutedForeground),
+          border: InputBorder.none,
+        ),
+      ),
+    );
+  }
+}
+
 class _CollectHomeState extends State<CollectHome> {
   final _service = SupabaseService();
   Screen _screen = Screen.dashboard;
@@ -269,6 +306,7 @@ class _CollectHomeState extends State<CollectHome> {
         return BoardScreen(
           board: _selectedBoard!,
           items: _items,
+          boards: _boards,
           onBack: _handleBack,
           onItemSelect: _handleItemSelect,
           onEdit: () => _navigate(Screen.edit),
@@ -503,6 +541,7 @@ class _CollectHomeState extends State<CollectHome> {
     final descController = TextEditingController();
     bool isPublic = false;
     String? coverUrl;
+    Uint8List? coverBytes;
     bool uploadingCover = false;
     final created = await showDialog<bool>(
       context: context,
@@ -510,35 +549,43 @@ class _CollectHomeState extends State<CollectHome> {
       builder: (context) {
         return StatefulBuilder(
           builder: (dialogContext, setState) {
-            Future<void> _pickCover() async {
-              final result = await FilePicker.platform.pickFiles(
-                type: FileType.image,
-                withData: true,
-              );
-              final file = result?.files.first;
-              final bytes = file?.bytes;
-              if (bytes == null) return;
-
-              setState(() => uploadingCover = true);
-              try {
-                final ext = file?.extension;
-                final mime = ext != null ? 'image/$ext' : 'image/jpeg';
-                final userId = _service.currentUser?.id;
-                if (userId == null) throw Exception('Debes iniciar sesión');
-                final url = await _service.subirImagenPortada(
-                  userId: userId,
-                  bytes: bytes as Uint8List,
-                  fileName: file?.name ?? 'cover.jpg',
-                  mimeType: mime,
+              Future<void> _pickCover() async {
+                final result = await FilePicker.platform.pickFiles(
+                  type: FileType.image,
+                  withData: true,
                 );
-                if (!dialogContext.mounted) return;
-                setState(() => coverUrl = url);
-              } finally {
-                if (dialogContext.mounted) {
-                  setState(() => uploadingCover = false);
+                final file = result?.files.first;
+                final bytes = file?.bytes;
+                if (bytes == null) return;
+
+                setState(() {
+                  uploadingCover = true;
+                  coverBytes = bytes as Uint8List;
+                });
+                try {
+                  final ext = file?.extension;
+                  final mime = ext != null ? 'image/$ext' : 'image/jpeg';
+                  final userId = _service.currentUser?.id;
+                  if (userId == null) throw Exception('Debes iniciar sesión');
+                  final url = await _service.subirImagenPortada(
+                    userId: userId,
+                    bytes: bytes as Uint8List,
+                    fileName: file?.name ?? 'cover.jpg',
+                    mimeType: mime,
+                  );
+                  if (!dialogContext.mounted) return;
+                  setState(() => coverUrl = url);
+                } catch (e) {
+                  // Si falla la subida (p.ej. RLS 403), mantenemos la vista previa local
+                  if (dialogContext.mounted) {
+                    setState(() => coverUrl = null);
+                  }
+                } finally {
+                  if (dialogContext.mounted) {
+                    setState(() => uploadingCover = false);
+                  }
                 }
               }
-            }
 
             return AlertDialog(
               backgroundColor: AppColors.card,
@@ -547,73 +594,98 @@ class _CollectHomeState extends State<CollectHome> {
               ),
               title: const Text('Nuevo tablero'),
               content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                    const Text(
+                      'Título',
+                      style: TextStyle(
+                        color: AppColors.mutedForeground,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _ModalRoundedField(
                       controller: titleController,
                       onChanged: (_) => setState(() {}),
-                      decoration: const InputDecoration(
-                        labelText: 'Título',
-                        hintText: 'Ej. Recetas de la semana',
+                      hint: 'Ej. Recetas de la semana',
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Descripción',
+                      style: TextStyle(
+                        color: AppColors.mutedForeground,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
+                    const SizedBox(height: 6),
+                    _ModalRoundedField(
                       controller: descController,
+                      hint: 'Opcional, cuéntale a otros de qué va',
                       maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Descripción',
-                        hintText: 'Opcional, cuéntale a otros de qué va',
-                      ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     GestureDetector(
                       onTap: uploadingCover ? null : _pickCover,
                       child: Container(
-                        height: 150,
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
+                        height: 180,
+                        decoration: () {
+                          final hasImage = coverBytes != null || coverUrl != null;
+                          return BoxDecoration(
+                            color: hasImage ? null : AppColors.background,
+                            borderRadius: BorderRadius.circular(16),
+                            border: hasImage
+                                ? null
+                                : Border.all(
                             color: AppColors.border,
                             width: 1.5,
                           ),
-                        ),
+                          );
+                        }(),
                         child: Stack(
                           children: [
-                            if (coverUrl != null)
-                              ClipRRect(
+                            Center(
+                              child: ClipRRect(
                                 borderRadius: BorderRadius.circular(14),
-                                child: Image.network(
-                                  coverUrl!,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                ),
-                              )
-                            else
-                              Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    Icon(
+                                child: SizedBox(
+                                  height: 180,
+                                  child: coverBytes != null
+                                      ? Image.memory(
+                                          coverBytes!,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : coverUrl != null
+                                      ? Image.network(
+                                          coverUrl!,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: const [
+                                            Icon(
                                       Icons.image_outlined,
                                       size: 30,
                                       color: AppColors.mutedForeground,
                                     ),
-                                    SizedBox(height: 6),
-                                    Text(
-                                      'Sube una portada (opcional)',
-                                      style: TextStyle(
+                                            SizedBox(height: 6),
+                                            Text(
+                                              'Sube una portada (opcional)',
+                                                  style: TextStyle(
                                         color: AppColors.mutedForeground,
                                         fontWeight: FontWeight.w700,
                                       ),
-                                    ),
-                                  ],
+                                                ),
+                                              ],
+                                            ),
                                 ),
                               ),
+                            ),
                             if (uploadingCover)
                               const Align(
                                 alignment: Alignment.bottomCenter,
@@ -623,7 +695,7 @@ class _CollectHomeState extends State<CollectHome> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     DropdownButtonFormField<String?>(
                       value: parentId,
                       decoration: const InputDecoration(labelText: 'Ubicación'),
@@ -653,6 +725,7 @@ class _CollectHomeState extends State<CollectHome> {
                       ],
                     ),
                   ],
+                  ),
                 ),
               ),
               actions: [
