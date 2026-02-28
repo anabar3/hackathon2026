@@ -313,6 +313,7 @@ class _CollectHomeState extends State<CollectHome> {
           onItemSelect: _handleItemSelect,
           onEdit: () => _navigate(Screen.edit),
           onAiOrganize: () => _navigate(Screen.aiOrganize),
+          onAiSummarize: _handleAiSummarize,
         );
       case Screen.detail:
         final currentItem = _items.firstWhere(
@@ -498,6 +499,14 @@ class _CollectHomeState extends State<CollectHome> {
     });
   }
 
+  void _handleAiSummarize() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('AI Summarize coming soon'),
+      ),
+    );
+  }
+
   ContentItem _mapToContentItem(Map<String, dynamic> i) {
     final tipo = (i['tipo'] as String? ?? 'texto').toLowerCase();
     ContentType ct;
@@ -524,12 +533,14 @@ class _CollectHomeState extends State<CollectHome> {
 
     final title = i['titulo'] as String?;
     final contenido = i['contenido']?.toString() ?? '';
+    final description = i['descripcion'] as String? ??
+        (ct == ContentType.note || tipo == 'texto' ? contenido : null);
     return ContentItem(
       id: i['id'] ?? '',
       type: ct,
       title: title?.isNotEmpty == true ? title! : contenido,
-      description: null,
-      thumbnail: null,
+      description: description,
+      thumbnail: ct == ContentType.image ? contenido : null,
       url: ct == ContentType.link ? contenido : null,
       tags: (i['tags'] as List?)?.cast<String>() ?? [],
       boardId: i['tablero_id'] ?? '',

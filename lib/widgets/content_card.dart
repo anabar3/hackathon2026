@@ -31,7 +31,7 @@ class ContentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage =
+    final hasImage = item.type != ContentType.note &&
         item.thumbnail != null &&
         (item.type == ContentType.image ||
             item.type == ContentType.video ||
@@ -40,6 +40,7 @@ class ContentCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        width: double.infinity,
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(24),
@@ -56,19 +57,32 @@ class ContentCard extends StatelessWidget {
               Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(21),
-                    ),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(21)),
                     child: Image.network(
                       item.thumbnail!,
-                      height: 120,
+                      height: 170,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
-                        height: 120,
+                        height: 170,
                         color: AppColors.surface,
                         child: Center(
                           child: Icon(_typeIcon(), color: AppColors.primary),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.05),
+                            Colors.black.withOpacity(0.35),
+                          ],
                         ),
                       ),
                     ),
@@ -77,8 +91,8 @@ class ContentCard extends StatelessWidget {
                     Positioned.fill(
                       child: Center(
                         child: Container(
-                          width: 36,
-                          height: 36,
+                          width: 40,
+                          height: 40,
                           decoration: BoxDecoration(
                             color: AppColors.primary.withAlpha(230),
                             shape: BoxShape.circle,
@@ -86,21 +100,21 @@ class ContentCard extends StatelessWidget {
                           child: const Icon(
                             Icons.play_arrow,
                             color: Colors.white,
-                            size: 20,
+                            size: 22,
                           ),
                         ),
                       ),
                     ),
                   if (item.saved)
                     Positioned(
-                      top: 8,
-                      right: 8,
+                      top: 10,
+                      right: 10,
                       child: Container(
-                        width: 26,
-                        height: 26,
+                        width: 28,
+                        height: 28,
                         decoration: BoxDecoration(
-                          color: AppColors.card.withAlpha(200),
-                          borderRadius: BorderRadius.circular(8),
+                          color: AppColors.card.withAlpha(210),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(
                           Icons.bookmark,
@@ -109,101 +123,115 @@ class ContentCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                  Positioned(
+                    left: 12,
+                    right: 12,
+                    bottom: 12,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.card.withAlpha(210),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            _typeLabel(),
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          item.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (item.author != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            item.author!,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.85),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               )
             else
-              Container(
-                height: 72,
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(21)),
-                ),
-                child: Center(
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withAlpha(26),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      _typeIcon(),
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withAlpha(26),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _typeLabel(),
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(26),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Text(
+                        _typeLabel(),
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.title,
-                    style: const TextStyle(
-                      color: AppColors.foreground,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      height: 1.3,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (item.author != null) ...[
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 8),
                     Text(
-                      item.author!,
+                      item.title,
                       style: const TextStyle(
-                        color: AppColors.mutedForeground,
-                        fontSize: 10,
+                        color: AppColors.foreground,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        height: 1.35,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
-                  if (item.duration != null) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 10,
-                          color: AppColors.mutedForeground,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          item.duration!,
-                          style: const TextStyle(
-                            color: AppColors.mutedForeground,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
+            if (item.description != null && item.description!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                child: Text(
+                  item.description!,
+                  style: const TextStyle(
+                    color: AppColors.mutedForeground,
+                    fontSize: 11,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
           ],
         ),
       ),

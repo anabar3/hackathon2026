@@ -22,6 +22,7 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
   Uint8List? _pickedBytes;
   String? _pickedFileName;
   String? _pickedMime;
+  String? _pickedTipo;
 
   @override
   void dispose() {
@@ -37,7 +38,7 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
     setState(() => _saving = true);
     try {
       if (hasFile) {
-        final tipo = _determineTipo(_pickedMime, _pickedFileName!);
+        final tipo = _pickedTipo ?? _determineTipo(_pickedMime, _pickedFileName!);
         await _service.guardarArchivoEnInbox(
           bytes: _pickedBytes!,
           fileName: _pickedFileName!,
@@ -46,6 +47,9 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
           titulo: _titleController.text.trim().isEmpty
               ? _pickedFileName
               : _titleController.text.trim(),
+          descripcion: _controller.text.trim().isNotEmpty
+              ? _controller.text.trim()
+              : null,
           tableroId: null,
         );
       } else {
@@ -56,6 +60,7 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
             titulo: _titleController.text.trim().isEmpty
                 ? null
                 : _titleController.text.trim(),
+            descripcion: null,
           );
         } else {
           await _service.guardarTextoEnInbox(
@@ -76,6 +81,7 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
         _pickedBytes = null;
         _pickedFileName = null;
         _pickedMime = null;
+        _pickedTipo = null;
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -94,6 +100,7 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
       _pickedBytes = file.bytes;
       _pickedFileName = file.name;
       _pickedMime = _guessMime(file.extension);
+      _pickedTipo = _determineTipo(_pickedMime, _pickedFileName!);
     });
   }
 
@@ -254,6 +261,19 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
                   ),
               ],
             ),
+            if (_pickedBytes != null && _pickedTipo == 'imagen') ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: Image.memory(
+                    _pickedBytes!,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             Container(
               padding: const EdgeInsets.all(14),

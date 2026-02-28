@@ -12,6 +12,7 @@ class BoardScreen extends StatefulWidget {
   final void Function(ContentItem) onItemSelect;
   final VoidCallback onEdit;
   final VoidCallback onAiOrganize;
+  final VoidCallback onAiSummarize;
 
   const BoardScreen({
     super.key,
@@ -22,6 +23,7 @@ class BoardScreen extends StatefulWidget {
     required this.onItemSelect,
     required this.onEdit,
     required this.onAiOrganize,
+    required this.onAiSummarize,
   });
 
   @override
@@ -53,248 +55,215 @@ class _BoardScreenState extends State<BoardScreen> {
         .where((b) => b.parentId == widget.board.id)
         .toList();
 
-    return Column(
-      children: [
-        // Header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _CircleBtn(icon: Icons.arrow_back_rounded, onTap: widget.onBack),
-              Row(
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 100),
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _PrimaryBtn(
-                    label: 'Sugerencias',
-                    icon: Icons.lightbulb_outline,
-                    onTap: widget.onAiOrganize,
-                  ),
-                  const SizedBox(width: 8),
-                  _PrimaryBtn(
-                    label: 'Editar',
-                    icon: Icons.edit_outlined,
-                    onTap: widget.onEdit,
+                  _CircleBtn(icon: Icons.arrow_back_rounded, onTap: widget.onBack),
+                  Row(
+                    children: [
+                      _GroupIdeaBtn(onTap: widget.onAiOrganize),
+                      const SizedBox(width: 8),
+                      _PrimaryBtn(
+                        label: 'AI Summarize',
+                        icon: Icons.auto_awesome,
+                        onTap: widget.onAiSummarize,
+                      ),
+                      const SizedBox(width: 8),
+                      _PrimaryBtn(
+                        label: 'Editar',
+                        icon: Icons.edit_outlined,
+                        onTap: widget.onEdit,
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-
-        // Title line
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text(
-                  widget.board.name,
-                  style: const TextStyle(
-                    color: AppColors.foreground,
-                    fontSize: 34,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1.0,
-                  ),
-                ),
-              ),
-              _PublicBadge(isPublic: widget.board.isPublic),
-            ],
-          ),
-        ),
-        if (childrenBoards.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Subtableros',
-                  style: TextStyle(
-                    color: AppColors.foreground,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 0.9,
-                  ),
-                  itemCount: childrenBoards.length,
-                  itemBuilder: (context, i) {
-                    final board = childrenBoards[i];
-                    return AnimatedEntry(
-                      index: i,
-                      child: _SubBoardCard(board: board),
-                    );
-                  },
-                ),
-              ],
             ),
-          ),
 
-        // Filters
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Row(
-            children: const [
-              Text(
-                'Items',
-                style: TextStyle(
-                  color: AppColors.foreground,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: _filters.map((f) {
-                final active = f == _activeFilter;
-                return GestureDetector(
-                  onTap: () => setState(() => _activeFilter = f),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: active
-                          ? AppColors.foreground
-                          : AppColors.secondary,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: active ? AppColors.foreground : AppColors.border,
-                        width: 2,
-                      ),
-                    ),
-                    child: Text(
-                      f,
+            _BoardHeader(board: widget.board),
+            if (childrenBoards.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Subtableros',
                       style: TextStyle(
-                        color: active
-                            ? AppColors.background
-                            : AppColors.secondaryForeground,
+                        color: AppColors.foreground,
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
                       ),
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 8),
-        Expanded(
-          child: items.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.8, end: 1.0),
-                      duration: const Duration(milliseconds: 1000),
-                      curve: Curves.elasticOut,
-                      builder: (context, scale, child) {
-                        return Transform.scale(scale: scale, child: child);
+                    const SizedBox(height: 12),
+                    GridView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 0.9,
+                      ),
+                      itemCount: childrenBoards.length,
+                      itemBuilder: (context, i) {
+                        final board = childrenBoards[i];
+                        return AnimatedEntry(
+                          index: i,
+                          child: _SubBoardCard(board: board),
+                        );
                       },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: AppColors.secondary,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.border,
-                                width: 4,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.border.withAlpha(50),
-                                  blurRadius: 20,
-                                  spreadRadius: 5,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.explore_off_rounded,
-                              color: AppColors.primary,
-                              size: 48,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'No items yet',
-                            style: TextStyle(
-                              color: AppColors.foreground,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Add some cool stuff here to start building your collection!',
-                            style: TextStyle(
-                              color: AppColors.mutedForeground,
-                              fontSize: 15,
-                              height: 1.4,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Filters
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: const [
+                  Text(
+                    'Items',
+                    style: TextStyle(
+                      color: AppColors.foreground,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
                     ),
                   ),
-                )
-              : ShaderMask(
-                  shaderCallback: (Rect bounds) {
-                    return const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black,
-                        Colors.black,
-                        Colors.transparent,
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _filters.map((f) {
+                    final active = f == _activeFilter;
+                    return GestureDetector(
+                      onTap: () => setState(() => _activeFilter = f),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: active
+                              ? AppColors.foreground
+                              : AppColors.secondary,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: active ? AppColors.foreground : AppColors.border,
+                            width: 2,
+                          ),
+                        ),
+                        child: Text(
+                          f,
+                          style: TextStyle(
+                            color: active
+                                ? AppColors.background
+                                : AppColors.secondaryForeground,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+            if (items.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.8, end: 1.0),
+                    duration: const Duration(milliseconds: 1000),
+                    curve: Curves.elasticOut,
+                    builder: (context, scale, child) {
+                      return Transform.scale(scale: scale, child: child);
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.border,
+                              width: 4,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.border.withAlpha(50),
+                                blurRadius: 20,
+                                spreadRadius: 5,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.explore_off_rounded,
+                            color: AppColors.primary,
+                            size: 48,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'No items yet',
+                          style: TextStyle(
+                            color: AppColors.foreground,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Add some cool stuff here to start building your collection!',
+                          style: TextStyle(
+                            color: AppColors.mutedForeground,
+                            fontSize: 15,
+                            height: 1.4,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ],
-                      stops: [
-                        0.0,
-                        0.05,
-                        0.9,
-                        1.0,
-                      ], // Fade at top 5% and bottom 10%
-                    ).createShader(bounds);
-                  },
-                  blendMode: BlendMode.dstIn,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
-                    child: _MasonryGrid(
-                      items: items,
-                      onItemTap: widget.onItemSelect,
                     ),
                   ),
                 ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                child: _MasonryGrid(
+                  items: items,
+                  onItemTap: widget.onItemSelect,
+                ),
+              ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -476,6 +445,63 @@ class _CircleBtn extends StatelessWidget {
   }
 }
 
+class _GroupIdeaBtn extends StatelessWidget {
+  final VoidCallback onTap;
+  const _GroupIdeaBtn({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.border, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.border.withAlpha(100),
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Center(
+              child: Icon(
+                Icons.groups_rounded,
+                color: AppColors.foreground,
+                size: 20,
+              ),
+            ),
+            Positioned(
+              top: -2,
+              right: -2,
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.card, width: 2),
+                ),
+                child: const Icon(
+                  Icons.lightbulb,
+                  size: 11,
+                  color: AppColors.primaryForeground,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PrimaryBtn extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -551,6 +577,107 @@ class _PublicBadge extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BoardHeader extends StatelessWidget {
+  final Board board;
+  const _BoardHeader({required this.board});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCover = board.coverImage != null && board.coverImage!.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Container(
+        height: 160,
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: AppColors.border, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.border.withAlpha(80),
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: Stack(
+          children: [
+            if (hasCover)
+              Positioned.fill(
+                child: Image.network(
+                  board.coverImage!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: AppColors.secondary,
+                  ),
+                ),
+              ),
+            if (hasCover)
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.10),
+                        Colors.black.withOpacity(0.55),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            Positioned(
+              left: 18,
+              right: 18,
+              bottom: 18,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          board.name,
+                          style: TextStyle(
+                            color: hasCover ? Colors.white : AppColors.foreground,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.2,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      _PublicBadge(isPublic: board.isPublic),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (board.description != null && board.description!.isNotEmpty)
+                    Text(
+                      board.description!,
+                      style: TextStyle(
+                        color: hasCover
+                            ? Colors.white.withOpacity(0.9)
+                            : AppColors.mutedForeground,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        height: 1.35,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
