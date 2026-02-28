@@ -15,7 +15,8 @@ class DriftScreen extends StatefulWidget {
 
 class _DriftScreenState extends State<DriftScreen> {
   final _service = SupabaseService();
-  List<NearbyPerson> _people = [];
+  List<NearbyPerson> _nearPeople = [];
+  List<NearbyPerson> _walkedPeople = [];
 
   @override
   void initState() {
@@ -23,6 +24,90 @@ class _DriftScreenState extends State<DriftScreen> {
     BleService.instance.forceRefreshUI();
     BleService.instance.nearbyUsers.addListener(_onNearbyUsersChanged);
     _onNearbyUsersChanged(); // Initial sync
+    _loadWalkedEncounters(); // Load Walked people from Supabase
+  }
+
+  Future<void> _loadWalkedEncounters() async {
+    final myUserId = _service.currentUser?.id;
+    if (myUserId == null) return;
+
+    try {
+      final encounters = await _service.getEncuentros(myUserId);
+      final myProfile = await _service.getPerfil(myUserId);
+      final myInterests = List<String>.from(myProfile?['intereses'] ?? []);
+
+      List<NearbyPerson> walked = [];
+      for (final enc in encounters) {
+        final profile = enc['usuario_encontrado'];
+        if (profile == null) continue;
+        final id = profile['id'];
+
+        // Skip if currently near
+        if (BleService.instance.nearbyUsers.value.contains(id)) continue;
+
+        List<Board> boards = [];
+        try {
+          final boardsData = await _service.getTablerosPublicos(id);
+          boards = boardsData
+              .map(
+                (b) => Board(
+                  id: b['id'] ?? '',
+                  name: b['titulo'] ?? '',
+                  description: b['descripcion'],
+                  itemCount: 0,
+                  coverImage: b['imagen_portada'],
+                  color: '#1e1e32',
+                  icon: 'compass',
+                  isPublic: true,
+                ),
+              )
+              .toList();
+        } catch (_) {}
+
+        final theirInterests = List<String>.from(profile['intereses'] ?? []);
+        final shared = theirInterests
+            .where((i) => myInterests.contains(i))
+            .toList();
+
+        // Simple human readable time for 'visto_en'
+        final timestamp = DateTime.tryParse(enc['visto_en'] ?? '');
+        final lastSeenTime = timestamp != null
+            ? _formatTimeAgo(timestamp)
+            : 'Earlier';
+
+        walked.add(
+          NearbyPerson(
+            id: id,
+            name:
+                profile['nombre_completo'] ??
+                profile['username'] ??
+                'Anonymous',
+            avatar: profile['avatar_url'] ?? '',
+            bio: profile['bio'] ?? '',
+            lastSeenLocation: 'Crossed path',
+            lastSeenTime: lastSeenTime,
+            sharedInterests: shared,
+            publicBoards: boards,
+          ),
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _walkedPeople = walked;
+        });
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  String _formatTimeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours} hrs ago';
+    return '${diff.inDays} days ago';
   }
 
   @override
@@ -34,15 +119,26 @@ class _DriftScreenState extends State<DriftScreen> {
   Future<void> _onNearbyUsersChanged() async {
     final liveIds = BleService.instance.nearbyUsers.value;
 
-    // Immediately remove users no longer nearby
+    // Immediately remove users no longer nearby from the Near section
     if (mounted) {
+      bool userLeft = false;
       setState(() {
-        _people.removeWhere((p) => !liveIds.contains(p.id));
+        final initialLength = _nearPeople.length;
+        _nearPeople.removeWhere((p) => !liveIds.contains(p.id));
+        userLeft = _nearPeople.length < initialLength;
       });
+      // If someone just left the Near radius, wait a second for any pending DB writes to finish, then refresh Walked
+      if (userLeft) {
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (mounted) _loadWalkedEncounters();
+        });
+      } else {
+        _loadWalkedEncounters();
+      }
     }
 
     // Find new IDs we need to fetch
-    final existingIds = _people.map((p) => p.id).toSet();
+    final existingIds = _nearPeople.map((p) => p.id).toSet();
     final newIds = liveIds.where((id) => !existingIds.contains(id)).toList();
 
     if (newIds.isEmpty) return;
@@ -51,10 +147,12 @@ class _DriftScreenState extends State<DriftScreen> {
     final myUserId = _service.currentUser?.id;
     final myInterests = <String>[];
     if (myUserId != null) {
-      final profile = await _service.getPerfil(myUserId);
-      if (profile != null) {
-        myInterests.addAll(List<String>.from(profile['intereses'] ?? []));
-      }
+      try {
+        final profile = await _service.getPerfil(myUserId);
+        if (profile != null) {
+          myInterests.addAll(List<String>.from(profile['intereses'] ?? []));
+        }
+      } catch (_) {}
     }
 
     for (final id in newIds) {
@@ -70,9 +168,9 @@ class _DriftScreenState extends State<DriftScreen> {
           // Provide a fallback generic person if profile isn't found
           if (mounted) {
             setState(() {
-              if (!_people.any((p) => p.id == id) &&
+              if (!_nearPeople.any((p) => p.id == id) &&
                   BleService.instance.nearbyUsers.value.contains(id)) {
-                _people.add(
+                _nearPeople.add(
                   NearbyPerson(
                     id: id,
                     name: 'Nearby User',
@@ -121,9 +219,9 @@ class _DriftScreenState extends State<DriftScreen> {
 
         if (mounted) {
           setState(() {
-            if (!_people.any((p) => p.id == id) &&
+            if (!_nearPeople.any((p) => p.id == id) &&
                 BleService.instance.nearbyUsers.value.contains(id)) {
-              _people.add(
+              _nearPeople.add(
                 NearbyPerson(
                   id: id,
                   name:
@@ -149,8 +247,8 @@ class _DriftScreenState extends State<DriftScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final activeNow = _people.toList();
-    final earlier = <NearbyPerson>[];
+    final activeNow = _nearPeople.toList();
+    final earlier = _walkedPeople.toList();
 
     return Column(
       children: [
@@ -167,7 +265,7 @@ class _DriftScreenState extends State<DriftScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Drift',
+                        'Street',
                         style: TextStyle(
                           color: AppColors.foreground,
                           fontSize: 22,
@@ -222,7 +320,7 @@ class _DriftScreenState extends State<DriftScreen> {
                     _PulseDot(),
                     const SizedBox(width: 8),
                     Text(
-                      _people.isEmpty
+                      _nearPeople.isEmpty
                           ? 'Scanning for nearby people...'
                           : '${activeNow.length} ${activeNow.length == 1 ? 'person' : 'people'} nearby',
                       style: const TextStyle(
@@ -236,7 +334,7 @@ class _DriftScreenState extends State<DriftScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'People you cross paths with will appear here.\nBluetooth must be enabled.',
+                'People you cross paths with will appear here.\nThey will be saved in your Walked history.',
                 style: TextStyle(
                   color: AppColors.mutedForeground,
                   fontSize: 10,
@@ -248,51 +346,97 @@ class _DriftScreenState extends State<DriftScreen> {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: _people.isEmpty
+          child: _nearPeople.isEmpty && _walkedPeople.isEmpty
               ? _buildEmptyState()
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (activeNow.isNotEmpty) ...[
-                        const Text(
-                          'JUST NOW',
-                          style: TextStyle(
-                            color: AppColors.mutedForeground,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        ...activeNow.map(
-                          (p) => _PersonCard(
-                            person: p,
-                            onSelect: () => widget.onPersonSelect(p),
-                          ),
-                        ),
+              : ShaderMask(
+                  shaderCallback: (Rect bounds) {
+                    return const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black,
+                        Colors.black,
+                        Colors.transparent,
                       ],
-                      if (earlier.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        const Text(
-                          'EARLIER',
-                          style: TextStyle(
-                            color: AppColors.mutedForeground,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1,
+                      stops: [
+                        0.0,
+                        0.05,
+                        0.9,
+                        1.0,
+                      ], // Fade at top 5% and bottom 10%
+                    ).createShader(bounds);
+                  },
+                  blendMode: BlendMode.dstIn,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (activeNow.isNotEmpty) ...[
+                          const Text(
+                            'NEAR',
+                            style: TextStyle(
+                              color: AppColors.mutedForeground,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        ...earlier.map(
-                          (p) => _PersonCard(
-                            person: p,
-                            onSelect: () => widget.onPersonSelect(p),
+                          const SizedBox(height: 10),
+                          ...activeNow.map(
+                            (p) => _PersonCard(
+                              person: p,
+                              onSelect: () => widget.onPersonSelect(p),
+                            ),
                           ),
-                        ),
+                        ],
+                        if (earlier.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          const Text(
+                            'WALKED',
+                            style: TextStyle(
+                              color: AppColors.mutedForeground,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ...earlier.map(
+                            (p) => Dismissible(
+                              key: Key('walked_${p.id}'),
+                              direction: DismissDirection.endToStart,
+                              onDismissed: (direction) async {
+                                setState(() {
+                                  _walkedPeople.removeWhere(
+                                    (e) => e.id == p.id,
+                                  );
+                                });
+                                await _service.eliminarEncuentro(p.id);
+                              },
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 20),
+                                decoration: BoxDecoration(
+                                  color: AppColors.destruct.withAlpha(50),
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                child: const Icon(
+                                  Icons.delete_outline,
+                                  color: AppColors.destruct,
+                                ),
+                              ),
+                              child: _PersonCard(
+                                person: p,
+                                onSelect: () => widget.onPersonSelect(p),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
         ),
@@ -304,43 +448,60 @@ class _DriftScreenState extends State<DriftScreen> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.secondary,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border, width: 3),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.8, end: 1.0),
+          duration: const Duration(milliseconds: 1000),
+          curve: Curves.elasticOut,
+          builder: (context, scale, child) {
+            return Transform.scale(scale: scale, child: child);
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border, width: 4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.border.withAlpha(50),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.radar_rounded,
+                  color: AppColors.primary,
+                  size: 48,
+                ),
               ),
-              child: const Icon(
-                Icons.bluetooth_searching,
-                color: AppColors.primary,
-                size: 36,
+              const SizedBox(height: 24),
+              const Text(
+                'No one around yet',
+                style: TextStyle(
+                  color: AppColors.foreground,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'No encounters yet',
-              style: TextStyle(
-                color: AppColors.foreground,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+              const SizedBox(height: 12),
+              const Text(
+                'Walk near someone with the app and you\'ll automatically discover their public boards.',
+                style: TextStyle(
+                  color: AppColors.mutedForeground,
+                  fontSize: 15,
+                  height: 1.4,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Walk near someone with the app and you\'ll automatically connect via Bluetooth.',
-              style: TextStyle(
-                color: AppColors.mutedForeground,
-                fontSize: 13,
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -443,9 +604,10 @@ class _PersonCard extends StatelessWidget {
           ),
         )
         .toList();
+    // Default to at most 2 boards
     return matching.isNotEmpty
-        ? matching
-        : person.publicBoards.take(1).toList();
+        ? matching.take(2).toList()
+        : person.publicBoards.take(2).toList();
   }
 
   @override

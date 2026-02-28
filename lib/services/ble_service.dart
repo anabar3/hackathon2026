@@ -33,18 +33,37 @@ class BleService {
 
   Future<bool> requestPermissions() async {
     print('[BLE] Requesting permissions...');
-    final statuses = await [
+
+    // In Android 11+, you cannot request foreground and background location at the same time.
+    final basicStatuses = await [
       Permission.bluetoothScan,
       Permission.bluetoothAdvertise,
       Permission.bluetoothConnect,
       Permission.locationWhenInUse,
-      Permission.locationAlways,
     ].request();
 
-    print('[BLE] Permissions status: $statuses');
+    print('[BLE] Basic permissions status: $basicStatuses');
 
-    return statuses[Permission.bluetoothScan]!.isGranted &&
-        statuses[Permission.bluetoothAdvertise]!.isGranted;
+    final bool basicGranted =
+        basicStatuses[Permission.bluetoothScan]!.isGranted &&
+        basicStatuses[Permission.bluetoothAdvertise]!.isGranted &&
+        basicStatuses[Permission.locationWhenInUse]!.isGranted;
+
+    if (basicGranted) {
+      // Now request background location separately
+      final bgStatus = await Permission.locationAlways.request();
+      print('[BLE] Background location status: $bgStatus');
+    }
+
+    return basicGranted;
+  }
+
+  Future<bool> checkPermissionsSilently() async {
+    final scan = await Permission.bluetoothScan.status;
+    final advertise = await Permission.bluetoothAdvertise.status;
+    final loc = await Permission.locationWhenInUse.status;
+
+    return scan.isGranted && advertise.isGranted && loc.isGranted;
   }
 
   /// Real-time list of currently nearby user IDs
