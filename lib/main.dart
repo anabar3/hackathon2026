@@ -19,9 +19,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
-    url: 'https://yrspnbelsuuqpbltjqag.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlyc3BuYmVsc3V1cXBibHRqcWFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA2OTkyNjMsImV4cCI6MjA1NjI3NTI2M30.jME3qlMqhqeAbNXFVPSXCTJGjGbOhq2Ry1JhUYRSJbY',
+    url: 'https://qthjufceuesqwrypwqgx.supabase.co',
+    anonKey: 'sb_publishable_lw7OkHrufOLfqCw1J4Am3A_FB601r5d',
   );
 
   SystemChrome.setSystemUIOverlayStyle(
