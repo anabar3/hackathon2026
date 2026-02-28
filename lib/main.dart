@@ -180,6 +180,7 @@ class _CollectHomeState extends State<CollectHome> {
   NearbyPerson? _selectedPerson;
   late List<ContentItem> _items;
   List<Board> _boards = [];
+  final List<String> _boardHistory = [];
   List<Map<String, dynamic>> _inboxItems = [];
   bool _loadingInbox = false;
   bool _loadingBoards = true;
@@ -228,7 +229,17 @@ class _CollectHomeState extends State<CollectHome> {
       } else if (_screen == Screen.profile) {
         _screen = Screen.dashboard;
       } else if (_screen == Screen.board) {
-        _screen = _prevScreen;
+        if (_boardHistory.isNotEmpty) {
+          final prevId = _boardHistory.removeLast();
+          final prevBoard = _boards.where((b) => b.id == prevId);
+          if (prevBoard.isNotEmpty) {
+            _selectedBoard = prevBoard.first;
+          }
+          _prevScreen = _boardHistory.isNotEmpty ? Screen.board : Screen.dashboard;
+          _screen = Screen.board;
+        } else {
+          _screen = _prevScreen == Screen.board ? Screen.dashboard : _prevScreen;
+        }
       } else {
         _screen = Screen.dashboard;
       }
@@ -237,6 +248,11 @@ class _CollectHomeState extends State<CollectHome> {
 
   void _handleBoardSelect(Board board) {
     setState(() {
+      if (_screen == Screen.board && _selectedBoard != null) {
+        _boardHistory.add(_selectedBoard!.id);
+      } else {
+        _boardHistory.clear();
+      }
       _selectedBoard = board;
       _prevScreen = _screen;
       _screen = Screen.board;
