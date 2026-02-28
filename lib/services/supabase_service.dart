@@ -153,28 +153,44 @@ class SupabaseService {
       throw Exception('Tipo inválido para archivo: $tipo');
     }
 
-    final uploadInfo = await _subirAStorageInbox(
-      bytes: bytes,
-      userId: user.id,
-      fileName: fileName,
-      mimeType: mimeType,
-    );
+    // Para imágenes usamos un mock para ahorrar espacio en el bucket.
+    String contenidoUrl;
+    Map<String, dynamic> rawData;
 
-    final payload = {
-      'user_id': user.id,
-      'tablero_id': tableroId,
-      'titulo': titulo ?? fileName,
-      'contenido': uploadInfo['signedUrl'],
-      'tipo': tipo,
-      'estado': 'inbox',
-      if (tags != null) 'tags': tags,
-      'raw_data': {
+    if (tipo == 'imagen') {
+      contenidoUrl = _mockImageUrl();
+      rawData = {
+        'mocked': true,
+        'file_name': fileName,
+        'mime_type': mimeType,
+        'size_bytes': bytes.lengthInBytes,
+      };
+    } else {
+      final uploadInfo = await _subirAStorageInbox(
+        bytes: bytes,
+        userId: user.id,
+        fileName: fileName,
+        mimeType: mimeType,
+      );
+      contenidoUrl = uploadInfo['signedUrl']!;
+      rawData = {
         'storage_path': uploadInfo['path'],
         'mime_type': mimeType,
         'file_name': fileName,
         'size_bytes': bytes.lengthInBytes,
         if (duracion != null) 'duration_ms': duracion.inMilliseconds,
-      },
+      };
+    }
+
+    final payload = {
+      'user_id': user.id,
+      'tablero_id': tableroId,
+      'titulo': titulo ?? fileName,
+      'contenido': contenidoUrl,
+      'tipo': tipo,
+      'estado': 'inbox',
+      if (tags != null) 'tags': tags,
+      'raw_data': rawData,
     };
 
     final res = await _supabase.from('items').insert(payload).select().single();
@@ -244,6 +260,17 @@ class SupabaseService {
       'path': objectPath,
       'signedUrl': signedUrl,
     };
+  }
+
+  // Imagenes mock para ahorrar espacio
+  String _mockImageUrl() {
+    const urls = [
+      'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&q=80',
+      'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&q=80',
+      'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800&q=80',
+      'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=800&q=80',
+    ];
+    return urls[Random().nextInt(urls.length)];
   }
 
   // ─── ENCUENTROS ─────────────────────────────────

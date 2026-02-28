@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
@@ -16,6 +19,9 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
   final _controller = TextEditingController();
   final _titleController = TextEditingController();
   bool _saving = false;
+  Uint8List? _pickedBytes;
+  String? _pickedFileName;
+  String? _pickedMime;
 
   @override
   void dispose() {
@@ -26,24 +32,39 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
 
   Future<void> _save() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    final hasFile = _pickedBytes != null && _pickedFileName != null;
+    if (text.isEmpty && !hasFile) return;
     setState(() => _saving = true);
     try {
-      final isLink = text.startsWith('http://') || text.startsWith('https://');
-      if (isLink) {
-        await _service.guardarLinkEnInbox(
-          url: text,
+      if (hasFile) {
+        final tipo = _determineTipo(_pickedMime, _pickedFileName!);
+        await _service.guardarArchivoEnInbox(
+          bytes: _pickedBytes!,
+          fileName: _pickedFileName!,
+          mimeType: _pickedMime ?? 'application/octet-stream',
+          tipo: tipo,
           titulo: _titleController.text.trim().isEmpty
-              ? null
+              ? _pickedFileName
               : _titleController.text.trim(),
+          tableroId: null,
         );
       } else {
-        await _service.guardarTextoEnInbox(
-          contenido: text,
-          titulo: _titleController.text.trim().isEmpty
-              ? null
-              : _titleController.text.trim(),
-        );
+        final isLink = text.startsWith('http://') || text.startsWith('https://');
+        if (isLink) {
+          await _service.guardarLinkEnInbox(
+            url: text,
+            titulo: _titleController.text.trim().isEmpty
+                ? null
+                : _titleController.text.trim(),
+          );
+        } else {
+          await _service.guardarTextoEnInbox(
+            contenido: text,
+            titulo: _titleController.text.trim().isEmpty
+                ? null
+                : _titleController.text.trim(),
+          );
+        }
       }
       if (mounted) {
         await widget.onSaved();
@@ -52,10 +73,73 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
         );
         _controller.clear();
         _titleController.clear();
+        _pickedBytes = null;
+        _pickedFileName = null;
+        _pickedMime = null;
       }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      withData: true,
+      allowMultiple: false,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    if (file.bytes == null) return;
+    setState(() {
+      _pickedBytes = file.bytes;
+      _pickedFileName = file.name;
+      _pickedMime = _guessMime(file.extension);
+    });
+  }
+
+  String _guessMime(String? ext) {
+    if (ext == null) return 'application/octet-stream';
+    final e = ext.toLowerCase();
+    switch (e) {
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'webp':
+        return 'image/webp';
+      case 'gif':
+        return 'image/gif';
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'wav':
+        return 'audio/wav';
+      case 'm4a':
+        return 'audio/mp4';
+      case 'mp4':
+        return 'video/mp4';
+      case 'mov':
+        return 'video/quicktime';
+      case 'pdf':
+        return 'application/pdf';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  String _determineTipo(String? mime, String name) {
+    final m = mime ?? '';
+    if (m.startsWith('image/')) return 'imagen';
+    if (m.startsWith('audio/')) return 'audio';
+    if (m.startsWith('video/')) return 'video';
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png') ||
+        lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.webp')) return 'imagen';
+    if (lower.endsWith('.mp3') || lower.endsWith('.wav') || lower.endsWith('.m4a')) return 'audio';
+    if (lower.endsWith('.mp4') || lower.endsWith('.mov')) return 'video';
+    return 'archivo';
   }
 
   @override
@@ -107,6 +191,66 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
               controller: _controller,
               hint: 'Pega un link o escribe una nota',
               maxLines: 6,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _saving ? null : _pickFile,
+                  icon: const Icon(Icons.attach_file, size: 18),
+                  label: const Text('Adjuntar archivo'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.surface,
+                    foregroundColor: AppColors.foreground,
+                    side: const BorderSide(color: AppColors.border),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                if (_pickedFileName != null)
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.insert_drive_file_outlined,
+                              color: AppColors.primary, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _pickedFileName!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.foreground,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _saving
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _pickedBytes = null;
+                                      _pickedFileName = null;
+                                      _pickedMime = null;
+                                    });
+                                  },
+                            child: const Padding(
+                              padding: EdgeInsets.all(4.0),
+                              child: Icon(Icons.close, size: 16, color: AppColors.mutedForeground),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 24),
             Container(
