@@ -338,126 +338,169 @@ class _InboxScreenState extends State<InboxScreen> {
 
                   return AnimatedEntry(
                     index: entry.key,
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.border),
+                    child: Dismissible(
+                      key: Key(itemId),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 24),
+                        child: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: Color(0xFFDC2626),
+                          size: 24,
+                        ),
                       ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (hasImagePreview)
-                            ClipRRect(
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(16),
-                              ),
-                              child: Stack(
-                                children: [
-                                  AspectRatio(
-                                    aspectRatio: 16 / 10,
-                                    child: Image.network(
-                                      contenido,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        color: AppColors.muted.withAlpha(40),
-                                        child: const Center(
-                                          child: Icon(
-                                            Icons.broken_image_outlined,
-                                            color: AppColors.mutedForeground,
+                      confirmDismiss: (direction) async {
+                        return true;
+                      },
+                      onDismissed: (direction) async {
+                        try {
+                          await _supabaseService.eliminarItem(itemId);
+                          setState(() {
+                            _suggestions.remove(itemId);
+                          });
+                          await widget.onRefresh();
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error al eliminar: $e')),
+                            );
+                          }
+                        }
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.card,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (hasImagePreview)
+                              ClipRRect(
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(16),
+                                ),
+                                child: Stack(
+                                  children: [
+                                    AspectRatio(
+                                      aspectRatio: 16 / 10,
+                                      child: Image.network(
+                                        contenido,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          color: AppColors.muted.withAlpha(40),
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.broken_image_outlined,
+                                              color: AppColors.mutedForeground,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  Positioned(
-                                    left: 10,
-                                    top: 10,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.card.withAlpha(220),
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      child: const Text(
-                                        'Imagen',
-                                        style: TextStyle(
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 11,
+                                    Positioned(
+                                      left: 10,
+                                      top: 10,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.card.withAlpha(220),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Imagen',
+                                          style: TextStyle(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 11,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
+                              ),
+                            ListTile(
+                              leading: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withAlpha(20),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  _iconFor(tipo),
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              title: Text(
+                                titulo?.isNotEmpty == true
+                                    ? titulo!
+                                    : (tipo == 'texto'
+                                          ? contenido
+                                          : tipo.toUpperCase()),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppColors.foreground,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                hasImagePreview ? 'Foto adjunta' : contenido,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppColors.mutedForeground,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              trailing: TextButton.icon(
+                                onPressed: () => _pickBoardAndMove(itemId),
+                                icon: const Icon(
+                                  Icons.drive_file_move_outline,
+                                  size: 18,
+                                ),
+                                label: const Text('Mover'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                ),
                               ),
                             ),
-                          ListTile(
-                            leading: Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withAlpha(20),
-                                borderRadius: BorderRadius.circular(12),
+                            if (suggestion != null)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  0,
+                                  12,
+                                  12,
+                                ),
+                                child: SuggestionCard(
+                                  suggestion: suggestion,
+                                  actionText: actionText,
+                                  onConfirm: () => _applySuggestion(suggestion),
+                                  onDismiss: () {
+                                    setState(() {
+                                      _suggestions.remove(itemId);
+                                    });
+                                  },
+                                ),
                               ),
-                              child: Icon(
-                                _iconFor(tipo),
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            title: Text(
-                              titulo?.isNotEmpty == true
-                                  ? titulo!
-                                  : (tipo == 'texto'
-                                        ? contenido
-                                        : tipo.toUpperCase()),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.foreground,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Text(
-                              hasImagePreview ? 'Foto adjunta' : contenido,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.mutedForeground,
-                                fontSize: 12,
-                              ),
-                            ),
-                            trailing: TextButton.icon(
-                              onPressed: () => _pickBoardAndMove(itemId),
-                              icon: const Icon(
-                                Icons.drive_file_move_outline,
-                                size: 18,
-                              ),
-                              label: const Text('Mover'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                          if (suggestion != null)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                              child: SuggestionCard(
-                                suggestion: suggestion,
-                                actionText: actionText,
-                                onConfirm: () => _applySuggestion(suggestion),
-                                onDismiss: () {
-                                  setState(() {
-                                    _suggestions.remove(itemId);
-                                  });
-                                },
-                              ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   );

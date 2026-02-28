@@ -8,6 +8,10 @@ import 'package:postgrest/postgrest.dart';
 class SupabaseService {
   final _supabase = Supabase.instance.client;
 
+  // ─── PROFILE CACHE (in-memory, survives screen rebuilds) ──
+  static String? cachedUserName;
+  static String? cachedUserAvatar;
+
   // ─── AUTH ────────────────────────────────────────
   User? get currentUser => _supabase.auth.currentUser;
 
@@ -35,9 +39,13 @@ class SupabaseService {
       username: username,
       nombreCompleto: fullName,
     );
+    // Cache immediately after signup
+    cachedUserName = fullName;
   }
 
   Future<void> signOut() async {
+    cachedUserName = null;
+    cachedUserAvatar = null;
     await _supabase.auth.signOut();
   }
 
@@ -48,6 +56,11 @@ class SupabaseService {
         .select()
         .eq('id', userId)
         .maybeSingle();
+    // Update cache
+    if (res != null) {
+      cachedUserName = res['nombre_completo'] ?? res['username'];
+      cachedUserAvatar = res['avatar_url'];
+    }
     return res;
   }
 

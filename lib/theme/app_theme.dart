@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   // Warm Beige / Sage Green palette (matching reference)
@@ -28,11 +29,12 @@ class AppColors {
 }
 
 ThemeData buildAppTheme() {
+  final baseTextTheme = GoogleFonts.dmSansTextTheme();
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
     scaffoldBackgroundColor: AppColors.background,
-    fontFamily: 'Nunito',
+    textTheme: baseTextTheme,
     colorScheme: const ColorScheme.light(
       surface: AppColors.card,
       primary: AppColors.primary,
@@ -93,52 +95,6 @@ ThemeData buildAppTheme() {
       ),
       hintStyle: const TextStyle(color: AppColors.mutedForeground),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-    ),
-    textTheme: const TextTheme(
-      displayLarge: TextStyle(
-        color: AppColors.foreground,
-        fontWeight: FontWeight.w800,
-      ),
-      displayMedium: TextStyle(
-        color: AppColors.foreground,
-        fontWeight: FontWeight.w800,
-      ),
-      headlineLarge: TextStyle(
-        color: AppColors.foreground,
-        fontWeight: FontWeight.bold,
-      ),
-      headlineMedium: TextStyle(
-        color: AppColors.foreground,
-        fontWeight: FontWeight.bold,
-      ),
-      titleLarge: TextStyle(
-        color: AppColors.foreground,
-        fontWeight: FontWeight.bold,
-      ),
-      titleMedium: TextStyle(
-        color: AppColors.foreground,
-        fontWeight: FontWeight.w700,
-      ),
-      titleSmall: TextStyle(
-        color: AppColors.foreground,
-        fontWeight: FontWeight.w700,
-      ),
-      bodyLarge: TextStyle(
-        color: AppColors.foreground,
-        fontWeight: FontWeight.w600,
-      ),
-      bodyMedium: TextStyle(
-        color: AppColors.foreground,
-        fontWeight: FontWeight.w600,
-      ),
-      bodySmall: TextStyle(
-        color: AppColors.mutedForeground,
-        fontWeight: FontWeight.w600,
-      ),
-      labelSmall: TextStyle(
-        color: AppColors.mutedForeground,
-        fontWeight: FontWeight.w700,
-      ),
     ),
   );
 }
