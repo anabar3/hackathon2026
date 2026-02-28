@@ -12,12 +12,28 @@ class SupabaseService {
 
   Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
 
-  Future<void> signInOrSignUp(String email, String password) async {
-    try {
-      await _supabase.auth.signInWithPassword(email: email, password: password);
-    } catch (e) {
-      await _supabase.auth.signUp(email: email, password: password);
-    }
+  Future<void> signIn(String email, String password) async {
+    await _supabase.auth.signInWithPassword(email: email, password: password);
+  }
+
+  Future<void> signUp({
+    required String email,
+    required String password,
+    required String fullName,
+    required String username,
+  }) async {
+    final res = await _supabase.auth.signUp(email: email, password: password);
+    final user = res.user;
+    if (user == null) throw Exception('No se pudo crear el usuario');
+
+    await _supabase.from('perfiles').insert({
+      'id': user.id,
+      'username': username,
+      'nombre_completo': fullName,
+      'bio': null,
+      'avatar_url': null,
+      'intereses': <String>[],
+    });
   }
 
   Future<void> signOut() async {

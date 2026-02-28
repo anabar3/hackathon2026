@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/supabase_service.dart';
-import 'register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class BioScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
-  const LoginScreen({super.key, required this.onLoginSuccess});
+  const BioScreen({super.key, required this.onLoginSuccess});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<BioScreen> createState() => _BioScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
+class _BioScreenState extends State<BioScreen>
     with SingleTickerProviderStateMixin {
-  final _emailCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
+  final _bioCtrl = TextEditingController();
   final _service = SupabaseService();
   bool _loading = false;
   String? _error;
-  bool _obscure = true;
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
 
@@ -34,31 +31,43 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
-    _passwordCtrl.dispose();
+    _bioCtrl.dispose();
     _fadeCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    final email = _emailCtrl.text.trim();
-    final password = _passwordCtrl.text.trim();
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Introduce email y contraseña');
+  Future<void> _submitBio() async {
+    final bio = _bioCtrl.text.trim();
+    if (bio.isEmpty) {
+      // Just skip if empty
+      widget.onLoginSuccess();
       return;
     }
+
     setState(() {
       _loading = true;
       _error = null;
     });
+
     try {
-      await _service.signIn(email, password);
-      widget.onLoginSuccess();
+      final user = _service.currentUser;
+      if (user != null) {
+        await _service.upsertPerfil(userId: user.id, bio: bio);
+      }
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        widget.onLoginSuccess();
+      }
     } catch (e) {
-      setState(() => _error = 'Error: Correo o contraseña incorrectos');
+      setState(() => _error = 'Error: ${e.toString().split(']').last.trim()}');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _skipBiO() {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    widget.onLoginSuccess();
   }
 
   @override
@@ -74,7 +83,6 @@ class _LoginScreenState extends State<LoginScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 60),
-                // Logo / brand
                 Center(
                   child: Container(
                     width: 72,
@@ -87,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                     child: const Icon(
-                      Icons.auto_awesome,
+                      Icons.person,
                       color: AppColors.primary,
                       size: 36,
                     ),
@@ -96,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen>
                 const SizedBox(height: 20),
                 const Center(
                   child: Text(
-                    'Collect',
+                    'Tu Perfil',
                     style: TextStyle(
                       color: AppColors.foreground,
                       fontSize: 32,
@@ -107,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen>
                 const SizedBox(height: 6),
                 const Center(
                   child: Text(
-                    'Organiza tu mundo con IA',
+                    'Cuéntanos un poco sobre ti (Opcional)',
                     style: TextStyle(
                       color: AppColors.mutedForeground,
                       fontSize: 13,
@@ -116,9 +124,8 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
                 const SizedBox(height: 48),
 
-                // Email
                 const Text(
-                  'EMAIL',
+                  'BIOGRAFÍA',
                   style: TextStyle(
                     color: AppColors.mutedForeground,
                     fontSize: 10,
@@ -133,86 +140,26 @@ class _LoginScreenState extends State<LoginScreen>
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: AppColors.border),
                   ),
+                  height: 120,
                   child: TextField(
-                    controller: _emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
+                    controller: _bioCtrl,
+                    maxLines: null,
+                    textInputAction: TextInputAction.done,
                     style: const TextStyle(
                       color: AppColors.foreground,
                       fontSize: 14,
                     ),
                     decoration: const InputDecoration(
-                      hintText: 'tu@email.com',
+                      hintText: 'Añade una breve descripción...',
                       hintStyle: TextStyle(color: AppColors.mutedForeground),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.email_outlined,
-                        color: AppColors.mutedForeground,
-                        size: 18,
-                      ),
+                      contentPadding: EdgeInsets.all(16),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // Password
-                const Text(
-                  'CONTRASEÑA',
-                  style: TextStyle(
-                    color: AppColors.mutedForeground,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: TextField(
-                    controller: _passwordCtrl,
-                    obscureText: _obscure,
-                    style: const TextStyle(
-                      color: AppColors.foreground,
-                      fontSize: 14,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: '••••••••',
-                      hintStyle: const TextStyle(
-                        color: AppColors.mutedForeground,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      prefixIcon: const Icon(
-                        Icons.lock_outline,
-                        color: AppColors.mutedForeground,
-                        size: 18,
-                      ),
-                      suffixIcon: GestureDetector(
-                        onTap: () => setState(() => _obscure = !_obscure),
-                        child: Icon(
-                          _obscure
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          color: AppColors.mutedForeground,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
                 if (_error != null) ...[
-                  const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -240,16 +187,16 @@ class _LoginScreenState extends State<LoginScreen>
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
                 ],
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
 
-                // Submit button
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: _loading ? null : _submit,
+                    onPressed: _loading ? null : _submitBio,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -269,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           )
                         : const Text(
-                            'Entrar',
+                            'Guardar',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -277,38 +224,28 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      '¿No tienes cuenta? ',
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: TextButton(
+                    onPressed: _loading ? null : _skipBiO,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.mutedForeground,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Saltar por ahora',
                       style: TextStyle(
-                        color: AppColors.mutedForeground,
-                        fontSize: 13,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => RegisterScreen(
-                              onLoginSuccess: widget.onLoginSuccess,
-                            ),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'Registro',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+                const SizedBox(height: 32),
               ],
             ),
           ),
