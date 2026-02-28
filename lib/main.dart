@@ -318,6 +318,43 @@ class _CollectHomeState extends State<CollectHome> {
     });
   }
 
+  void _handleBoardUpdated(Board updated) {
+    setState(() {
+      _boards = _boards
+          .map(
+            (b) => b.id == updated.id
+                ? Board(
+                    id: updated.id,
+                    name: updated.name,
+                    description: updated.description,
+                    parentId: updated.parentId,
+                    itemCount: updated.itemCount,
+                    coverImage: updated.coverImage,
+                    color: updated.color,
+                    icon: updated.icon,
+                    isPublic: updated.isPublic,
+                    isPinned: updated.isPinned,
+                  )
+                : b,
+          )
+          .toList();
+      if (_selectedBoard?.id == updated.id) {
+        _selectedBoard = updated;
+      }
+    });
+  }
+
+  void _handleBoardDeleted(String boardId) {
+    setState(() {
+      _boards = _boards.where((b) => b.id != boardId).toList();
+      _boardHistory.removeWhere((id) => id == boardId);
+      if (_selectedBoard?.id == boardId) {
+        _selectedBoard = _boards.isNotEmpty ? _boards.first : null;
+        _screen = Screen.dashboard;
+      }
+    });
+  }
+
   Future<void> _handleLogout() async {
     BleService.instance.dispose();
     FlutterBackgroundService().invoke('stopService');
@@ -366,6 +403,8 @@ class _CollectHomeState extends State<CollectHome> {
           onBoardSelect: _handleBoardSelect,
           onItemSelect: _handleItemSelect,
           onEdit: () => _navigate(Screen.edit),
+          onCreateSubBoard: (parentId) =>
+              _openCreateBoard(parentId: parentId, lockedParentId: parentId),
           onAiOrganize: () => _navigate(Screen.aiOrganize),
           onAiSummarize: _handleAiSummarize,
         );
@@ -433,7 +472,12 @@ class _CollectHomeState extends State<CollectHome> {
             onOpenBoardTree: () => _navigate(Screen.boardTree),
             onCreateBoard: () => _openCreateBoard(),
           );
-        return _EditPlaceholder(board: _selectedBoard!, onBack: _handleBack);
+        return _EditPlaceholder(
+          board: _selectedBoard!,
+          onBack: _handleBack,
+          onUpdated: _handleBoardUpdated,
+          onDeleted: _handleBoardDeleted,
+        );
       case Screen.aiOrganize:
         return _AiOrganizePlaceholder(
           board: _selectedBoard ?? boards.first,
@@ -498,7 +542,7 @@ class _CollectHomeState extends State<CollectHome> {
     }
   }
 
-  Future<void> _loadBoards() async {
+  Future<void> _loadBoards({String? keepSelectedId}) async {
     final user = _service.currentUser;
     if (user == null) return;
     final res = await _service.getTableros(user.id);
@@ -519,8 +563,20 @@ class _CollectHomeState extends State<CollectHome> {
             ),
           )
           .toList();
-      final roots = _boards.where((b) => b.parentId == null).toList();
-      _selectedBoard = roots.isNotEmpty ? roots.first : null;
+      Board? nextSelected;
+      final targetId = keepSelectedId ?? _selectedBoard?.id;
+      if (targetId != null) {
+        final matches = _boards.where((b) => b.id == targetId);
+        if (matches.isNotEmpty) {
+          nextSelected = matches.first;
+        }
+      }
+      nextSelected ??= _selectedBoard;
+      if (nextSelected == null) {
+        final roots = _boards.where((b) => b.parentId == null).toList();
+        nextSelected = roots.isNotEmpty ? roots.first : null;
+      }
+      _selectedBoard = nextSelected;
       _loadingBoards = false;
     });
     await _syncItems();
@@ -617,13 +673,18 @@ class _CollectHomeState extends State<CollectHome> {
     );
   }
 
-  Future<void> _openCreateBoard({String? parentId}) async {
+  Future<void> _openCreateBoard({
+    String? parentId,
+    String? lockedParentId,
+  }) async {
     final titleController = TextEditingController();
     final descController = TextEditingController();
     bool isPublic = false;
     String? coverUrl;
     Uint8List? coverBytes;
     bool uploadingCover = false;
+    String? selectedParent = lockedParentId ?? parentId;
+    final bool lockParent = lockedParentId != null;
     final created = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -673,7 +734,7 @@ class _CollectHomeState extends State<CollectHome> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              title: const Text('Nuevo tablero'),
+              title: Text(lockParent ? 'Nuevo subtablero' : 'Nuevo tablero'),
               content: SingleChildScrollView(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420),
@@ -781,26 +842,28 @@ class _CollectHomeState extends State<CollectHome> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      DropdownButtonFormField<String?>(
-                        value: parentId,
-                        decoration: const InputDecoration(
-                          labelText: 'Ubicación',
-                        ),
-                        items: [
-                          const DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text('Nivel raíz'),
+                      if (!lockParent) ...[
+                        DropdownButtonFormField<String?>(
+                          value: selectedParent,
+                          decoration: const InputDecoration(
+                            labelText: 'Ubicación',
                           ),
-                          ..._boards.map(
-                            (b) => DropdownMenuItem<String?>(
-                              value: b.id,
-                              child: Text(b.name),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('Nivel raíz'),
                             ),
-                          ),
-                        ],
-                        onChanged: (v) => setState(() => parentId = v),
-                      ),
-                      const SizedBox(height: 8),
+                            ..._boards.map(
+                              (b) => DropdownMenuItem<String?>(
+                                value: b.id,
+                                child: Text(b.name),
+                              ),
+                            ),
+                          ],
+                          onChanged: (v) => setState(() => selectedParent = v),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       Row(
                         children: [
                           Checkbox(
@@ -845,52 +908,306 @@ class _CollectHomeState extends State<CollectHome> {
           : descController.text.trim(),
       imagenPortada: coverUrl,
       isPublic: isPublic,
-      parentId: parentId,
+      parentId: selectedParent,
     );
-    await _loadBoards();
+    await _loadBoards(keepSelectedId: lockedParentId ?? _selectedBoard?.id);
   }
 }
 
 // ──────────────────────────────────────────────────
 // Edit Board Screen
 // ──────────────────────────────────────────────────
-class _EditPlaceholder extends StatelessWidget {
+class _EditPlaceholder extends StatefulWidget {
   final Board board;
   final VoidCallback onBack;
-  const _EditPlaceholder({required this.board, required this.onBack});
+  final ValueChanged<Board> onUpdated;
+  final ValueChanged<String> onDeleted;
+  const _EditPlaceholder({
+    required this.board,
+    required this.onBack,
+    required this.onUpdated,
+    required this.onDeleted,
+  });
 
-  IconData _typeIcon(String type) {
-    switch (type) {
-      case 'image':
-        return Icons.image_outlined;
-      case 'video':
-        return Icons.play_circle_outline;
-      case 'link':
-        return Icons.link;
-      case 'audio':
-        return Icons.headphones;
-      case 'note':
-        return Icons.sticky_note_2_outlined;
-      default:
-        return Icons.insert_drive_file_outlined;
+  @override
+  State<_EditPlaceholder> createState() => _EditPlaceholderState();
+}
+
+class _EditPlaceholderState extends State<_EditPlaceholder> {
+  final _service = SupabaseService();
+  late Board _board;
+  late TextEditingController _titleCtrl;
+  late TextEditingController _descCtrl;
+  bool _savingTitle = false;
+  bool _savingDesc = false;
+  bool _savingCover = false;
+  bool _deleting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _board = widget.board;
+    _titleCtrl = TextEditingController(text: widget.board.name);
+    _descCtrl = TextEditingController(text: widget.board.description ?? '');
+  }
+
+  @override
+  void didUpdateWidget(covariant _EditPlaceholder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.board.id != widget.board.id) {
+      _board = widget.board;
+      _titleCtrl.text = widget.board.name;
+      _descCtrl.text = widget.board.description ?? '';
     }
   }
 
-  // Sample items for display
-  static const _sampleItems = [
-    (
-      'Maldives Sunset Beach',
-      'Image',
-      'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=100&q=60',
-    ),
-    ('Trip Packing List', 'Note', null),
-    (
-      'Tuscan Countryside',
-      'Image',
-      'https://images.unsplash.com/photo-1523531294919-4bcd7c65e216?w=100&q=60',
-    ),
-    ('Flight Booking Tips', 'Link', null),
-  ];
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Board _copyBoard({
+    String? name,
+    String? description,
+    String? cover,
+  }) {
+    return Board(
+      id: _board.id,
+      name: name ?? _board.name,
+      description: description ?? _board.description,
+      parentId: _board.parentId,
+      itemCount: _board.itemCount,
+      coverImage: cover ?? _board.coverImage,
+      color: _board.color,
+      icon: _board.icon,
+      isPublic: _board.isPublic,
+      isPinned: _board.isPinned,
+    );
+  }
+
+  void _applyUpdate(Board updated) {
+    setState(() {
+      _board = updated;
+      _titleCtrl.text = updated.name;
+      _descCtrl.text = updated.description ?? '';
+    });
+    widget.onUpdated(updated);
+  }
+
+  Future<void> _editTitle() async {
+    if (_savingTitle) return;
+    final controller = TextEditingController(text: _titleCtrl.text);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AppColors.card,
+          title: const Text('Editar título'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Título'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+    final newTitle = result?.trim();
+    if (newTitle == null ||
+        newTitle.isEmpty ||
+        newTitle == _board.name) return;
+
+    setState(() => _savingTitle = true);
+    try {
+      await _service.actualizarTablero(
+        tableroId: _board.id,
+        titulo: newTitle,
+      );
+      _applyUpdate(_copyBoard(name: newTitle));
+      _showSnack('Título actualizado');
+    } catch (_) {
+      _showSnack('No se pudo actualizar el título');
+    } finally {
+      if (mounted) setState(() => _savingTitle = false);
+    }
+  }
+
+  Future<void> _editDescription() async {
+    if (_savingDesc) return;
+    final controller = TextEditingController(text: _descCtrl.text);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AppColors.card,
+          title: const Text('Editar descripción'),
+          content: TextField(
+            controller: controller,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Descripción',
+              hintText: 'Añade más contexto (opcional)',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result == null) return;
+    final newDesc = result.trim();
+    final descForDb = newDesc.isEmpty ? '' : newDesc;
+    if (newDesc == (_board.description ?? '')) return;
+
+    setState(() => _savingDesc = true);
+    try {
+      await _service.actualizarTablero(
+        tableroId: _board.id,
+        descripcion: descForDb,
+      );
+      _applyUpdate(
+        _copyBoard(description: newDesc.isEmpty ? null : newDesc),
+      );
+      _showSnack('Descripción actualizada');
+    } catch (_) {
+      _showSnack('No se pudo actualizar la descripción');
+    } finally {
+      if (mounted) setState(() => _savingDesc = false);
+    }
+  }
+
+  Future<void> _pickCover() async {
+    if (_savingCover) return;
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+      withData: true,
+    );
+    final file = result?.files.isNotEmpty == true ? result!.files.first : null;
+    if (file == null || file.bytes == null) return;
+
+    setState(() => _savingCover = true);
+    try {
+      final userId = _service.currentUser?.id;
+      if (userId == null) throw Exception('Debes iniciar sesión');
+      final mime =
+          file.extension != null ? 'image/${file.extension}' : 'image/jpeg';
+      final url = await _service.subirImagenPortada(
+        userId: userId,
+        bytes: file.bytes!,
+        fileName: file.name,
+        mimeType: mime,
+      );
+      await _service.actualizarTablero(
+        tableroId: _board.id,
+        imagenPortada: url,
+      );
+      _applyUpdate(_copyBoard(cover: url));
+      _showSnack('Portada actualizada');
+    } catch (_) {
+      _showSnack('No se pudo actualizar la portada');
+    } finally {
+      if (mounted) setState(() => _savingCover = false);
+    }
+  }
+
+  Future<void> _confirmDelete() async {
+    if (_deleting) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AppColors.card,
+          title: const Text('Seguro que quieres eliminar?'),
+          content: const Text(
+            'Se eliminará el tablero y todos sus items. Esta acción no se puede deshacer.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Eliminar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirm != true) return;
+
+    setState(() => _deleting = true);
+    try {
+      await _service.eliminarTableroConItems(_board.id);
+      _showSnack('Tablero eliminado');
+      widget.onDeleted(_board.id);
+    } catch (_) {
+      _showSnack('No se pudo eliminar el tablero');
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  Widget _editIcon({
+    required VoidCallback onTap,
+    required bool loading,
+  }) {
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: AppColors.muted.withAlpha(60),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: loading
+            ? const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(
+                Icons.edit_outlined,
+                color: AppColors.mutedForeground,
+                size: 16,
+              ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -902,7 +1219,7 @@ class _EditPlaceholder extends StatelessWidget {
           child: Row(
             children: [
               GestureDetector(
-                onTap: onBack,
+                onTap: widget.onBack,
                 child: Container(
                   width: 36,
                   height: 36,
@@ -920,7 +1237,7 @@ class _EditPlaceholder extends StatelessWidget {
               const Expanded(
                 child: Center(
                   child: Text(
-                    'Edit Board',
+                    'Editar tablero',
                     style: TextStyle(
                       color: AppColors.foreground,
                       fontSize: 16,
@@ -930,9 +1247,9 @@ class _EditPlaceholder extends StatelessWidget {
                 ),
               ),
               GestureDetector(
-                onTap: onBack,
+                onTap: widget.onBack,
                 child: const Text(
-                  'Done',
+                  'Listo',
                   style: TextStyle(
                     color: AppColors.primary,
                     fontSize: 14,
@@ -950,9 +1267,8 @@ class _EditPlaceholder extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // BOARD DETAILS section
                 const Text(
-                  'BOARD DETAILS',
+                  'DETALLES DEL TABLERO',
                   style: TextStyle(
                     color: AppColors.mutedForeground,
                     fontSize: 11,
@@ -972,7 +1288,6 @@ class _EditPlaceholder extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Name field
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -981,7 +1296,7 @@ class _EditPlaceholder extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'Name',
+                                  'Título',
                                   style: TextStyle(
                                     color: AppColors.mutedForeground,
                                     fontSize: 12,
@@ -989,7 +1304,7 @@ class _EditPlaceholder extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  board.name,
+                                  _board.name,
                                   style: const TextStyle(
                                     color: AppColors.foreground,
                                     fontSize: 18,
@@ -999,46 +1314,53 @@ class _EditPlaceholder extends StatelessWidget {
                               ],
                             ),
                           ),
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: AppColors.muted.withAlpha(60),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.edit_outlined,
-                              color: AppColors.mutedForeground,
-                              size: 16,
-                            ),
+                          _editIcon(
+                            onTap: _editTitle,
+                            loading: _savingTitle,
                           ),
                         ],
                       ),
                       const Divider(color: AppColors.border, height: 24),
-                      // Description field
-                      const Text(
-                        'Description',
-                        style: TextStyle(
-                          color: AppColors.mutedForeground,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        board.description ?? 'No description',
-                        style: const TextStyle(
-                          color: AppColors.foreground,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Descripción',
+                                  style: TextStyle(
+                                    color: AppColors.mutedForeground,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _board.description?.isNotEmpty == true
+                                      ? _board.description!
+                                      : 'Sin descripción',
+                                  style: const TextStyle(
+                                    color: AppColors.foreground,
+                                    fontSize: 14,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _editIcon(
+                            onTap: _editDescription,
+                            loading: _savingDesc,
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
-                // COVER IMAGE section
                 const Text(
-                  'COVER IMAGE',
+                  'PORTADA',
                   style: TextStyle(
                     color: AppColors.mutedForeground,
                     fontSize: 11,
@@ -1047,167 +1369,109 @@ class _EditPlaceholder extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: board.coverImage != null
-                      ? Image.network(
-                          board.coverImage!,
-                          height: 160,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            height: 160,
-                            decoration: BoxDecoration(
-                              color: AppColors.muted.withAlpha(60),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.image_outlined,
-                                color: AppColors.mutedForeground,
-                                size: 40,
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: _board.coverImage != null
+                          ? Image.network(
+                              _board.coverImage!,
+                              height: 180,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                height: 180,
+                                decoration: BoxDecoration(
+                                  color: AppColors.muted.withAlpha(60),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.image_outlined,
+                                    color: AppColors.mutedForeground,
+                                    size: 40,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Container(
+                              height: 180,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: AppColors.muted.withAlpha(60),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.image_outlined,
+                                  color: AppColors.mutedForeground,
+                                  size: 40,
+                                ),
                               ),
                             ),
-                          ),
-                        )
-                      : Container(
-                          height: 160,
+                    ),
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: _editIcon(
+                        onTap: _pickCover,
+                        loading: _savingCover,
+                      ),
+                    ),
+                    if (_savingCover)
+                      Positioned.fill(
+                        child: Container(
                           decoration: BoxDecoration(
-                            color: AppColors.muted.withAlpha(60),
+                            color: Colors.black.withOpacity(0.25),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: const Center(
-                            child: Icon(
-                              Icons.image_outlined,
-                              color: AppColors.mutedForeground,
-                              size: 40,
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
                             ),
                           ),
                         ),
-                ),
-                const SizedBox(height: 24),
-                // ITEMS section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'ITEMS (${_sampleItems.length})',
-                      style: const TextStyle(
-                        color: AppColors.mutedForeground,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
                       ),
-                    ),
-                    const Text(
-                      'Select All',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                ..._sampleItems.map(
-                  (item) => Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.border, width: 1),
-                    ),
-                    child: Row(
-                      children: [
-                        // Drag handle
-                        const Icon(
-                          Icons.drag_indicator,
-                          color: AppColors.mutedForeground,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        // Checkbox
-                        Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.border,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        // Thumbnail
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: item.$3 != null
-                              ? Image.network(
-                                  item.$3!,
-                                  width: 40,
-                                  height: 40,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    width: 40,
-                                    height: 40,
-                                    color: AppColors.primary.withAlpha(20),
-                                    child: Icon(
-                                      _typeIcon(item.$2.toLowerCase()),
-                                      color: AppColors.primary,
-                                      size: 18,
-                                    ),
-                                  ),
-                                )
-                              : Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withAlpha(20),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    _typeIcon(item.$2.toLowerCase()),
-                                    color: AppColors.primary,
-                                    size: 18,
-                                  ),
-                                ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Title + type
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.$1,
-                                style: const TextStyle(
-                                  color: AppColors.foreground,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                item.$2,
-                                style: const TextStyle(
-                                  color: AppColors.mutedForeground,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                const SizedBox(height: 14),
+                const Text(
+              'Los cambios se guardan al instante.',
+              style: TextStyle(
+                color: AppColors.mutedForeground,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                onPressed: _deleting ? null : _confirmDelete,
+                child: _deleting
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Borrar tablero',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ),
               ],
             ),
           ),
