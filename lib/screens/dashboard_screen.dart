@@ -459,15 +459,6 @@ class DashboardScreen extends StatelessWidget {
                                             size: 32,
                                           ),
                                         Positioned(
-                                          top: 8,
-                                          right: 8,
-                                          child: _PublicBadgeSolid(
-                                            isPublic: board.isPublic,
-                                            compact: true,
-                                          ),
-                                          size: 32,
-                                        ),
-                                      Positioned(
                                         top: 8,
                                         right: 8,
                                         child: Row(
@@ -483,6 +474,7 @@ class DashboardScreen extends StatelessWidget {
                                             ),
                                           ],
                                         ),
+                                      ),
                                       ],
                                     ),
                                   ),
