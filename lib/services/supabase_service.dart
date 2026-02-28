@@ -1,4 +1,7 @@
 // lib/services/supabase_service.dart
+import 'dart:math';
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
@@ -77,16 +80,127 @@ class SupabaseService {
   }
 
   // ─── ITEMS (INBOX) ──────────────────────────────
-  Future<void> enviarAlInbox(String texto) async {
+  /// Guarda texto libre en el inbox (sin tablero por defecto).
+  Future<Map<String, dynamic>> guardarTextoEnInbox({
+    required String contenido,
+    String? titulo,
+    String? tableroId,
+    List<String>? tags,
+  }) async {
     final user = currentUser;
-    if (user == null) throw Exception("Debes iniciar sesión primero");
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+    await _ensurePerfil();
 
-    await _supabase.from('items').insert({
+    final payload = {
       'user_id': user.id,
-      'contenido': texto,
-      'raw_data': texto,
+      'tablero_id': tableroId,
+      'titulo': titulo,
+      'contenido': contenido,
       'tipo': 'texto',
       'estado': 'inbox',
+      if (tags != null) 'tags': tags,
+      'raw_data': contenido,
+    };
+
+    final res = await _supabase.from('items').insert(payload).select().single();
+    return res;
+  }
+
+  /// Guarda un enlace. Incluye metadatos básicos (dominio, og_image, etc.) si ya los tienes.
+  Future<Map<String, dynamic>> guardarLinkEnInbox({
+    required String url,
+    String? titulo,
+    String? tableroId,
+    List<String>? tags,
+    Map<String, dynamic>? linkMeta,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+    await _ensurePerfil();
+
+    final payload = {
+      'user_id': user.id,
+      'tablero_id': tableroId,
+      'titulo': titulo,
+      'contenido': url,
+      'tipo': 'link',
+      'estado': 'inbox',
+      if (tags != null) 'tags': tags,
+      if (linkMeta != null) 'raw_data': linkMeta,
+    };
+
+    final res = await _supabase.from('items').insert(payload).select().single();
+    return res;
+  }
+
+  /// Guarda una foto, nota de voz o archivo subiendo primero a Storage.
+  /// [tipo] debe ser 'imagen', 'audio' o 'archivo' para que coincida con el ENUM en la BD.
+  Future<Map<String, dynamic>> guardarArchivoEnInbox({
+    required Uint8List bytes,
+    required String fileName,
+    required String mimeType,
+    required String tipo,
+    String? titulo,
+    String? tableroId,
+    List<String>? tags,
+    Duration? duracion,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+    await _ensurePerfil();
+
+    if (!['imagen', 'audio', 'archivo', 'video'].contains(tipo)) {
+      throw Exception('Tipo inválido para archivo: $tipo');
+    }
+
+    final uploadInfo = await _subirAStorageInbox(
+      bytes: bytes,
+      userId: user.id,
+      fileName: fileName,
+      mimeType: mimeType,
+    );
+
+    final payload = {
+      'user_id': user.id,
+      'tablero_id': tableroId,
+      'titulo': titulo ?? fileName,
+      'contenido': uploadInfo['signedUrl'],
+      'tipo': tipo,
+      'estado': 'inbox',
+      if (tags != null) 'tags': tags,
+      'raw_data': {
+        'storage_path': uploadInfo['path'],
+        'mime_type': mimeType,
+        'file_name': fileName,
+        'size_bytes': bytes.lengthInBytes,
+        if (duracion != null) 'duration_ms': duracion.inMilliseconds,
+      },
+    };
+
+    final res = await _supabase.from('items').insert(payload).select().single();
+    return res;
+  }
+
+  /// Garantiza que exista la fila en perfiles para el usuario actual.
+  Future<void> _ensurePerfil() async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+    final existing = await _supabase
+        .from('perfiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+    if (existing != null) return;
+
+    final base = (user.email ?? 'usuario').split('@').first;
+    final username = '${base}_${user.id.substring(0, 6)}';
+    await _supabase.from('perfiles').insert({
+      'id': user.id,
+      'username': username,
+      'nombre_completo': user.email ?? 'Nuevo usuario',
+      'bio': null,
+      'avatar_url': null,
+      'intereses': <String>[],
     });
   }
 
@@ -97,6 +211,39 @@ class SupabaseService {
         .eq('user_id', userId)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(res);
+  }
+
+  // ─── STORAGE HELPERS ────────────────────────────
+  Future<Map<String, String>> _subirAStorageInbox({
+    required Uint8List bytes,
+    required String userId,
+    required String fileName,
+    required String mimeType,
+  }) async {
+    // Prefijo por usuario para aplicar políticas de RLS en Storage
+    final safeName = fileName.replaceAll(' ', '-');
+    final randomSuffix = Random().nextInt(1 << 32);
+    final objectPath =
+        '$userId/${DateTime.now().millisecondsSinceEpoch}-$randomSuffix-$safeName';
+
+    await _supabase.storage.from('inbox-uploads').uploadBinary(
+          objectPath,
+          bytes,
+          fileOptions: FileOptions(
+            contentType: mimeType,
+            upsert: false,
+          ),
+        );
+
+    // URL firmada por 7 días. El front puede renovarla o usar getPublicUrl si el bucket se marca como público.
+    final signedUrl = await _supabase.storage
+        .from('inbox-uploads')
+        .createSignedUrl(objectPath, 60 * 60 * 24 * 7);
+
+    return {
+      'path': objectPath,
+      'signedUrl': signedUrl,
+    };
   }
 
   // ─── ENCUENTROS ─────────────────────────────────

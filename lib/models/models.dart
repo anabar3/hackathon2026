@@ -3,9 +3,11 @@ enum ContentType { image, video, link, audio, note, document, file }
 enum Screen {
   login,
   dashboard,
+  inbox,
   board,
   detail,
   add,
+  addInbox,
   edit,
   drift,
   aiOrganize,

@@ -11,9 +11,11 @@ import 'screens/dashboard_screen.dart';
 import 'screens/board_screen.dart';
 import 'screens/detail_screen.dart';
 import 'screens/add_screen.dart';
+import 'screens/add_inbox_screen.dart';
 import 'screens/drift_screen.dart';
 import 'screens/person_boards_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/inbox_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -90,6 +92,8 @@ class _CollectHomeState extends State<CollectHome> {
   late ContentItem _selectedItem;
   late NearbyPerson _selectedPerson;
   late List<ContentItem> _items;
+  List<Map<String, dynamic>> _inboxItems = [];
+  bool _loadingInbox = false;
 
   @override
   void initState() {
@@ -105,6 +109,7 @@ class _CollectHomeState extends State<CollectHome> {
       _prevScreen = _screen;
       _screen = s;
     });
+    if (s == Screen.inbox) _loadInbox();
   }
 
   void _handleBack() {
@@ -169,6 +174,7 @@ class _CollectHomeState extends State<CollectHome> {
       _screen != Screen.detail &&
       _screen != Screen.aiOrganize &&
       _screen != Screen.edit &&
+      _screen != Screen.addInbox &&
       _screen != Screen.personBoards &&
       _screen != Screen.login;
 
@@ -202,6 +208,21 @@ class _CollectHomeState extends State<CollectHome> {
         );
       case Screen.add:
         return AddScreen(onClose: _handleBack);
+      case Screen.inbox:
+        return InboxScreen(
+          items: _inboxItems,
+          loading: _loadingInbox,
+          onRefresh: _loadInbox,
+          onAdd: () => _navigate(Screen.addInbox),
+        );
+      case Screen.addInbox:
+        return AddInboxScreen(
+          onClose: _handleBack,
+          onSaved: () async {
+            await _loadInbox();
+            _navigate(Screen.inbox);
+          },
+        );
       case Screen.drift:
         return DriftScreen(
           people: nearbyPeople,
@@ -243,14 +264,34 @@ class _CollectHomeState extends State<CollectHome> {
                       _prevScreen = _screen;
                       _screen = s;
                     });
+                    if (s == Screen.inbox) _loadInbox();
                   },
                   onAdd: () => _navigate(Screen.add),
+                  onAddInbox: () => _navigate(Screen.addInbox),
                 ),
               ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _loadInbox() async {
+    final user = _service.currentUser;
+    if (user == null) return;
+    setState(() => _loadingInbox = true);
+    try {
+      final res = await _service.getItems(user.id);
+      setState(() {
+        _inboxItems = res
+            .where((i) => i['estado'] == 'inbox')
+            .toList()
+          ..sort((a, b) => DateTime.parse(b['created_at'])
+              .compareTo(DateTime.parse(a['created_at'])));
+      });
+    } finally {
+      if (mounted) setState(() => _loadingInbox = false);
+    }
   }
 }
 
