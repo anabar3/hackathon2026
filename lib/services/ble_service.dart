@@ -236,11 +236,13 @@ class BleService {
     });
 
     if (removedIds.isNotEmpty) {
-      nearbyUsers.value = currentList;
-      // Notify about each user that left
+      // IMPORTANT: Notify about departures BEFORE updating nearbyUsers,
+      // because the ValueNotifier listener will remove them from _nearPeople.
+      // The onUserLeft callback needs them still in _nearPeople to move them to walked.
       for (final id in removedIds) {
         onUserLeft?.call(id);
       }
+      nearbyUsers.value = currentList;
     }
   }
 

@@ -175,6 +175,7 @@ class _CollectHomeState extends State<CollectHome> {
       _screen = s;
     });
     if (s == Screen.inbox) _loadInbox();
+    if (s == Screen.dashboard) _loadBoards();
   }
 
   void _handleBack() {
@@ -360,6 +361,7 @@ class _CollectHomeState extends State<CollectHome> {
                       _screen = s;
                     });
                     if (s == Screen.inbox) _loadInbox();
+                    if (s == Screen.dashboard) _loadBoards();
                   },
                 ),
               ),

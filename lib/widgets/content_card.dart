@@ -48,23 +48,28 @@ class ContentCard extends StatelessWidget {
             BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
           ],
         ),
-        clipBehavior: Clip.hardEdge,
+        clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (hasImage)
               Stack(
                 children: [
-                  Image.network(
-                    item.thumbnail!,
-                    height: 120,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(21),
+                    ),
+                    child: Image.network(
+                      item.thumbnail!,
                       height: 120,
-                      color: AppColors.surface,
-                      child: Center(
-                        child: Icon(_typeIcon(), color: AppColors.primary),
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 120,
+                        color: AppColors.surface,
+                        child: Center(
+                          child: Icon(_typeIcon(), color: AppColors.primary),
+                        ),
                       ),
                     ),
                   ),
@@ -109,7 +114,10 @@ class ContentCard extends StatelessWidget {
             else
               Container(
                 height: 72,
-                color: AppColors.surface,
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(21)),
+                ),
                 child: Center(
                   child: Container(
                     width: 40,

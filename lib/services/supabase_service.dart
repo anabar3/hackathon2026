@@ -773,11 +773,28 @@ class SupabaseService {
     final user = currentUser;
     if (user == null) return;
 
-    await _supabase.from('encuentros').upsert({
-      'user_id': user.id,
-      'usuario_encontrado_id': otherUserId,
-      'visto_en': DateTime.now().toIso8601String(),
-    }, onConflict: 'encuentros_unique_users');
+    try {
+      // Try upsert with column-based conflict (user_id, usuario_encontrado_id)
+      await _supabase.from('encuentros').upsert({
+        'user_id': user.id,
+        'usuario_encontrado_id': otherUserId,
+        'visto_en': DateTime.now().toIso8601String(),
+      }, onConflict: 'user_id,usuario_encontrado_id');
+      print('[Supabase] Encounter recorded: ${user.id} -> $otherUserId');
+    } catch (e) {
+      // If upsert fails (e.g. no unique constraint), try plain insert
+      print('[Supabase] Upsert failed ($e), trying insert...');
+      try {
+        await _supabase.from('encuentros').insert({
+          'user_id': user.id,
+          'usuario_encontrado_id': otherUserId,
+          'visto_en': DateTime.now().toIso8601String(),
+        });
+        print('[Supabase] Encounter inserted via fallback');
+      } catch (e2) {
+        print('[Supabase] Fallback insert also failed: $e2');
+      }
+    }
   }
 
   /// Get all encounters for the current user, with profile info.

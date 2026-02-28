@@ -20,11 +20,11 @@ class _DriftScreenState extends State<DriftScreen> {
   List<NearbyPerson> _walkedPeople = [];
   Timer? _walkedDebounce;
   bool _loadingWalked = false;
+  bool _initialLoading = true;
 
   @override
   void initState() {
     super.initState();
-    BleService.instance.forceRefreshUI();
     BleService.instance.nearbyUsers.addListener(_onNearbyUsersChanged);
     BleService.instance.onUserLeft = _onUserLeft;
     _onNearbyUsersChanged(); // Initial sync
@@ -42,17 +42,24 @@ class _DriftScreenState extends State<DriftScreen> {
 
     try {
       final encounters = await _service.getEncuentros(myUserId);
+      print('[DriftScreen] Loaded ${encounters.length} encounters from DB');
       final myProfile = await _service.getPerfil(myUserId);
       final myInterests = List<String>.from(myProfile?['intereses'] ?? []);
 
       List<NearbyPerson> walked = [];
       for (final enc in encounters) {
         final profile = enc['usuario_encontrado'];
-        if (profile == null) continue;
+        if (profile == null) {
+          print('[DriftScreen] Encounter has null profile, skipping');
+          continue;
+        }
         final id = profile['id'];
 
         // Skip if currently near
-        if (BleService.instance.nearbyUsers.value.contains(id)) continue;
+        if (BleService.instance.nearbyUsers.value.contains(id)) {
+          print('[DriftScreen] Skipping $id — currently near');
+          continue;
+        }
 
         List<Board> boards = [];
         try {
@@ -101,13 +108,20 @@ class _DriftScreenState extends State<DriftScreen> {
         );
       }
 
+      // Filter out anyone currently in the near list to avoid duplication
+      final nearIds = _nearPeople.map((p) => p.id).toSet();
+      walked.removeWhere((p) => nearIds.contains(p.id));
+
+      print('[DriftScreen] Final walked list: ${walked.length} people');
       if (mounted) {
         setState(() {
           _walkedPeople = walked;
+          _initialLoading = false;
         });
       }
     } catch (e) {
-      // Ignore
+      print('[DriftScreen] ERROR loading walked: $e');
+      if (mounted) setState(() => _initialLoading = false);
     } finally {
       _loadingWalked = false;
     }
@@ -298,7 +312,7 @@ class _DriftScreenState extends State<DriftScreen> {
       children: [
         // Header
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -309,88 +323,102 @@ class _DriftScreenState extends State<DriftScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Street',
+                        'Drift',
                         style: TextStyle(
                           color: AppColors.foreground,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
+                      SizedBox(height: 4),
                       Text(
                         'People who crossed your path',
                         style: TextStyle(
                           color: AppColors.mutedForeground,
-                          fontSize: 11,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withAlpha(26),
+                      color: AppColors.primary.withAlpha(20),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppColors.primary.withAlpha(51),
+                        color: AppColors.primary.withAlpha(40),
                       ),
                     ),
                     child: const Icon(
-                      Icons.waves,
+                      Icons.tune,
                       color: AppColors.primary,
-                      size: 20,
+                      size: 22,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              // Live pulse
+              const SizedBox(height: 20),
+              
+              // Status Pill
               Container(
+                width: double.infinity,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
-                  vertical: 10,
+                  vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border, width: 3),
-                  boxShadow: const [
-                    BoxShadow(color: AppColors.border, offset: Offset(0, 2)),
-                  ],
+                  color: AppColors.primary.withAlpha(15),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: AppColors.primary.withAlpha(30),
+                  ),
                 ),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _PulseDot(),
-                    const SizedBox(width: 8),
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Text(
                       _nearPeople.isEmpty
-                          ? 'Scanning for nearby people...'
-                          : '${activeNow.length} ${activeNow.length == 1 ? 'person' : 'people'} nearby',
+                          ? 'Scanning your surroundings...'
+                          : '${activeNow.length} people nearby share your interests',
                       style: const TextStyle(
                         color: AppColors.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               const Text(
-                'People you cross paths with will appear here.\nThey will be saved in your Walked history.',
+                'Only boards matching your interests are shown. Tap someone to see all their public boards.',
                 style: TextStyle(
                   color: AppColors.mutedForeground,
-                  fontSize: 10,
+                  fontSize: 12,
                   height: 1.5,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 20),
         Expanded(
-          child: _nearPeople.isEmpty && _walkedPeople.isEmpty
+          child: _initialLoading
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                )
+              : _nearPeople.isEmpty && _walkedPeople.isEmpty
               ? _buildEmptyState()
               : ShaderMask(
                   shaderCallback: (Rect bounds) {
@@ -418,16 +446,18 @@ class _DriftScreenState extends State<DriftScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (activeNow.isNotEmpty) ...[
-                          const Text(
-                            'NEAR',
-                            style: TextStyle(
-                              color: AppColors.mutedForeground,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1,
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 12, left: 4),
+                            child: Text(
+                              'JUST NOW',
+                              style: TextStyle(
+                                color: AppColors.mutedForeground,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.5,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 10),
                           ...activeNow.map(
                             (p) => _PersonCard(
                               person: p,
@@ -436,17 +466,19 @@ class _DriftScreenState extends State<DriftScreen> {
                           ),
                         ],
                         if (earlier.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          const Text(
-                            'WALKED',
-                            style: TextStyle(
-                              color: AppColors.mutedForeground,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1,
+                          const SizedBox(height: 8),
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 12, left: 4),
+                            child: Text(
+                              'EARLIER',
+                              style: TextStyle(
+                                color: AppColors.mutedForeground,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.5,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 10),
                           ...earlier.map(
                             (p) => Dismissible(
                               key: Key('walked_${p.id}'),
@@ -648,10 +680,9 @@ class _PersonCard extends StatelessWidget {
           ),
         )
         .toList();
-    // Default to at most 2 boards
     return matching.isNotEmpty
-        ? matching.take(2).toList()
-        : person.publicBoards.take(2).toList();
+        ? matching.take(1).toList()
+        : person.publicBoards.take(1).toList();
   }
 
   @override
@@ -663,135 +694,159 @@ class _PersonCard extends StatelessWidget {
       onTap: onSelect,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.border, width: 3),
-          boxShadow: const [
-            BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(10),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Person header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: Row(
-                children: [
-                  Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
-                        child: person.avatar.isNotEmpty
-                            ? Image.network(
-                                person.avatar,
-                                width: 48,
-                                height: 48,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _avatarFallback(),
-                              )
-                            : _avatarFallback(),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: AppColors.green,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.card, width: 2),
-                          ),
+            // Avatar, Name, Bio row
+            Row(
+              children: [
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: person.avatar.isNotEmpty
+                          ? Image.network(
+                              person.avatar,
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _avatarFallback(),
+                            )
+                          : _avatarFallback(),
+                    ),
+                    Positioned(
+                      bottom: -2,
+                      right: -2,
+                      child: Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: AppColors.green,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        person.name,
+                        style: const TextStyle(
+                          color: AppColors.foreground,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        person.bio,
+                        style: const TextStyle(
+                          color: AppColors.mutedForeground,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          person.name,
-                          style: const TextStyle(
-                            color: AppColors.foreground,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          person.bio,
-                          style: const TextStyle(
-                            color: AppColors.mutedForeground,
-                            fontSize: 11,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right,
-                    color: AppColors.mutedForeground,
-                    size: 18,
-                  ),
-                ],
-              ),
+                ),
+                const Icon(
+                  Icons.chevron_right,
+                  color: AppColors.mutedForeground,
+                  size: 20,
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+
             // Location + time
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-              child: Row(
-                children: [
-                  _InfoChip(
-                    icon: Icons.location_on_outlined,
-                    label: person.lastSeenLocation,
+            Row(
+              children: [
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 14,
+                  color: AppColors.mutedForeground,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  person.lastSeenLocation,
+                  style: const TextStyle(
+                    color: AppColors.mutedForeground,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
-                  const SizedBox(width: 12),
-                  _InfoChip(
-                    icon: Icons.access_time,
-                    label: person.lastSeenTime,
+                ),
+                const SizedBox(width: 16),
+                Icon(
+                  Icons.access_time,
+                  size: 14,
+                  color: AppColors.mutedForeground,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  person.lastSeenTime,
+                  style: const TextStyle(
+                    color: AppColors.mutedForeground,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+
             // Shared interests
             if (person.sharedInterests.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                padding: const EdgeInsets.only(bottom: 16),
                 child: Wrap(
-                  spacing: 6,
+                  spacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     const Text(
-                      'In common',
+                      'IN COMMON',
                       style: TextStyle(
                         color: AppColors.primary,
                         fontSize: 10,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
                       ),
                     ),
                     ...person.sharedInterests.map(
                       (i) => Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
+                          horizontal: 10,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withAlpha(26),
-                          borderRadius: BorderRadius.circular(20),
+                          color: AppColors.primary.withAlpha(20),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: AppColors.primary.withAlpha(51),
+                            color: AppColors.primary.withAlpha(40),
                           ),
                         ),
                         child: Text(
                           i,
                           style: const TextStyle(
                             color: AppColors.primary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
@@ -799,81 +854,81 @@ class _PersonCard extends StatelessWidget {
                   ],
                 ),
               ),
+
             // Boards
             if (shownBoards.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                child: Column(
-                  children: [
-                    ...shownBoards.map(
-                      (board) => Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface.withAlpha(154),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            if (board.coverImage != null)
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.network(
-                                  board.coverImage!,
-                                  width: 40,
-                                  height: 40,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      _BoardIconBox(icon: board.icon),
-                                ),
-                              )
-                            else
-                              _BoardIconBox(
-                                icon: board.icon,
-                                boardIcon: _boardIcon(board.icon),
+              Column(
+                children: [
+                  ...shownBoards.map(
+                    (board) => Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary,
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                      child: Row(
+                        children: [
+                          if (board.coverImage != null)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(30),
+                              child: Image.network(
+                                board.coverImage!,
+                                width: 44,
+                                height: 44,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    _BoardIconBox(icon: board.icon),
                               ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    board.name,
-                                    style: const TextStyle(
-                                      color: AppColors.foreground,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  if (board.description != null)
-                                    Text(
-                                      board.description!,
-                                      style: const TextStyle(
-                                        color: AppColors.mutedForeground,
-                                        fontSize: 10,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                ],
-                              ),
+                            )
+                          else
+                            _BoardIconBox(
+                              icon: board.icon,
+                              boardIcon: _boardIcon(board.icon),
                             ),
-                          ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  board.name,
+                                  style: const TextStyle(
+                                    color: AppColors.foreground,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  '${board.itemCount} items',
+                                  style: const TextStyle(
+                                    color: AppColors.secondaryForeground,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (hiddenCount > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Center(
+                        child: Text(
+                          '+$hiddenCount more public board${hiddenCount != 1 ? 's' : ''}',
+                          style: const TextStyle(
+                            color: AppColors.mutedForeground,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
-                    if (hiddenCount > 0)
-                      Text(
-                        '+$hiddenCount more public board${hiddenCount != 1 ? 's' : ''}',
-                        style: const TextStyle(
-                          color: AppColors.mutedForeground,
-                          fontSize: 10,
-                        ),
-                      ),
-                  ],
-                ),
+                ],
               ),
           ],
         ),
@@ -885,11 +940,11 @@ class _PersonCard extends StatelessWidget {
     return Container(
       width: 48,
       height: 48,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: AppColors.secondary,
         shape: BoxShape.circle,
       ),
-      child: const Icon(Icons.person, color: AppColors.mutedForeground),
+      child: const Icon(Icons.person, color: AppColors.secondaryForeground),
     );
   }
 }
@@ -931,26 +986,4 @@ class _BoardIconBox extends StatelessWidget {
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _InfoChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 11, color: AppColors.mutedForeground),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.mutedForeground,
-            fontSize: 10,
-          ),
-        ),
-      ],
-    );
-  }
 }
