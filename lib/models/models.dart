@@ -6,6 +6,7 @@ enum Screen {
   inbox,
   letters,
   boardTree,
+  cards,
   board,
   detail,
   add,
