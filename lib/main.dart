@@ -12,13 +12,14 @@ import 'screens/board_screen.dart';
 import 'screens/detail_screen.dart';
 import 'screens/add_screen.dart';
 import 'screens/add_inbox_screen.dart';
+import 'screens/inbox_screen.dart';
+import 'screens/letters_screen.dart';
 import 'screens/drift_screen.dart';
 import 'screens/person_boards_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/ble_service.dart';
 import 'services/background_service.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'screens/inbox_screen.dart';
 import 'screens/board_tree_screen.dart';
 
 void main() async {
@@ -197,7 +198,8 @@ class _CollectHomeState extends State<CollectHome> {
       _screen != Screen.edit &&
       _screen != Screen.addInbox &&
       _screen != Screen.personBoards &&
-      _screen != Screen.login;
+      _screen != Screen.login &&
+      _screen != Screen.boardTree;
 
   Widget _buildScreen() {
     switch (_screen) {
@@ -238,6 +240,8 @@ class _CollectHomeState extends State<CollectHome> {
           onRefresh: _loadInbox,
           onAdd: () => _navigate(Screen.addInbox),
         );
+      case Screen.letters:
+        return const LettersScreen();
       case Screen.addInbox:
         return AddInboxScreen(
           onClose: _handleBack,
@@ -295,8 +299,6 @@ class _CollectHomeState extends State<CollectHome> {
                     });
                     if (s == Screen.inbox) _loadInbox();
                   },
-                  onAdd: () => _navigate(Screen.add),
-                  onAddInbox: () => _navigate(Screen.addInbox),
                 ),
               ),
           ],
@@ -440,19 +442,53 @@ class _CollectHomeState extends State<CollectHome> {
 }
 
 // ──────────────────────────────────────────────────
-// Edit Screen placeholder
+// Edit Board Screen
 // ──────────────────────────────────────────────────
 class _EditPlaceholder extends StatelessWidget {
   final Board board;
   final VoidCallback onBack;
   const _EditPlaceholder({required this.board, required this.onBack});
 
+  IconData _typeIcon(String type) {
+    switch (type) {
+      case 'image':
+        return Icons.image_outlined;
+      case 'video':
+        return Icons.play_circle_outline;
+      case 'link':
+        return Icons.link;
+      case 'audio':
+        return Icons.headphones;
+      case 'note':
+        return Icons.sticky_note_2_outlined;
+      default:
+        return Icons.insert_drive_file_outlined;
+    }
+  }
+
+  // Sample items for display
+  static const _sampleItems = [
+    (
+      'Maldives Sunset Beach',
+      'Image',
+      'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=100&q=60',
+    ),
+    ('Trip Packing List', 'Note', null),
+    (
+      'Tuscan Countryside',
+      'Image',
+      'https://images.unsplash.com/photo-1523531294919-4bcd7c65e216?w=100&q=60',
+    ),
+    ('Flight Booking Tips', 'Link', null),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // Header: back, title, Done
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Row(
             children: [
               GestureDetector(
@@ -465,104 +501,300 @@ class _EditPlaceholder extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.close,
+                    Icons.arrow_back,
                     color: AppColors.foreground,
                     size: 18,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              const Text(
-                'Edit Board',
-                style: TextStyle(
-                  color: AppColors.foreground,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+              const Expanded(
+                child: Center(
+                  child: Text(
+                    'Edit Board',
+                    style: TextStyle(
+                      color: AppColors.foreground,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: onBack,
+                child: const Text(
+                  'Done',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
           ),
         ),
+        const Divider(color: AppColors.border, height: 24),
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // BOARD DETAILS section
                 const Text(
-                  'NAME',
+                  'BOARD DETAILS',
                   style: TextStyle(
                     color: AppColors.mutedForeground,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
+                    letterSpacing: 1.2,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border, width: 1.5),
                   ),
-                  child: Text(
-                    board.name,
-                    style: const TextStyle(
-                      color: AppColors.foreground,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'DESCRIPTION',
-                  style: TextStyle(
-                    color: AppColors.mutedForeground,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Text(
-                    board.description ?? '',
-                    style: const TextStyle(
-                      color: AppColors.foreground,
-                      fontSize: 14,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name field
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Name',
+                                  style: TextStyle(
+                                    color: AppColors.mutedForeground,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  board.name,
+                                  style: const TextStyle(
+                                    color: AppColors.foreground,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: AppColors.muted.withAlpha(60),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.edit_outlined,
+                              color: AppColors.mutedForeground,
+                              size: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(color: AppColors.border, height: 24),
+                      // Description field
+                      const Text(
+                        'Description',
+                        style: TextStyle(
+                          color: AppColors.mutedForeground,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        board.description ?? 'No description',
+                        style: const TextStyle(
+                          color: AppColors.foreground,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: onBack,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                // COVER IMAGE section
+                const Text(
+                  'COVER IMAGE',
+                  style: TextStyle(
+                    color: AppColors.mutedForeground,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: board.coverImage != null
+                      ? Image.network(
+                          board.coverImage!,
+                          height: 160,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 160,
+                            decoration: BoxDecoration(
+                              color: AppColors.muted.withAlpha(60),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.image_outlined,
+                                color: AppColors.mutedForeground,
+                                size: 40,
+                              ),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          height: 160,
+                          decoration: BoxDecoration(
+                            color: AppColors.muted.withAlpha(60),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.image_outlined,
+                              color: AppColors.mutedForeground,
+                              size: 40,
+                            ),
+                          ),
+                        ),
+                ),
+                const SizedBox(height: 24),
+                // ITEMS section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'ITEMS (${_sampleItems.length})',
+                      style: const TextStyle(
+                        color: AppColors.mutedForeground,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
                       ),
                     ),
-                    child: const Text(
-                      'Save Changes',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                    const Text(
+                      'Select All',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ..._sampleItems.map(
+                  (item) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.border, width: 1),
+                    ),
+                    child: Row(
+                      children: [
+                        // Drag handle
+                        const Icon(
+                          Icons.drag_indicator,
+                          color: AppColors.mutedForeground,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        // Checkbox
+                        Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.border,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Thumbnail
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: item.$3 != null
+                              ? Image.network(
+                                  item.$3!,
+                                  width: 40,
+                                  height: 40,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 40,
+                                    height: 40,
+                                    color: AppColors.primary.withAlpha(20),
+                                    child: Icon(
+                                      _typeIcon(item.$2.toLowerCase()),
+                                      color: AppColors.primary,
+                                      size: 18,
+                                    ),
+                                  ),
+                                )
+                              : Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withAlpha(20),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    _typeIcon(item.$2.toLowerCase()),
+                                    color: AppColors.primary,
+                                    size: 18,
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Title + type
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.$1,
+                                style: const TextStyle(
+                                  color: AppColors.foreground,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                item.$2,
+                                style: const TextStyle(
+                                  color: AppColors.mutedForeground,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

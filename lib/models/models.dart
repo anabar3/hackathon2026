@@ -4,6 +4,7 @@ enum Screen {
   login,
   dashboard,
   inbox,
+  letters,
   boardTree,
   board,
   detail,
