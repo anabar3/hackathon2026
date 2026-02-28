@@ -67,16 +67,22 @@ class _DriftScreenState extends State<DriftScreen> {
           final boardsData = await _service.getTablerosPublicos(id);
           boards = boardsData
               .map(
-                (b) => Board(
-                  id: b['id'] ?? '',
-                  name: b['titulo'] ?? '',
-                  description: b['descripcion'],
-                  itemCount: 0,
-                  coverImage: b['imagen_portada'],
-                  color: '#1e1e32',
-                  icon: 'compass',
-                  isPublic: true,
-                ),
+                (b) {
+                  final itemsList = b['items'] as List?;
+                  final count = (itemsList != null && itemsList.isNotEmpty)
+                      ? (itemsList.first['count'] as int? ?? 0)
+                      : 0;
+                  return Board(
+                    id: b['id'] ?? '',
+                    name: b['titulo'] ?? '',
+                    description: b['descripcion'],
+                    itemCount: count,
+                    coverImage: b['imagen_portada'],
+                    color: '#1e1e32',
+                    icon: 'compass',
+                    isPublic: true,
+                  );
+                },
               )
               .toList();
         } catch (_) {}
@@ -253,16 +259,22 @@ class _DriftScreenState extends State<DriftScreen> {
           final boardsData = await _service.getTablerosPublicos(id);
           boards = boardsData
               .map(
-                (b) => Board(
-                  id: b['id'] ?? '',
-                  name: b['titulo'] ?? '',
-                  description: b['descripcion'],
-                  itemCount: 0,
-                  coverImage: b['imagen_portada'],
-                  color: '#1e1e32',
-                  icon: 'compass',
-                  isPublic: true,
-                ),
+                (b) {
+                  final itemsList = b['items'] as List?;
+                  final count = (itemsList != null && itemsList.isNotEmpty)
+                      ? (itemsList.first['count'] as int? ?? 0)
+                      : 0;
+                  return Board(
+                    id: b['id'] ?? '',
+                    name: b['titulo'] ?? '',
+                    description: b['descripcion'],
+                    itemCount: count,
+                    coverImage: b['imagen_portada'],
+                    color: '#1e1e32',
+                    icon: 'compass',
+                    isPublic: true,
+                  );
+                },
               )
               .toList();
         } catch (_) {}

@@ -260,30 +260,6 @@ class _InboxScreenState extends State<InboxScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              // Quick action row
-              Row(
-                children: [
-                  _QuickAction(
-                    icon: Icons.link,
-                    label: 'Link',
-                    onTap: widget.onAdd,
-                  ),
-                  const SizedBox(width: 8),
-                  _QuickAction(
-                    icon: Icons.sticky_note_2_outlined,
-                    label: 'Nota',
-                    onTap: widget.onAdd,
-                  ),
-                  const SizedBox(width: 8),
-                  _QuickAction(
-                    icon: Icons.attach_file_rounded,
-                    label: 'Archivo',
-                    onTap: widget.onAdd,
-                  ),
-                ],
-              ),
-
               const SizedBox(height: 24),
 
               // ─── Items Section ───
@@ -567,46 +543,3 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 }
 
-class _QuickAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: AppColors.primary, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppColors.foreground,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

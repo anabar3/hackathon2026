@@ -111,11 +111,11 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(res);
   }
 
-  /// Tableros públicos de otro usuario
+  /// Tableros públicos de otro usuario (con conteo de items)
   Future<List<Map<String, dynamic>>> getTablerosPublicos(String userId) async {
     final res = await _supabase
         .from('tableros')
-        .select()
+        .select('*, items(count)')
         .eq('user_id', userId)
         .eq('is_public', true)
         .order('created_at', ascending: false);
@@ -139,20 +139,33 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(res);
   }
 
-  /// Copia un item público de otro usuario a tu inbox (tablero null) para editarlo.
+  /// Todos los items de un tablero público (los items heredan visibilidad del tablero)
+  Future<List<Map<String, dynamic>>> getItemsDeTableroPublico({
+    required String userId,
+    required String tableroId,
+  }) async {
+    final res = await _supabase
+        .from('items')
+        .select()
+        .eq('user_id', userId)
+        .eq('tablero_id', tableroId)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(res);
+  }
+
+  /// Copia un item de un tablero público de otro usuario a tu inbox.
   Future<Map<String, dynamic>> copiarItemPublicoAInbox(String itemId) async {
     final user = currentUser;
     if (user == null) throw Exception('Debes iniciar sesión primero');
 
-    // Obtener item público
+    // Obtener item (RLS ya garantiza que solo se acceden items visibles)
     final origen = await _supabase
         .from('items')
         .select()
         .eq('id', itemId)
-        .eq('is_public', true)
         .maybeSingle();
     if (origen == null) {
-      throw Exception('Item no encontrado o no es público');
+      throw Exception('Item no encontrado o no accesible');
     }
 
     final payload = {
@@ -450,7 +463,6 @@ class SupabaseService {
       'tablero_id': tableroId,
       'titulo': titulo,
       'contenido': contenido,
-      'descripcion': contenido,
       'tipo': 'texto',
       'estado': 'inbox',
       if (tags != null) 'tags': tags,
@@ -486,7 +498,6 @@ class SupabaseService {
       'user_id': user.id,
       'tablero_id': tableroId,
       'titulo': titulo,
-      if (descripcion != null) 'descripcion': descripcion,
       'contenido': url,
       'tipo': 'link',
       'estado': 'inbox',
@@ -573,7 +584,6 @@ class SupabaseService {
       'user_id': user.id,
       'tablero_id': tableroId,
       'titulo': titulo ?? fileName,
-      if (descripcion != null) 'descripcion': descripcion,
       'contenido': contenidoUrl,
       'tipo': tipo,
       'estado': 'inbox',
@@ -742,6 +752,14 @@ class SupabaseService {
 
   Future<void> eliminarTablero(String tableroId) async {
     await _supabase.from('tableros').delete().eq('id', tableroId);
+  }
+
+  /// Elimina un tablero y todos sus items asociados.
+  /// Nota: si existen subtableros, el backend puede rechazar la eliminación por FK.
+  /// Aquí solo se eliminan los items del tablero dado y luego el propio tablero.
+  Future<void> eliminarTableroConItems(String tableroId) async {
+    await _supabase.from('items').delete().eq('tablero_id', tableroId);
+    await eliminarTablero(tableroId);
   }
 
   // ─── INSERT/UPDATE HELPERS (graceful fallback si falta raw_data / metadatos) ────────────
