@@ -545,8 +545,8 @@ class SupabaseService {
             // PostgreSQL db does not support '\u0000' character storage natively in text fields without specialized encoding
             rawData['extracted_text'] = text.replaceAll('\u0000', '');
           }
-        } else if (mimeType == 'text/markdown') {
-          final String text = utf8.decode(bytes);
+        } else if (mimeType == 'text/markdown' || mimeType == 'text/plain') {
+          final String text = utf8.decode(bytes, allowMalformed: true);
           if (text.isNotEmpty) {
             rawData['extracted_text'] = text;
           }

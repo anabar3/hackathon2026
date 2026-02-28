@@ -42,7 +42,8 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
     setState(() => _saving = true);
     try {
       if (hasFile) {
-        final tipo = _pickedTipo ?? _determineTipo(_pickedMime, _pickedFileName!);
+        final tipo =
+            _pickedTipo ?? _determineTipo(_pickedMime, _pickedFileName!);
         await _service.guardarArchivoEnInbox(
           bytes: _pickedBytes!,
           fileName: _pickedFileName!,
@@ -110,7 +111,7 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
   }
 
   String _guessMime(String? ext) {
-    if (ext == null) return 'application/octet-stream';
+    if (ext == null) return 'text/plain';
     final e = ext.toLowerCase();
     switch (e) {
       case 'png':
@@ -138,8 +139,10 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
         return 'application/pdf';
       case 'md':
         return 'text/markdown';
+      case 'txt':
+        return 'text/plain';
       default:
-        return 'application/octet-stream';
+        return 'text/plain';
     }
   }
 
@@ -284,10 +287,7 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
                 borderRadius: BorderRadius.circular(16),
                 child: AspectRatio(
                   aspectRatio: 4 / 3,
-                  child: Image.memory(
-                    _pickedBytes!,
-                    fit: BoxFit.cover,
-                  ),
+                  child: Image.memory(_pickedBytes!, fit: BoxFit.cover),
                 ),
               ),
             ],

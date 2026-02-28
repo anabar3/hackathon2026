@@ -86,17 +86,38 @@ class _InboxScreenState extends State<InboxScreen> {
 
       if (suggestion.action == 'create_new' &&
           suggestion.newBoardSuggestion != null) {
-        await _supabaseService.crearTablero(
-          userId: user.id,
-          titulo: suggestion.newBoardSuggestion!.name,
-          descripcion: suggestion.newBoardSuggestion!.description,
-        );
-        final boards = await _supabaseService.getTableros(user.id);
-        final newBoard = boards.firstWhere(
-          (b) => b['titulo'] == suggestion.newBoardSuggestion!.name,
-          orElse: () => <String, dynamic>{},
-        );
-        tableroId = newBoard['id'] as String?;
+        final suggestedName = suggestion.newBoardSuggestion!.name.trim();
+        final currentBoards = await _supabaseService.getTableros(user.id);
+
+        final existingBoard = currentBoards
+            .cast<Map<String, dynamic>?>()
+            .firstWhere(
+              (b) =>
+                  b != null &&
+                  b['titulo'] != null &&
+                  b['titulo'].toString().trim().toLowerCase() ==
+                      suggestedName.toLowerCase(),
+              orElse: () => null,
+            );
+
+        if (existingBoard != null) {
+          // Board already exists, so just use it
+          tableroId = existingBoard['id'] as String?;
+        } else {
+          // Board does not exist, create it
+          await _supabaseService.crearTablero(
+            userId: user.id,
+            titulo: suggestedName,
+            descripcion: suggestion.newBoardSuggestion!.description,
+          );
+
+          final updatedBoards = await _supabaseService.getTableros(user.id);
+          final newBoard = updatedBoards.firstWhere(
+            (b) => b['titulo'] == suggestedName,
+            orElse: () => <String, dynamic>{},
+          );
+          tableroId = newBoard['id'] as String?;
+        }
       }
 
       if (tableroId != null) {
