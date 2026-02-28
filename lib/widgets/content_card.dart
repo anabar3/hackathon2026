@@ -40,6 +40,7 @@ class ContentCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        width: double.infinity,
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(24),
@@ -48,154 +49,95 @@ class ContentCard extends StatelessWidget {
             BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
           ],
         ),
-        clipBehavior: Clip.hardEdge,
+        clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (hasImage)
-              SizedBox(
-                height: 170,
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: Image.network(
-                        item.thumbnail!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: AppColors.surface,
-                          child: Center(
-                            child: Icon(_typeIcon(), color: AppColors.primary),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withOpacity(0.05),
-                              Colors.black.withOpacity(0.35),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (item.type == ContentType.video)
-                      Positioned.fill(
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(21)),
+                    child: Image.network(
+                      item.thumbnail!,
+                      height: 170,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 170,
+                        color: AppColors.surface,
                         child: Center(
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withAlpha(230),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.play_arrow,
-                              color: Colors.white,
-                              size: 22,
-                            ),
+                          child: Icon(_typeIcon(), color: AppColors.primary),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.05),
+                            Colors.black.withOpacity(0.35),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (item.type == ContentType.video)
+                    Positioned.fill(
+                      child: Center(
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withAlpha(230),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow,
+                            color: Colors.white,
+                            size: 22,
                           ),
                         ),
                       ),
+                    ),
+                  if (item.saved)
                     Positioned(
                       top: 10,
                       right: 10,
-                      child: Row(
-                        children: [
-                          if (item.saved)
-                            Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: AppColors.card.withAlpha(210),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.bookmark,
-                                color: AppColors.primary,
-                                size: 14,
-                              ),
-                            ),
-                        ],
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: AppColors.card.withAlpha(210),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.bookmark,
+                          color: AppColors.primary,
+                          size: 14,
+                        ),
                       ),
                     ),
-                    Positioned(
-                      left: 12,
-                      right: 12,
-                      bottom: 12,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.card.withAlpha(210),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              _typeLabel(),
-                              style: const TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            item.title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              height: 1.3,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (item.author != null) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              item.author!,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.85),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              SizedBox(
-                width: double.infinity,
-                child: Padding(
-                  padding: EdgeInsets.all(hasImage ? 12 : 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!hasImage) ...[
+                  Positioned(
+                    left: 12,
+                    right: 12,
+                    bottom: 12,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withAlpha(26),
-                            borderRadius: BorderRadius.circular(18),
+                            color: AppColors.card.withAlpha(210),
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             _typeLabel(),
@@ -206,21 +148,73 @@ class ContentCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
                           item.title,
                           style: const TextStyle(
-                            color: AppColors.foreground,
-                            fontSize: 13,
+                            color: Colors.white,
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            height: 1.35,
+                            height: 1.3,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        if (item.author != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            item.author!,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.85),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
+                ],
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(26),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Text(
+                        _typeLabel(),
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item.title,
+                      style: const TextStyle(
+                        color: AppColors.foreground,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        height: 1.35,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
             if (item.description != null && item.description!.isNotEmpty)

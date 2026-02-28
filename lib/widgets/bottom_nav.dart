@@ -21,52 +21,48 @@ class BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        border: const Border(
-          top: BorderSide(color: AppColors.border, width: 1),
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: AppColors.border, width: 2),
+          boxShadow: const [
+            BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
+          ],
         ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                icon: Icons.grid_view_rounded,
-                label: 'Home',
-                active: _isDashboard,
-                onTap: () => onNavigate(Screen.dashboard),
-              ),
-              _NavItem(
-                icon: Icons.wifi_tethering_rounded,
-                label: 'Street',
-                active: _isDrift,
-                onTap: () => onNavigate(Screen.drift),
-              ),
-              _NavItem(
-                icon: Icons.inbox_rounded,
-                label: 'Inbox',
-                active: _isInbox,
-                onTap: () => onNavigate(Screen.inbox),
-              ),
-              _NavItem(
-                icon: Icons.bookmark_border_rounded,
-                label: 'Letters',
-                active: _isLetters,
-                onTap: () => onNavigate(Screen.letters),
-              ),
-              _NavItem(
-                icon: Icons.person_outline_rounded,
-                label: 'Profile',
-                active: _isProfile,
-                onTap: () => onNavigate(Screen.profile),
-              ),
-            ],
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _NavItem(
+              icon: Icons.grid_view_rounded,
+              active: _isDashboard,
+              onTap: () => onNavigate(Screen.dashboard),
+            ),
+            _NavItem(
+              icon: Icons.wifi_tethering_rounded,
+              active: _isDrift,
+              onTap: () => onNavigate(Screen.drift),
+            ),
+            _NavItem(
+              icon: Icons.inbox_rounded,
+              active: _isInbox,
+              onTap: () => onNavigate(Screen.inbox),
+            ),
+            _NavItem(
+              icon: Icons.bookmark_border_rounded,
+              active: _isLetters,
+              onTap: () => onNavigate(Screen.letters),
+            ),
+            _NavItem(
+              icon: Icons.person_outline_rounded,
+              active: _isProfile,
+              onTap: () => onNavigate(Screen.profile),
+            ),
+          ],
         ),
       ),
     );
@@ -75,13 +71,11 @@ class BottomNav extends StatelessWidget {
 
 class _NavItem extends StatelessWidget {
   final IconData icon;
-  final String label;
   final bool active;
   final VoidCallback onTap;
 
   const _NavItem({
     required this.icon,
-    required this.label,
     required this.active,
     required this.onTap,
   });
@@ -91,29 +85,34 @@ class _NavItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 50,
+        height: 50,
         decoration: BoxDecoration(
-          color: active ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
+          color: active ? const Color(0xFFF3F4F6) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
             Icon(
               icon,
-              color: active ? Colors.white : AppColors.mutedForeground,
-              size: 22,
+              color: active ? const Color(0xFF1E293B) : const Color(0xFF9CA3AF),
+              size: 26,
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: active ? Colors.white : AppColors.mutedForeground,
-                fontSize: 10,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            if (active)
+              Positioned(
+                bottom: 6,
+                child: Container(
+                  width: 20,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-            ),
           ],
         ),
       ),

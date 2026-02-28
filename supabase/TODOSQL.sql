@@ -244,13 +244,20 @@ create table public.encuentros (
   user_id uuid references perfiles(id) on delete cascade,
   usuario_encontrado_id uuid references perfiles(id) on delete cascade,
   match_score int,
-  visto_en timestamptz default now()
+  visto_en timestamptz default now(),
+  constraint encuentros_unique_users unique (user_id, usuario_encontrado_id)
 );
 
 alter table encuentros enable row level security;
 
 create policy encuentros_select on encuentros
 for select using (auth.uid() = user_id);
+
+create policy encuentros_insert on encuentros
+for insert with check (auth.uid() = user_id);
+
+create policy encuentros_delete on encuentros
+for delete using (auth.uid() = user_id);
 
 -- ═══════════════════════════════════════
 -- 📝 NOTAS

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+import '../services/supabase_service.dart';
+import '../widgets/animated_entry.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   final List<Board> boards;
   final void Function(Board) onBoardSelect;
   final VoidCallback? onOpenBoardTree;
@@ -15,6 +17,36 @@ class DashboardScreen extends StatelessWidget {
     this.onOpenBoardTree,
     this.onCreateBoard,
   });
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  String? _userName;
+  String? _userAvatar;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final service = SupabaseService();
+    final user = service.currentUser;
+    if (user != null) {
+      try {
+        final profile = await service.getPerfil(user.id);
+        if (profile != null && mounted) {
+          setState(() {
+            _userName = profile['nombre_completo'] ?? profile['username'];
+            _userAvatar = profile['avatar_url'];
+          });
+        }
+      } catch (_) {}
+    }
+  }
 
   IconData _boardIcon(String icon) {
     switch (icon) {
@@ -35,97 +67,130 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final roots = boards.where((b) => b.parentId == null).toList();
+    // 1. Organize boards
+    final roots = widget.boards.where((b) => b.parentId == null).toList();
     final pinned = roots.where((b) => b.isPinned).toList();
     final normal = roots.where((b) => !b.isPinned).toList();
-    final ordered = [...pinned, ...normal];
+
+    // 2. Identify Hero Board and the rest
+    final Board? heroBoard = (pinned.isNotEmpty)
+        ? pinned.first
+        : (roots.isNotEmpty ? roots.first : null);
+
+    List<Board> otherBoards = [];
+    if (heroBoard != null) {
+      otherBoards = [...pinned, ...normal]
+        ..removeWhere((b) => b.id == heroBoard.id);
+    }
+
     final hasBoards = roots.isNotEmpty;
 
     return Column(
       children: [
-        // Header (Search Bar, Filter, Notification)
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-          color: AppColors.background.withAlpha(242),
-          child: Column(
-            children: [
-              Row(
+        // Modern Header with decorative background
+        Stack(
+          children: [
+            // Decorative elements
+            Positioned(
+              top: -20,
+              right: -30,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(10),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              left: -15,
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withAlpha(80),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 30, 24, 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppColors.border, width: 1.5),
-                      ),
-                      child: Row(
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 12),
-                            child: Icon(
-                              Icons.search_rounded,
-                              color: AppColors.mutedForeground,
-                              size: 20,
-                            ),
-                          ),
-                          Expanded(
-                            child: TextField(
-                              decoration: const InputDecoration(
-                                hintText: 'Search pins or boards...',
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                              style: const TextStyle(
-                                color: AppColors.foreground,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  _HeaderIconButton(
-                    icon: Icons.filter_alt_outlined,
-                    onTap: () {},
-                  ),
-                  const SizedBox(width: 12),
-                  Stack(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _HeaderIconButton(
-                        icon: Icons.notifications_none_rounded,
-                        onTap: () {},
+                      const Text(
+                        'Welcome back,',
+                        style: TextStyle(
+                          color: AppColors.mutedForeground,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
                       ),
-                      Positioned(
-                        top: 2,
-                        right: 2,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: AppColors.accent,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.background,
-                              width: 2,
-                            ),
-                          ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _userName != null
+                            ? 'Hi, ${_userName!.split(' ').first}'
+                            : 'Hi there',
+                        style: const TextStyle(
+                          color: AppColors.foreground,
+                          fontSize: 32, // Larger h1
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1.0,
                         ),
                       ),
                     ],
                   ),
+                  if (_userAvatar != null && _userAvatar!.isNotEmpty)
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(10),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                        image: DecorationImage(
+                          image: NetworkImage(_userAvatar!),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(10),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: AppColors.secondaryForeground,
+                      ),
+                    ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Container(height: 2, color: AppColors.border),
-            ],
-          ),
+            ),
+          ],
         ),
 
         Expanded(
@@ -134,307 +199,159 @@ class DashboardScreen extends StatelessWidget {
               return const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  Colors.black,
-                  Colors.black,
-                  Colors.transparent,
-                ],
-                stops: [0.0, 0.05, 0.9, 1.0], // Fade at top 5% and bottom 10%
+                colors: [Colors.black, Colors.transparent],
+                stops: [0.9, 1.0], // Only fade at the bottom 10%
               ).createShader(bounds);
             },
             blendMode: BlendMode.dstIn,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Empty State for missing boards
                   if (!hasBoards) ...[
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.9, end: 1.0),
-                      duration: const Duration(milliseconds: 1000),
-                      curve: Curves.elasticOut,
-                      builder: (context, scale, child) {
-                        return Transform.scale(scale: scale, child: child);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: AppColors.card,
-                          borderRadius: BorderRadius.circular(32),
-                          border: Border.all(color: AppColors.border, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.border.withAlpha(100),
-                              offset: const Offset(0, 8),
-                              blurRadius: 16,
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(32),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(40),
+                              shape: BoxShape.circle,
                             ),
-                          ],
+                            child: const Icon(
+                              Icons.dashboard_customize_rounded,
+                              color: AppColors.primary,
+                              size: 40,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Start organizing!',
+                            style: TextStyle(
+                              color: AppColors.foreground,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Create your first board to collect your favorite things.',
+                            style: TextStyle(
+                              color: AppColors.mutedForeground,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: widget.onCreateBoard,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: AppColors.primaryForeground,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'Create Board',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    // Hero Board
+                    if (heroBoard != null)
+                      AnimatedEntry(
+                        index: 0,
+                        child: _HeroBoardCard(
+                          board: heroBoard,
+                          onSelect: () => widget.onBoardSelect(heroBoard),
+                          iconData: _boardIcon(heroBoard.icon),
                         ),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withAlpha(40),
+                      ),
+
+                    const SizedBox(height: 32),
+
+                    // "Your Boards" Header
+                    if (otherBoards.isNotEmpty || hasBoards)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Your Boards',
+                            style: TextStyle(
+                              color: AppColors.foreground,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: widget.onCreateBoard,
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: const BoxDecoration(
+                                color: AppColors.foreground,
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
-                                Icons.dashboard_customize_rounded,
-                                color: AppColors.primary,
-                                size: 40,
+                                Icons.add,
+                                color: Colors.white,
+                                size: 20,
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Start organizing!',
-                              style: TextStyle(
-                                color: AppColors.foreground,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Create your first board to collect your favorite things.',
-                              style: TextStyle(
-                                color: AppColors.mutedForeground,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 20),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 48,
-                              child: ElevatedButton(
-                                onPressed: onCreateBoard,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: AppColors.primaryForeground,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                child: const Text(
-                                  'Create Board',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // All boards grid
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'YOUR BOARDS',
-                        style: TextStyle(
-                          color: AppColors.foreground,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: onCreateBoard,
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text(
-                          'Nuevo tablero',
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.primaryForeground,
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
                           ),
-                          elevation: 0,
-                        ),
+                        ],
+                      ),
+
+                    if (otherBoards.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      // Modern Grid
+                      GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 0.75,
+                            ),
+                        itemCount: otherBoards.length,
+                        itemBuilder: (context, i) {
+                          final board = otherBoards[i];
+                          return AnimatedEntry(
+                            index: i + 1,
+                            child: _ModernBoardCard(
+                              board: board,
+                              onSelect: () => widget.onBoardSelect(board),
+                              iconData: _boardIcon(board.icon),
+                            ),
+                          );
+                        },
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  if (hasBoards)
-                    // GridView of Boards
-                    GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 0.8,
-                          ),
-                      itemCount: ordered.length,
-                      itemBuilder: (context, i) {
-                        final board = ordered[i];
-                        return GestureDetector(
-                          onTap: () => onBoardSelect(board),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.card,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(
-                                color: AppColors.border,
-                                width: 2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.border.withAlpha(100),
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Expanded(
-                                  flex: 3,
-                                  child: Container(
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.secondary,
-                                      borderRadius: BorderRadius.vertical(
-                                        top: Radius.circular(20),
-                                      ),
-                                    ),
-                                    child: Stack(
-                                      fit: StackFit.expand,
-                                      children: [
-                                        if (board.coverImage != null)
-                                          ClipRRect(
-                                            borderRadius:
-                                                const BorderRadius.vertical(
-                                                  top: Radius.circular(20),
-                                                ),
-                                            child: Image.network(
-                                              board.coverImage!,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) =>
-                                                  Icon(
-                                                    _boardIcon(board.icon),
-                                                    color: AppColors.primary
-                                                        .withAlpha(100),
-                                                    size: 32,
-                                                  ),
-                                            ),
-                                          )
-                                        else
-                                          Icon(
-                                            _boardIcon(board.icon),
-                                            color: AppColors.primary.withAlpha(
-                                              100,
-                                            ),
-                                            size: 32,
-                                          ),
-                                        Positioned(
-                                          top: 8,
-                                          right: 8,
-                                          child: Row(
-                                            children: [
-                                              if (board.isPinned)
-                                                const Icon(
-                                                  Icons.push_pin,
-                                                  color: AppColors.primary,
-                                                  size: 16,
-                                                ),
-                                              const SizedBox(width: 4),
-                                              _PublicBadgeSolid(
-                                                isPublic: board.isPublic,
-                                                compact: true,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                Container(height: 3, color: AppColors.border),
-                                Expanded(
-                                  flex: 2,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          board.name,
-                                          style: const TextStyle(
-                                            color: AppColors.foreground,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 6,
-                                                    vertical: 2,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.secondary,
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                border: Border.all(
-                                                  color: AppColors.border,
-                                                ),
-                                              ),
-                                              child: const Text(
-                                                'For You',
-                                                style: TextStyle(
-                                                  color: AppColors
-                                                      .secondaryForeground,
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              '${board.itemCount} items',
-                                              style: const TextStyle(
-                                                color:
-                                                    AppColors.mutedForeground,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                  ],
                 ],
               ),
             ),
@@ -445,221 +362,257 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-class _HeaderIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
+class _HeroBoardCard extends StatelessWidget {
+  final Board board;
+  final VoidCallback onSelect;
+  final IconData iconData;
 
-  const _HeaderIconButton({required this.icon, required this.onTap});
+  const _HeroBoardCard({
+    required this.board,
+    required this.onSelect,
+    required this.iconData,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: onSelect,
       child: Container(
-        width: 44,
-        height: 44,
+        width: double.infinity,
+        height: 180,
         decoration: BoxDecoration(
           color: AppColors.card,
-          shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: AppColors.border, width: 2),
+          boxShadow: const [
+            BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
+          ],
         ),
-        child: Icon(icon, color: AppColors.foreground, size: 22),
-      ),
-    );
-  }
-}
-
-class _PublicBadgeSolid extends StatelessWidget {
-  final bool isPublic;
-  final bool compact;
-  const _PublicBadgeSolid({required this.isPublic, this.compact = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 6 : 8,
-        vertical: compact ? 2 : 4,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.background.withAlpha(230),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border, width: compact ? 1 : 2),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isPublic ? Icons.public : Icons.lock_outline,
-            size: compact ? 10 : 12,
-            color: AppColors.foreground,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            isPublic ? 'Public' : 'Private',
-            style: TextStyle(
-              color: AppColors.foreground,
-              fontSize: compact ? 9 : 10,
-              fontWeight: FontWeight.bold,
+        child: Stack(
+          children: [
+            // Board Image on the right
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: 140,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                ),
+                child: board.coverImage != null
+                    ? Image.network(
+                        board.coverImage!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _fallbackPattern(),
+                      )
+                    : _fallbackPattern(),
+              ),
             ),
-          ),
-        ],
+
+            // Text and Button on the left
+            Positioned(
+              left: 20,
+              top: 24,
+              bottom: 24,
+              right: 150, // Avoid overlapping image
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        board.name,
+                        style: const TextStyle(
+                          color: AppColors.foreground,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      // Display public pin or "Contains X" info
+                      Row(
+                        children: [
+                          if (board.isPinned)
+                            const Icon(
+                              Icons.push_pin,
+                              color: AppColors.primary,
+                              size: 14,
+                            )
+                          else
+                            const Text(
+                              'Contains',
+                              style: TextStyle(
+                                color: AppColors.mutedForeground,
+                                fontSize: 12,
+                              ),
+                            ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 1,
+                            height: 12,
+                            color: AppColors.border,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${board.itemCount} items',
+                            style: const TextStyle(
+                              color: AppColors.foreground,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  // Green Pill Button
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Open',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackPattern() {
+    return Container(
+      color: AppColors.secondary,
+      child: Center(
+        child: Icon(iconData, size: 48, color: AppColors.mutedForeground),
       ),
     );
   }
 }
 
-class _BoardsGrid extends StatelessWidget {
-  final List<Board> boards;
-  final void Function(Board) onBoardSelect;
-  final bool showPin;
+class _ModernBoardCard extends StatelessWidget {
+  final Board board;
+  final VoidCallback onSelect;
+  final IconData iconData;
 
-  const _BoardsGrid({
-    required this.boards,
-    required this.onBoardSelect,
-    this.showPin = false,
+  const _ModernBoardCard({
+    required this.board,
+    required this.onSelect,
+    required this.iconData,
   });
 
-  IconData _boardIcon(String icon) {
-    switch (icon) {
-      case 'palette':
-        return Icons.palette_outlined;
-      case 'chef_hat':
-        return Icons.restaurant_outlined;
-      case 'mountain':
-        return Icons.landscape_outlined;
-      case 'building':
-        return Icons.business_outlined;
-      case 'book_open':
-        return Icons.menu_book_outlined;
-      default:
-        return Icons.dashboard_customize;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.8,
-      ),
-      itemCount: boards.length,
-      itemBuilder: (context, i) {
-        final board = boards[i];
-        return GestureDetector(
-          onTap: () => onBoardSelect(board),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.border, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.border.withAlpha(100),
-                  offset: const Offset(0, 4),
+    return GestureDetector(
+      onTap: onSelect,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border, width: 2),
+          boxShadow: const [
+            BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: board.coverImage != null
+                      ? Image.network(
+                          board.coverImage!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _fallbackPattern(),
+                        )
+                      : _fallbackPattern(),
                 ),
-              ],
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: AppColors.secondary,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(20),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    board.name,
+                    style: const TextStyle(
+                      color: AppColors.foreground,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${board.itemCount} items',
+                        style: const TextStyle(
+                          color: AppColors.foreground,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        if (board.coverImage != null)
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                            child: Image.network(
-                              board.coverImage!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(
-                                _boardIcon(board.icon),
-                                color: AppColors.primary.withAlpha(100),
-                                size: 32,
-                              ),
-                            ),
-                          )
-                        else
-                          Icon(
-                            _boardIcon(board.icon),
-                            color: AppColors.primary.withAlpha(100),
-                            size: 32,
-                          ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Row(
-                            children: [
-                              if (showPin || board.isPinned)
-                                const Icon(
-                                  Icons.push_pin,
-                                  color: AppColors.primary,
-                                  size: 16,
-                                ),
-                              const SizedBox(width: 4),
-                              _PublicBadgeSolid(
-                                isPublic: board.isPublic,
-                                compact: true,
-                              ),
-                            ],
-                          ),
+                      if (board.isPinned)
+                        const Icon(
+                          Icons.push_pin,
+                          color: AppColors.primary,
+                          size: 14,
                         ),
-                      ],
-                    ),
+                    ],
                   ),
-                ),
-                Container(height: 3, color: AppColors.border),
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          board.name,
-                          style: const TextStyle(
-                            color: AppColors.foreground,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${board.itemCount} items',
-                          style: const TextStyle(
-                            color: AppColors.mutedForeground,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackPattern() {
+    return Container(
+      color: AppColors.secondary,
+      child: Center(
+        child: Icon(iconData, size: 36, color: AppColors.primary.withAlpha(50)),
+      ),
     );
   }
 }

@@ -9,6 +9,7 @@ import 'data/mock_data.dart';
 import 'theme/app_theme.dart';
 import 'services/supabase_service.dart';
 import 'widgets/bottom_nav.dart';
+import 'widgets/pattern_background.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/board_screen.dart';
@@ -212,6 +213,7 @@ class _CollectHomeState extends State<CollectHome> {
       _screen = s;
     });
     if (s == Screen.inbox) _loadInbox();
+    if (s == Screen.dashboard) _loadBoards();
   }
 
   void _handleBack() {
@@ -381,28 +383,32 @@ class _CollectHomeState extends State<CollectHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         bottom: false,
-        child: Stack(
-          children: [
-            _buildScreen(),
-            if (_showBottomNav)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: BottomNav(
-                  activeScreen: _screen,
-                  onNavigate: (s) {
-                    setState(() {
-                      _prevScreen = _screen;
-                      _screen = s;
-                    });
-                    if (s == Screen.inbox) _loadInbox();
-                  },
+        child: PatternBackground(
+          child: Stack(
+            children: [
+              _buildScreen(),
+              if (_showBottomNav)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: BottomNav(
+                    activeScreen: _screen,
+                    onNavigate: (s) {
+                      setState(() {
+                        _prevScreen = _screen;
+                        _screen = s;
+                      });
+                      if (s == Screen.inbox) _loadInbox();
+                      if (s == Screen.dashboard) _loadBoards();
+                    },
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -560,43 +566,43 @@ class _CollectHomeState extends State<CollectHome> {
       builder: (context) {
         return StatefulBuilder(
           builder: (dialogContext, setState) {
-              Future<void> _pickCover() async {
-                final result = await FilePicker.platform.pickFiles(
-                  type: FileType.image,
-                  withData: true,
-                );
-                final file = result?.files.first;
-                final bytes = file?.bytes;
-                if (bytes == null) return;
+            Future<void> _pickCover() async {
+              final result = await FilePicker.platform.pickFiles(
+                type: FileType.image,
+                withData: true,
+              );
+              final file = result?.files.first;
+              final bytes = file?.bytes;
+              if (bytes == null) return;
 
-                setState(() {
-                  uploadingCover = true;
-                  coverBytes = bytes as Uint8List;
-                });
-                try {
-                  final ext = file?.extension;
-                  final mime = ext != null ? 'image/$ext' : 'image/jpeg';
-                  final userId = _service.currentUser?.id;
-                  if (userId == null) throw Exception('Debes iniciar sesión');
-                  final url = await _service.subirImagenPortada(
-                    userId: userId,
-                    bytes: bytes as Uint8List,
-                    fileName: file?.name ?? 'cover.jpg',
-                    mimeType: mime,
-                  );
-                  if (!dialogContext.mounted) return;
-                  setState(() => coverUrl = url);
-                } catch (e) {
-                  // Si falla la subida (p.ej. RLS 403), mantenemos la vista previa local
-                  if (dialogContext.mounted) {
-                    setState(() => coverUrl = null);
-                  }
-                } finally {
-                  if (dialogContext.mounted) {
-                    setState(() => uploadingCover = false);
-                  }
+              setState(() {
+                uploadingCover = true;
+                coverBytes = bytes as Uint8List;
+              });
+              try {
+                final ext = file?.extension;
+                final mime = ext != null ? 'image/$ext' : 'image/jpeg';
+                final userId = _service.currentUser?.id;
+                if (userId == null) throw Exception('Debes iniciar sesión');
+                final url = await _service.subirImagenPortada(
+                  userId: userId,
+                  bytes: bytes as Uint8List,
+                  fileName: file?.name ?? 'cover.jpg',
+                  mimeType: mime,
+                );
+                if (!dialogContext.mounted) return;
+                setState(() => coverUrl = url);
+              } catch (e) {
+                // Si falla la subida (p.ej. RLS 403), mantenemos la vista previa local
+                if (dialogContext.mounted) {
+                  setState(() => coverUrl = null);
+                }
+              } finally {
+                if (dialogContext.mounted) {
+                  setState(() => uploadingCover = false);
                 }
               }
+            }
 
             return AlertDialog(
               backgroundColor: AppColors.card,
@@ -611,131 +617,137 @@ class _CollectHomeState extends State<CollectHome> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                    const Text(
-                      'Título',
-                      style: TextStyle(
-                        color: AppColors.mutedForeground,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                      const Text(
+                        'Título',
+                        style: TextStyle(
+                          color: AppColors.mutedForeground,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    _ModalRoundedField(
-                      controller: titleController,
-                      onChanged: (_) => setState(() {}),
-                      hint: 'Ej. Recetas de la semana',
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Descripción',
-                      style: TextStyle(
-                        color: AppColors.mutedForeground,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                      const SizedBox(height: 6),
+                      _ModalRoundedField(
+                        controller: titleController,
+                        onChanged: (_) => setState(() {}),
+                        hint: 'Ej. Recetas de la semana',
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    _ModalRoundedField(
-                      controller: descController,
-                      hint: 'Opcional, cuéntale a otros de qué va',
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 16),
-                    GestureDetector(
-                      onTap: uploadingCover ? null : _pickCover,
-                      child: Container(
-                        height: 180,
-                        decoration: () {
-                          final hasImage = coverBytes != null || coverUrl != null;
-                          return BoxDecoration(
-                            color: hasImage ? null : AppColors.background,
-                            borderRadius: BorderRadius.circular(16),
-                            border: hasImage
-                                ? null
-                                : Border.all(
-                            color: AppColors.border,
-                            width: 1.5,
-                          ),
-                          );
-                        }(),
-                        child: Stack(
-                          children: [
-                            Center(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(14),
-                                child: SizedBox(
-                                  height: 180,
-                                  child: coverBytes != null
-                                      ? Image.memory(
-                                          coverBytes!,
-                                          fit: BoxFit.cover,
-                                        )
-                                      : coverUrl != null
-                                      ? Image.network(
-                                          coverUrl!,
-                                          fit: BoxFit.cover,
-                                        )
-                                      : Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: const [
-                                            Icon(
-                                      Icons.image_outlined,
-                                      size: 30,
-                                      color: AppColors.mutedForeground,
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Descripción',
+                        style: TextStyle(
+                          color: AppColors.mutedForeground,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _ModalRoundedField(
+                        controller: descController,
+                        hint: 'Opcional, cuéntale a otros de qué va',
+                        maxLines: 3,
+                      ),
+                      const SizedBox(height: 16),
+                      GestureDetector(
+                        onTap: uploadingCover ? null : _pickCover,
+                        child: Container(
+                          height: 180,
+                          decoration: () {
+                            final hasImage =
+                                coverBytes != null || coverUrl != null;
+                            return BoxDecoration(
+                              color: hasImage ? null : AppColors.background,
+                              borderRadius: BorderRadius.circular(16),
+                              border: hasImage
+                                  ? null
+                                  : Border.all(
+                                      color: AppColors.border,
+                                      width: 1.5,
                                     ),
-                                            SizedBox(height: 6),
-                                            Text(
-                                              'Sube una portada (opcional)',
-                                                  style: TextStyle(
-                                        color: AppColors.mutedForeground,
-                                        fontWeight: FontWeight.w700,
-                                      ),
+                            );
+                          }(),
+                          child: Stack(
+                            children: [
+                              Center(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: SizedBox(
+                                    height: 180,
+                                    child: coverBytes != null
+                                        ? Image.memory(
+                                            coverBytes!,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : coverUrl != null
+                                        ? Image.network(
+                                            coverUrl!,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: const [
+                                              Icon(
+                                                Icons.image_outlined,
+                                                size: 30,
+                                                color:
+                                                    AppColors.mutedForeground,
+                                              ),
+                                              SizedBox(height: 6),
+                                              Text(
+                                                'Sube una portada (opcional)',
+                                                style: TextStyle(
+                                                  color:
+                                                      AppColors.mutedForeground,
+                                                  fontWeight: FontWeight.w700,
                                                 ),
-                                              ],
-                                            ),
+                                              ),
+                                            ],
+                                          ),
+                                  ),
                                 ),
                               ),
-                            ),
-                            if (uploadingCover)
-                              const Align(
-                                alignment: Alignment.bottomCenter,
-                                child: LinearProgressIndicator(minHeight: 4),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String?>(
-                      value: parentId,
-                      decoration: const InputDecoration(labelText: 'Ubicación'),
-                      items: [
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text('Nivel raíz'),
-                        ),
-                        ..._boards.map(
-                          (b) => DropdownMenuItem<String?>(
-                            value: b.id,
-                            child: Text(b.name),
+                              if (uploadingCover)
+                                const Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: LinearProgressIndicator(minHeight: 4),
+                                ),
+                            ],
                           ),
                         ),
-                      ],
-                      onChanged: (v) => setState(() => parentId = v),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Checkbox(
-                          value: isPublic,
-                          onChanged: (v) =>
-                              setState(() => isPublic = v ?? false),
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String?>(
+                        value: parentId,
+                        decoration: const InputDecoration(
+                          labelText: 'Ubicación',
                         ),
-                        const Text('Público'),
-                      ],
-                    ),
-                  ],
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('Nivel raíz'),
+                          ),
+                          ..._boards.map(
+                            (b) => DropdownMenuItem<String?>(
+                              value: b.id,
+                              child: Text(b.name),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) => setState(() => parentId = v),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: isPublic,
+                            onChanged: (v) =>
+                                setState(() => isPublic = v ?? false),
+                          ),
+                          const Text('Público'),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
