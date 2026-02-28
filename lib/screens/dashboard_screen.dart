@@ -36,6 +36,9 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final roots = boards.where((b) => b.parentId == null).toList();
+    final pinned = roots.where((b) => b.isPinned).toList();
+    final normal = roots.where((b) => !b.isPinned).toList();
+    final ordered = [...pinned, ...normal];
     final hasBoards = roots.isNotEmpty;
 
     return Column(
@@ -462,6 +465,23 @@ class DashboardScreen extends StatelessWidget {
                                             isPublic: board.isPublic,
                                             compact: true,
                                           ),
+                                          size: 32,
+                                        ),
+                                      Positioned(
+                                        top: 8,
+                                        right: 8,
+                                        child: Row(
+                                          children: [
+                                            if (board.isPinned)
+                                              const Icon(Icons.push_pin,
+                                                  color: AppColors.primary,
+                                                  size: 16),
+                                            const SizedBox(width: 4),
+                                            _PublicBadgeSolid(
+                                              isPublic: board.isPublic,
+                                              compact: true,
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -605,6 +625,163 @@ class _PublicBadgeSolid extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _BoardsGrid extends StatelessWidget {
+  final List<Board> boards;
+  final void Function(Board) onBoardSelect;
+  final bool showPin;
+
+  const _BoardsGrid({
+    required this.boards,
+    required this.onBoardSelect,
+    this.showPin = false,
+  });
+
+  IconData _boardIcon(String icon) {
+    switch (icon) {
+      case 'palette':
+        return Icons.palette_outlined;
+      case 'chef_hat':
+        return Icons.restaurant_outlined;
+      case 'mountain':
+        return Icons.landscape_outlined;
+      case 'building':
+        return Icons.business_outlined;
+      case 'book_open':
+        return Icons.menu_book_outlined;
+      default:
+        return Icons.dashboard_customize;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 16,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: boards.length,
+      itemBuilder: (context, i) {
+        final board = boards[i];
+        return GestureDetector(
+          onTap: () => onBoardSelect(board),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: AppColors.border,
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.border.withAlpha(100),
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: AppColors.secondary,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (board.coverImage != null)
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                            child: Image.network(
+                              board.coverImage!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Icon(
+                                _boardIcon(board.icon),
+                                color: AppColors.primary.withAlpha(100),
+                                size: 32,
+                              ),
+                            ),
+                          )
+                        else
+                          Icon(
+                            _boardIcon(board.icon),
+                            color: AppColors.primary.withAlpha(
+                              100,
+                            ),
+                            size: 32,
+                          ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Row(
+                            children: [
+                              if (showPin || board.isPinned)
+                                const Icon(Icons.push_pin,
+                                    color: AppColors.primary, size: 16),
+                              const SizedBox(width: 4),
+                              _PublicBadgeSolid(
+                                isPublic: board.isPublic,
+                                compact: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Container(height: 3, color: AppColors.border),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          board.name,
+                          style: const TextStyle(
+                            color: AppColors.foreground,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${board.itemCount} items',
+                          style: const TextStyle(
+                            color: AppColors.mutedForeground,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
