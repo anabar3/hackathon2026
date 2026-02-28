@@ -8,7 +8,11 @@ import '../theme/app_theme.dart';
 class AddInboxScreen extends StatefulWidget {
   final VoidCallback onClose;
   final Future<void> Function() onSaved;
-  const AddInboxScreen({super.key, required this.onClose, required this.onSaved});
+  const AddInboxScreen({
+    super.key,
+    required this.onClose,
+    required this.onSaved,
+  });
 
   @override
   State<AddInboxScreen> createState() => _AddInboxScreenState();
@@ -49,7 +53,8 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
           tableroId: null,
         );
       } else {
-        final isLink = text.startsWith('http://') || text.startsWith('https://');
+        final isLink =
+            text.startsWith('http://') || text.startsWith('https://');
         if (isLink) {
           await _service.guardarLinkEnInbox(
             url: text,
@@ -68,9 +73,9 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
       }
       if (mounted) {
         await widget.onSaved();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enviado al Inbox')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Enviado al Inbox')));
         _controller.clear();
         _titleController.clear();
         _pickedBytes = null;
@@ -116,6 +121,8 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
         return 'audio/wav';
       case 'm4a':
         return 'audio/mp4';
+      case 'ogg':
+        return 'audio/ogg';
       case 'mp4':
         return 'video/mp4';
       case 'mov':
@@ -139,7 +146,11 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
         lower.endsWith('.webp')) {
       return 'imagen';
     }
-    if (lower.endsWith('.mp3') || lower.endsWith('.wav') || lower.endsWith('.m4a')) return 'audio';
+    if (lower.endsWith('.mp3') ||
+        lower.endsWith('.wav') ||
+        lower.endsWith('.m4a') ||
+        lower.endsWith('.ogg'))
+      return 'audio';
     if (lower.endsWith('.mp4') || lower.endsWith('.mov')) return 'video';
     return 'archivo';
   }
@@ -170,10 +181,7 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
           children: [
             const Text(
               'Título (opcional)',
-              style: TextStyle(
-                color: AppColors.mutedForeground,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: AppColors.mutedForeground, fontSize: 12),
             ),
             const SizedBox(height: 6),
             _RoundedField(
@@ -183,10 +191,7 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
             const SizedBox(height: 16),
             const Text(
               'Contenido',
-              style: TextStyle(
-                color: AppColors.mutedForeground,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: AppColors.mutedForeground, fontSize: 12),
             ),
             const SizedBox(height: 6),
             _RoundedField(
@@ -211,7 +216,10 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
                 if (_pickedFileName != null)
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(12),
@@ -219,8 +227,11 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.insert_drive_file_outlined,
-                              color: AppColors.primary, size: 18),
+                          const Icon(
+                            Icons.insert_drive_file_outlined,
+                            color: AppColors.primary,
+                            size: 18,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -245,7 +256,11 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
                                   },
                             child: const Padding(
                               padding: EdgeInsets.all(4.0),
-                              child: Icon(Icons.close, size: 16, color: AppColors.mutedForeground),
+                              child: Icon(
+                                Icons.close,
+                                size: 16,
+                                color: AppColors.mutedForeground,
+                              ),
                             ),
                           ),
                         ],
