@@ -407,22 +407,14 @@ class SupabaseService {
     required String fileName,
     String mimeType = 'image/jpeg',
   }) async {
-    final safeName = fileName.replaceAll(' ', '-');
-    final randomSuffix = Random().nextInt(1 << 32);
-    final objectPath =
-        '$userId/board-covers/${DateTime.now().millisecondsSinceEpoch}-$randomSuffix-$safeName';
-
-    await _supabase.storage
-        .from('inbox-uploads')
-        .uploadBinary(
-          objectPath,
-          bytes,
-          fileOptions: FileOptions(contentType: mimeType, upsert: false),
-        );
-
-    return await _supabase.storage
-        .from('inbox-uploads')
-        .createSignedUrl(objectPath, 60 * 60 * 24 * 7);
+    // Reutilizamos la misma política de Storage que ya permite uploads bajo el prefijo userId/.
+    final upload = await _subirAStorageInbox(
+      bytes: bytes,
+      userId: userId,
+      fileName: fileName,
+      mimeType: mimeType,
+    );
+    return upload['signedUrl']!;
   }
 
   // ─── ITEMS (INBOX) ──────────────────────────────

@@ -149,131 +149,8 @@ class DashboardScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Pinned by you section
-                  if (hasBoards) ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'PINNED BY YOU',
-                          style: TextStyle(
-                            color: AppColors.foreground,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: onOpenBoardTree,
-                          child: Row(
-                            children: const [
-                              Text(
-                                'View all',
-                                style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Icon(
-                                Icons.chevron_right,
-                                color: AppColors.primary,
-                                size: 16,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: () => onBoardSelect(roots[0]),
-                      child: Container(
-                        height: 160,
-                        decoration: BoxDecoration(
-                          color: AppColors.card,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: AppColors.border, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.border.withAlpha(100),
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              if (roots[0].coverImage != null)
-                                Image.network(
-                                  roots[0].coverImage!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      Container(color: AppColors.secondary),
-                                )
-                              else
-                                Container(color: AppColors.secondary),
-                              Container(
-                                decoration: const BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.transparent,
-                                      Color(0x88352F20),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            roots[0].name,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          _PublicBadgeSolid(
-                                            isPublic: roots[0].isPublic,
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${roots[0].itemCount} items',
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ] else ...[
-                    // Empty State for missing boards
+                  // Empty State for missing boards
+                  if (!hasBoards) ...[
                     TweenAnimationBuilder<double>(
                       tween: Tween(begin: 0.9, end: 1.0),
                       duration: const Duration(milliseconds: 1000),
@@ -373,14 +250,23 @@ class DashboardScreen extends StatelessWidget {
                           letterSpacing: 1,
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.add_circle,
-                          color: AppColors.primary,
-                        ),
+                      ElevatedButton.icon(
                         onPressed: onCreateBoard,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text(
+                          'Nuevo tablero',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.primaryForeground,
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                        ),
                       ),
                     ],
                   ),
@@ -397,9 +283,9 @@ class DashboardScreen extends StatelessWidget {
                             mainAxisSpacing: 16,
                             childAspectRatio: 0.8,
                           ),
-                      itemCount: roots.length,
+                      itemCount: ordered.length,
                       itemBuilder: (context, i) {
-                        final board = roots[i];
+                        final board = ordered[i];
                         return GestureDetector(
                           onTap: () => onBoardSelect(board),
                           child: Container(
