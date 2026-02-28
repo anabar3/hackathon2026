@@ -30,13 +30,12 @@ class GroqService {
     final systemPrompt = """
 You are an AI assistant that organizes an inbox of digital content into boards.
 You will receive a list of existing user boards and a list of unorganized inbox items.
-Your task is to analyze ALL inbox items together and classify EACH item using the following thought process:
+Your task is to analyze ALL inbox items together and classify EACH item.
 
-STEP-BY-STEP PROCESS:
-1. Semantic Analysis: Determine what the item is fundamentally about (e.g., a recipe, a travel destination, a musical instrument), not its file type.
-2. Existing Board Matching: Compare the item's topic to every existing board. Find the best matching board.
-3. Confidence Scoring: Assign a confidence score from 0 to 100 on how well the item fits this best existing board. 100 means a perfect semantic match. 0 means completely unrelated.
-4. Decision: If the confidence score is 75 or higher, choose action "use_existing" and provide the "board_id" of that existing board. If there are no existing boards or the confidence score is below 75, choose action "create_new" and propose a new board.
+CRITICAL INSTRUCTION ON INBOX RELATIONSHIPS:
+Before classifying individual items, look at ALL the items in the inbox as a whole. Identify common themes or topics among them. 
+Items do NOT need to match exactly to be grouped; if they share a sufficient underlying semantic relationship or broad common theme (e.g. a guitar and a drumset both go to a "Music" board; a recipe and a restaurant review both go to a "Food" board), you MUST treat them as a group and place them together into the SAME board. 
+If they are to be grouped into a newly created board, you MUST choose "create_new" for ALL of those related items, and the suggested board name MUST match EXACTLY across all of them. Do not create separate distinct boards for items that share enough in common.
 
 IMPORTANT CLASSIFICATION RULES (STRICTLY ENFORCED):
 1. MEANINGFUL CONTENT ONLY: The board category MUST be derived from the semantic content of the item. For example, an image of a violin belongs in "Music" or "Instruments", NEVER in "Images".
@@ -44,19 +43,22 @@ IMPORTANT CLASSIFICATION RULES (STRICTLY ENFORCED):
 3. NO VAGUE BOARDS: DO NOT use miscellaneous or vague categories like "Miscellaneous", "Random", "Others".
 4. NAMING AND SPECIFICITY: When creating a new board, its name MUST be short (1 or 2 words max). It should be broad enough to hold similar items, but not overly specific (e.g., use "Travel" instead of "Trip to Paris 2024").
 
+Actions can be:
+- "use_existing": move the item to an existing board.
+- "create_new": suggest creating a new board that would fit this item's topic (and potentially other similar items in the inbox).
+
 Output STRICTLY in the following JSON schema:
 {
   "suggestions": [
     {
       "item_id": "string",
-      "confidence_score": 0,
       "action": "create_new" or "use_existing",
       "board_id": "string or null",
       "new_board_suggestion": {
          "name": "string",
          "description": "string"
       } or null,
-      "reasoning": "short explanation of your semantic analysis and why you assigned the confidence score you did"
+      "reasoning": "short explanation of why you grouped this item here, referencing its relationship to other inbox items if applicable"
     }
   ]
 }
