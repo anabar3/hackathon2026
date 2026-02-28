@@ -7,6 +7,7 @@ class BottomNav extends StatelessWidget {
   final void Function(Screen) onNavigate;
   final VoidCallback onAdd;
   final VoidCallback onAddInbox;
+  final VoidCallback onOpenCards;
 
   const BottomNav({
     super.key,
@@ -14,12 +15,14 @@ class BottomNav extends StatelessWidget {
     required this.onNavigate,
     required this.onAdd,
     required this.onAddInbox,
+    required this.onOpenCards,
   });
 
   bool get _isDashboard => activeScreen == Screen.dashboard;
   bool get _isDrift =>
       activeScreen == Screen.drift || activeScreen == Screen.personBoards;
   bool get _isInbox => activeScreen == Screen.inbox;
+  bool get _isCards => activeScreen == Screen.cards;
   bool get _isProfile => activeScreen == Screen.profile;
 
   @override
@@ -52,6 +55,12 @@ class BottomNav extends StatelessWidget {
                 label: 'Drift',
                 active: _isDrift,
                 onTap: () => onNavigate(Screen.drift),
+              ),
+              _NavItem(
+                icon: Icons.mail_outline,
+                label: 'Cartas',
+                active: _isCards,
+                onTap: onOpenCards,
               ),
               // Center FAB
               GestureDetector(

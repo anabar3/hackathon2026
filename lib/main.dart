@@ -17,6 +17,7 @@ import 'screens/person_boards_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/inbox_screen.dart';
 import 'screens/board_tree_screen.dart';
+import 'screens/cards_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -233,6 +234,8 @@ class _CollectHomeState extends State<CollectHome> {
           onBack: _handleBack,
           onCreateBoard: ({parentId}) => _openCreateBoard(parentId: parentId),
         );
+      case Screen.cards:
+        return CardsScreen(onBack: _handleBack);
       case Screen.drift:
         return DriftScreen(
           people: nearbyPeople,
@@ -278,6 +281,7 @@ class _CollectHomeState extends State<CollectHome> {
                   },
                   onAdd: () => _navigate(Screen.add),
                   onAddInbox: () => _navigate(Screen.addInbox),
+                  onOpenCards: () => _navigate(Screen.cards),
                 ),
               ),
           ],

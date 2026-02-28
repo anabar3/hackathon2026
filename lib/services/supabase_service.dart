@@ -193,6 +193,88 @@ class SupabaseService {
     return res;
   }
 
+  // ─── CARTAS DE PROXIMIDAD ───────────────────────
+  /// Envía una carta de texto. Si [targetUserId] es null, va para cercanos en general.
+  Future<Map<String, dynamic>> enviarCarta({
+    required String contenido,
+    String? targetUserId,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+    final payload = {
+      'autor_id': user.id,
+      'contenido': contenido,
+      'alcance': targetUserId == null ? 'cercanos' : 'directa',
+      'target_user_id': targetUserId,
+    };
+    final res =
+        await _supabase.from('cartas').insert(payload).select().single();
+    return res;
+  }
+
+  /// Obtiene cartas visibles para el usuario actual, ordenadas:
+  /// 1) directas primero, 2) cercanos, 3) más recientes.
+  /// Puedes pasar [nearbyUserIds] para priorizar/filtrar proximidad si ya la calculas.
+  Future<List<Map<String, dynamic>>> getCartas({
+    List<String>? nearbyUserIds,
+    bool soloDirectas = false,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+
+    // Base: cartas directas a mí o broadcast (alcance=cercanos) no borradas
+    var query = _supabase
+        .from('cartas')
+        .select()
+        .or('target_user_id.eq.${user.id},and(target_user_id.is.null,alcance.eq.cercanos)')
+        .order('created_at', ascending: false);
+
+    final cartas = List<Map<String, dynamic>>.from(await query);
+
+    // Filtrar las marcadas como borradas
+    final borradasRes = await _supabase
+        .from('cartas_borradas')
+        .select('carta_id')
+        .eq('user_id', user.id);
+    final borradasIds =
+        borradasRes.map<String>((e) => e['carta_id'] as String).toSet();
+
+    final filtered = cartas.where((c) => !borradasIds.contains(c['id'])).toList();
+
+    // Ordenar: directas > cercanos; dentro de cercanos priorizar autores cercanos si se pasa nearbyUserIds; luego fecha desc
+    final nearbySet = nearbyUserIds != null ? nearbyUserIds.toSet() : null;
+    filtered.sort((a, b) {
+      int score(Map<String, dynamic> c) {
+        final isDirect = c['target_user_id'] != null;
+        final autor = c['autor_id'] as String?;
+        final isNear = nearbySet != null && autor != null && nearbySet.contains(autor);
+        final ts =
+            DateTime.tryParse(c['created_at'] ?? '')?.millisecondsSinceEpoch ??
+                0;
+        return (isDirect ? 1000000000 : 0) +
+            (isNear ? 1000000 : 0) +
+            ts;
+      }
+
+      return score(b).compareTo(score(a));
+    });
+
+    if (soloDirectas) {
+      return filtered.where((c) => c['target_user_id'] != null).toList();
+    }
+    return filtered;
+  }
+
+  /// Marca una carta como borrada para el receptor (no se elimina globalmente).
+  Future<void> ocultarCartaParaMi(String cartaId) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+    await _supabase.from('cartas_borradas').upsert({
+      'user_id': user.id,
+      'carta_id': cartaId,
+    });
+  }
+
   /// Sugiere un item nuevo “ad-hoc” (no existe en tus tableros).
   Future<Map<String, dynamic>> sugerirItemNuevo({
     required String targetUserId,

@@ -5,6 +5,7 @@ enum Screen {
   dashboard,
   inbox,
   boardTree,
+  cards,
   board,
   detail,
   add,
