@@ -360,7 +360,7 @@ class _DriftScreenState extends State<DriftScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              
+
               // Status Pill
               Container(
                 width: double.infinity,
@@ -371,9 +371,7 @@ class _DriftScreenState extends State<DriftScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.primary.withAlpha(15),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: AppColors.primary.withAlpha(30),
-                  ),
+                  border: Border.all(color: AppColors.primary.withAlpha(30)),
                 ),
                 child: Row(
                   children: [
@@ -984,6 +982,4 @@ class _BoardIconBox extends StatelessWidget {
       child: Icon(_icon, color: AppColors.primary, size: 18),
     );
   }
-}
-
 }
