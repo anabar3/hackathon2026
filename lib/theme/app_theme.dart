@@ -77,11 +77,11 @@ ThemeData buildAppTheme() {
       fillColor: AppColors.card,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(24),
-        borderSide: const BorderSide(color: AppColors.border, width: 1.5),
+        borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(24),
-        borderSide: const BorderSide(color: AppColors.border, width: 1.5),
+        borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(24),
@@ -92,6 +92,7 @@ ThemeData buildAppTheme() {
         fontWeight: FontWeight.bold,
       ),
       hintStyle: const TextStyle(color: AppColors.mutedForeground),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
     ),
     textTheme: const TextTheme(
       displayLarge: TextStyle(
