@@ -4,6 +4,7 @@ enum Screen {
   login,
   dashboard,
   inbox,
+  boardTree,
   board,
   detail,
   add,
@@ -72,6 +73,7 @@ class Board {
   final String id;
   final String name;
   final String? description;
+  final String? parentId;
   final int itemCount;
   final String? coverImage;
   final String color;
@@ -82,6 +84,7 @@ class Board {
     required this.id,
     required this.name,
     this.description,
+    this.parentId,
     required this.itemCount,
     this.coverImage,
     required this.color,
