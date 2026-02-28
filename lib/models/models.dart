@@ -3,9 +3,12 @@ enum ContentType { image, video, link, audio, note, document, file }
 enum Screen {
   login,
   dashboard,
+  inbox,
+  boardTree,
   board,
   detail,
   add,
+  addInbox,
   edit,
   drift,
   aiOrganize,
@@ -70,6 +73,7 @@ class Board {
   final String id;
   final String name;
   final String? description;
+  final String? parentId;
   final int itemCount;
   final String? coverImage;
   final String color;
@@ -80,6 +84,7 @@ class Board {
     required this.id,
     required this.name,
     this.description,
+    this.parentId,
     required this.itemCount,
     this.coverImage,
     required this.color,

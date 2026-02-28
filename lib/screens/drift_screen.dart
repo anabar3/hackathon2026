@@ -205,13 +205,16 @@ class _DriftScreenState extends State<DriftScreen> {
               // Live pulse
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                  horizontal: 16,
+                  vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(13),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withAlpha(38)),
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.border, width: 3),
+                  boxShadow: const [
+                    BoxShadow(color: AppColors.border, offset: Offset(0, 2)),
+                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -308,8 +311,9 @@ class _DriftScreenState extends State<DriftScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha(26),
+                color: AppColors.secondary,
                 shape: BoxShape.circle,
+                border: Border.all(color: AppColors.border, width: 3),
               ),
               child: const Icon(
                 Icons.bluetooth_searching,
@@ -452,11 +456,14 @@ class _PersonCard extends StatelessWidget {
     return GestureDetector(
       onTap: onSelect,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border, width: 3),
+          boxShadow: const [
+            BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

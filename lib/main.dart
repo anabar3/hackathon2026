@@ -11,12 +11,15 @@ import 'screens/dashboard_screen.dart';
 import 'screens/board_screen.dart';
 import 'screens/detail_screen.dart';
 import 'screens/add_screen.dart';
+import 'screens/add_inbox_screen.dart';
 import 'screens/drift_screen.dart';
 import 'screens/person_boards_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/ble_service.dart';
 import 'services/background_service.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'screens/inbox_screen.dart';
+import 'screens/board_tree_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +34,7 @@ void main() async {
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
       systemNavigationBarColor: AppColors.background,
       systemNavigationBarIconBrightness: Brightness.light,
     ),
@@ -95,6 +98,9 @@ class _CollectHomeState extends State<CollectHome> {
   late ContentItem _selectedItem;
   late NearbyPerson? _selectedPerson;
   late List<ContentItem> _items;
+  List<Board> _boards = boards;
+  List<Map<String, dynamic>> _inboxItems = [];
+  bool _loadingInbox = false;
 
   @override
   void initState() {
@@ -122,6 +128,7 @@ class _CollectHomeState extends State<CollectHome> {
       _prevScreen = _screen;
       _screen = s;
     });
+    if (s == Screen.inbox) _loadInbox();
   }
 
   void _handleBack() {
@@ -188,6 +195,7 @@ class _CollectHomeState extends State<CollectHome> {
       _screen != Screen.detail &&
       _screen != Screen.aiOrganize &&
       _screen != Screen.edit &&
+      _screen != Screen.addInbox &&
       _screen != Screen.personBoards &&
       _screen != Screen.login;
 
@@ -197,8 +205,10 @@ class _CollectHomeState extends State<CollectHome> {
         return const SizedBox.shrink(); // handled by AuthGate
       case Screen.dashboard:
         return DashboardScreen(
-          boards: boards,
+          boards: _boards,
           onBoardSelect: _handleBoardSelect,
+          onOpenBoardTree: () => _navigate(Screen.boardTree),
+          onCreateBoard: () => _openCreateBoard(),
         );
       case Screen.board:
         return BoardScreen(
@@ -221,6 +231,26 @@ class _CollectHomeState extends State<CollectHome> {
         );
       case Screen.add:
         return AddScreen(onClose: _handleBack);
+      case Screen.inbox:
+        return InboxScreen(
+          items: _inboxItems,
+          loading: _loadingInbox,
+          onRefresh: _loadInbox,
+          onAdd: () => _navigate(Screen.addInbox),
+        );
+      case Screen.addInbox:
+        return AddInboxScreen(
+          onClose: _handleBack,
+          onSaved: () async {
+            await _loadInbox();
+            _navigate(Screen.inbox);
+          },
+        );
+      case Screen.boardTree:
+        return BoardTreeScreen(
+          onBack: _handleBack,
+          onCreateBoard: ({parentId}) => _openCreateBoard(parentId: parentId),
+        );
       case Screen.drift:
         return DriftScreen(onPersonSelect: _handlePersonSelect);
       case Screen.personBoards:
@@ -263,14 +293,149 @@ class _CollectHomeState extends State<CollectHome> {
                       _prevScreen = _screen;
                       _screen = s;
                     });
+                    if (s == Screen.inbox) _loadInbox();
                   },
                   onAdd: () => _navigate(Screen.add),
+                  onAddInbox: () => _navigate(Screen.addInbox),
                 ),
               ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _loadInbox() async {
+    final user = _service.currentUser;
+    if (user == null) return;
+    setState(() => _loadingInbox = true);
+    try {
+      final res = await _service.getItems(user.id);
+      setState(() {
+        _inboxItems = res.where((i) => i['estado'] == 'inbox').toList()
+          ..sort(
+            (a, b) => DateTime.parse(
+              b['created_at'],
+            ).compareTo(DateTime.parse(a['created_at'])),
+          );
+      });
+    } finally {
+      if (mounted) setState(() => _loadingInbox = false);
+    }
+  }
+
+  Future<void> _loadBoards() async {
+    final user = _service.currentUser;
+    if (user == null) return;
+    final res = await _service.getTableros(user.id);
+    setState(() {
+      _boards = res
+          .map(
+            (b) => Board(
+              id: b['id'] as String,
+              name: b['titulo'] ?? 'Sin título',
+              description: b['descripcion'],
+              parentId: b['parent_id'],
+              itemCount: 0,
+              coverImage: b['imagen_portada'],
+              color: '#7C5CFC',
+              icon: 'palette',
+              isPublic: (b['is_public'] ?? false) as bool,
+            ),
+          )
+          .toList();
+      final roots = _boards.where((b) => b.parentId == null).toList();
+      if (roots.isNotEmpty) _selectedBoard = roots.first;
+    });
+  }
+
+  Future<void> _openCreateBoard({String? parentId}) async {
+    final titleController = TextEditingController();
+    final descController = TextEditingController();
+    bool isPublic = false;
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppColors.card,
+          title: const Text('Nuevo tablero'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: 'Título'),
+              ),
+              TextField(
+                controller: descController,
+                decoration: const InputDecoration(
+                  labelText: 'Descripción (opcional)',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Checkbox(
+                    value: isPublic,
+                    onChanged: (v) {
+                      isPublic = v ?? false;
+                      (context as Element).markNeedsBuild();
+                    },
+                  ),
+                  const Text('Público'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: parentId,
+                decoration: const InputDecoration(
+                  labelText: 'Dentro de (opcional)',
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Nivel raíz'),
+                  ),
+                  ..._boards.map(
+                    (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
+                  ),
+                ],
+                onChanged: (v) {
+                  parentId = v;
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (titleController.text.trim().isEmpty) return;
+                Navigator.pop(context, true);
+              },
+              child: const Text('Crear'),
+            ),
+          ],
+        );
+      },
+    );
+    if (created != true) return;
+
+    final user = _service.currentUser;
+    if (user == null) return;
+    await _service.crearTablero(
+      userId: user.id,
+      titulo: titleController.text.trim(),
+      descripcion: descController.text.trim().isEmpty
+          ? null
+          : descController.text.trim(),
+      isPublic: isPublic,
+      parentId: parentId,
+    );
+    await _loadBoards();
   }
 }
 
