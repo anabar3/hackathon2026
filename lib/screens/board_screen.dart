@@ -6,6 +6,7 @@ import '../widgets/content_card.dart';
 class BoardScreen extends StatefulWidget {
   final Board board;
   final List<ContentItem> items;
+  final List<Board> boards;
   final VoidCallback onBack;
   final void Function(ContentItem) onItemSelect;
   final VoidCallback onEdit;
@@ -15,6 +16,7 @@ class BoardScreen extends StatefulWidget {
     super.key,
     required this.board,
     required this.items,
+    required this.boards,
     required this.onBack,
     required this.onItemSelect,
     required this.onEdit,
@@ -46,6 +48,9 @@ class _BoardScreenState extends State<BoardScreen> {
   @override
   Widget build(BuildContext context) {
     final items = _filteredItems;
+    final childrenBoards = widget.boards
+        .where((b) => b.parentId == widget.board.id)
+        .toList();
 
     return Column(
       children: [
@@ -58,47 +63,15 @@ class _BoardScreenState extends State<BoardScreen> {
               _CircleBtn(icon: Icons.arrow_back_rounded, onTap: widget.onBack),
               Row(
                 children: [
-                  GestureDetector(
+                  _PrimaryBtn(
+                    label: 'Sugerencias',
+                    icon: Icons.lightbulb_outline,
                     onTap: widget.onAiOrganize,
-                    child: Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.border, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.border.withAlpha(100),
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: const [
-                          Icon(
-                            Icons.auto_awesome,
-                            color: AppColors.primaryForeground,
-                            size: 16,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'AI Organize',
-                            style: TextStyle(
-                              color: AppColors.primaryForeground,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                   const SizedBox(width: 8),
-                  _CircleBtn(icon: Icons.tune_rounded, onTap: () {}),
-                  const SizedBox(width: 8),
-                  _CircleBtn(
-                    icon: Icons.more_horiz_rounded,
+                  _PrimaryBtn(
+                    label: 'Editar',
+                    icon: Icons.edit_outlined,
                     onTap: widget.onEdit,
                   ),
                 ],
@@ -107,93 +80,78 @@ class _BoardScreenState extends State<BoardScreen> {
           ),
         ),
 
-        // Title + Description Card
+        // Title line
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.border, width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.border.withAlpha(100),
-                  offset: const Offset(0, 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  widget.board.name,
+                  style: const TextStyle(
+                    color: AppColors.foreground,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ],
-            ),
+              ),
+              _PublicBadge(isPublic: widget.board.isPublic),
+            ],
+          ),
+        ),
+        if (childrenBoards.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        widget.board.name,
-                        style: const TextStyle(
-                          color: AppColors.foreground,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    _PublicBadge(isPublic: widget.board.isPublic),
-                  ],
-                ),
-                if (widget.board.description != null &&
-                    widget.board.description!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.board.description!,
-                    style: const TextStyle(
-                      color: AppColors.mutedForeground,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+                const Text(
+                  'Subtableros',
+                  style: TextStyle(
+                    color: AppColors.foreground,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
                   ),
-                ],
+                ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 12,
-                      backgroundColor: AppColors.secondary,
-                      child: Icon(
-                        Icons.person,
-                        size: 16,
-                        color: AppColors.mutedForeground,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'You',
-                      style: TextStyle(
-                        color: AppColors.foreground,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '${items.length} items',
-                      style: const TextStyle(
-                        color: AppColors.mutedForeground,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                GridView.builder(
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 0.9,
+                  ),
+                  itemCount: childrenBoards.length,
+                  itemBuilder: (context, i) {
+                    final board = childrenBoards[i];
+                    return _SubBoardCard(board: board);
+                  },
                 ),
               ],
             ),
           ),
-        ),
 
         // Filters
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Row(
+            children: const [
+              Text(
+                'Items',
+                style: TextStyle(
+                  color: AppColors.foreground,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: SingleChildScrollView(
@@ -392,6 +350,91 @@ class _MasonryGrid extends StatelessWidget {
   }
 }
 
+class _SubBoardCard extends StatelessWidget {
+  final Board board;
+  final VoidCallback? onTap;
+  const _SubBoardCard({required this.board, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.border.withAlpha(80),
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                child: board.coverImage != null
+                    ? Image.network(
+                        board.coverImage!,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        color: AppColors.secondary,
+                        child: Icon(
+                          Icons.dashboard_customize,
+                          color: AppColors.primary.withAlpha(120),
+                          size: 28,
+                        ),
+                      ),
+              ),
+            ),
+            Container(height: 2, color: AppColors.border),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          board.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.foreground,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      if (board.isPinned)
+                        const Icon(Icons.push_pin, size: 14, color: AppColors.primary),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${board.itemCount} items',
+                    style: const TextStyle(
+                      color: AppColors.mutedForeground,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CircleBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -416,6 +459,57 @@ class _CircleBtn extends StatelessWidget {
           ],
         ),
         child: Icon(icon, color: AppColors.foreground, size: 20),
+      ),
+    );
+  }
+}
+
+class _PrimaryBtn extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  const _PrimaryBtn({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.border.withAlpha(100),
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: AppColors.primaryForeground,
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.primaryForeground,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
