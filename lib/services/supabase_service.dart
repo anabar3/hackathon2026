@@ -156,8 +156,7 @@ class SupabaseService {
       },
     };
 
-    final res = await _supabase.from('items').insert(payload).select().single();
-    return res;
+    return await _insertItemConFallback(payload);
   }
 
   // ─── SUGERENCIAS ─────────────────────────────────
@@ -403,6 +402,7 @@ class SupabaseService {
 
   /// Sube una imagen de portada y devuelve una URL firmada.
   Future<String> subirImagenPortada({
+    required String userId,
     required Uint8List bytes,
     required String fileName,
     String mimeType = 'image/jpeg',
@@ -410,7 +410,7 @@ class SupabaseService {
     final safeName = fileName.replaceAll(' ', '-');
     final randomSuffix = Random().nextInt(1 << 32);
     final objectPath =
-        'board-covers/${DateTime.now().millisecondsSinceEpoch}-$randomSuffix-$safeName';
+        '$userId/board-covers/${DateTime.now().millisecondsSinceEpoch}-$randomSuffix-$safeName';
 
     await _supabase.storage
         .from('inbox-uploads')
@@ -448,8 +448,7 @@ class SupabaseService {
       'raw_data': contenido,
     };
 
-    final res = await _supabase.from('items').insert(payload).select().single();
-    return res;
+    return await _insertItemConFallback(payload);
   }
 
   /// Guarda un enlace. Incluye metadatos básicos (dominio, og_image, etc.) si ya los tienes.
@@ -484,8 +483,7 @@ class SupabaseService {
       'raw_data': rawData,
     };
 
-    final res = await _supabase.from('items').insert(payload).select().single();
-    return res;
+    return await _insertItemConFallback(payload);
   }
 
   /// Guarda una foto, nota de voz o archivo subiendo primero a Storage.
@@ -551,8 +549,7 @@ class SupabaseService {
       'raw_data': rawData,
     };
 
-    final res = await _supabase.from('items').insert(payload).select().single();
-    return res;
+    return await _insertItemConFallback(payload);
   }
 
   /// Garantiza que exista la fila en perfiles para el usuario actual.
@@ -623,7 +620,7 @@ class SupabaseService {
       if (rawData != null) 'raw_data': rawData,
       'updated_at': DateTime.now().toIso8601String(),
     };
-    await _supabase.from('items').update(updates).eq('id', itemId);
+    await _updateItemConFallback(updates, itemId);
   }
 
   Future<void> moverItem({
@@ -631,14 +628,11 @@ class SupabaseService {
     String? nuevoTableroId,
     String nuevoEstado = 'organizado',
   }) async {
-    await _supabase
-        .from('items')
-        .update({
-          'tablero_id': nuevoTableroId,
-          'estado': nuevoEstado,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', itemId);
+    await _updateItemConFallback({
+      'tablero_id': nuevoTableroId,
+      'estado': nuevoEstado,
+      'updated_at': DateTime.now().toIso8601String(),
+    }, itemId);
   }
 
   Future<void> eliminarItem(String itemId) async {
@@ -712,6 +706,37 @@ class SupabaseService {
 
   Future<void> eliminarTablero(String tableroId) async {
     await _supabase.from('tableros').delete().eq('id', tableroId);
+  }
+
+  // ─── INSERT/UPDATE HELPERS (graceful fallback si falta raw_data) ────────────
+  Future<Map<String, dynamic>> _insertItemConFallback(
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      return await _supabase.from('items').insert(payload).select().single();
+    } on PostgrestException catch (e) {
+      if ((e.message ?? '').contains('raw_data')) {
+        payload.remove('raw_data');
+        return await _supabase.from('items').insert(payload).select().single();
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _updateItemConFallback(
+    Map<String, dynamic> updates,
+    String itemId,
+  ) async {
+    try {
+      await _supabase.from('items').update(updates).eq('id', itemId);
+    } on PostgrestException catch (e) {
+      if ((e.message ?? '').contains('raw_data')) {
+        updates.remove('raw_data');
+        await _supabase.from('items').update(updates).eq('id', itemId);
+        return;
+      }
+      rethrow;
+    }
   }
 
   // ─── STORAGE HELPERS ────────────────────────────
