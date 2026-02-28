@@ -737,6 +737,14 @@ class SupabaseService {
     await _supabase.from('tableros').delete().eq('id', tableroId);
   }
 
+  /// Elimina un tablero y todos sus items asociados.
+  /// Nota: si existen subtableros, el backend puede rechazar la eliminación por FK.
+  /// Aquí solo se eliminan los items del tablero dado y luego el propio tablero.
+  Future<void> eliminarTableroConItems(String tableroId) async {
+    await _supabase.from('items').delete().eq('tablero_id', tableroId);
+    await eliminarTablero(tableroId);
+  }
+
   // ─── INSERT/UPDATE HELPERS (graceful fallback si falta raw_data / metadatos) ────────────
   Future<Map<String, dynamic>> _insertItemConFallback(
     Map<String, dynamic> payload,

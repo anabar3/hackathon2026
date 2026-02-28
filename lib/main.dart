@@ -313,6 +313,17 @@ class _CollectHomeState extends State<CollectHome> {
     });
   }
 
+  void _handleBoardDeleted(String boardId) {
+    setState(() {
+      _boards = _boards.where((b) => b.id != boardId).toList();
+      _boardHistory.removeWhere((id) => id == boardId);
+      if (_selectedBoard?.id == boardId) {
+        _selectedBoard = _boards.isNotEmpty ? _boards.first : null;
+        _screen = Screen.dashboard;
+      }
+    });
+  }
+
   Future<void> _handleLogout() async {
     BleService.instance.dispose();
     FlutterBackgroundService().invoke('stopService');
@@ -422,6 +433,7 @@ class _CollectHomeState extends State<CollectHome> {
           board: _selectedBoard!,
           onBack: _handleBack,
           onUpdated: _handleBoardUpdated,
+          onDeleted: _handleBoardDeleted,
         );
       case Screen.aiOrganize:
         return _AiOrganizePlaceholder(
@@ -847,10 +859,12 @@ class _EditPlaceholder extends StatefulWidget {
   final Board board;
   final VoidCallback onBack;
   final ValueChanged<Board> onUpdated;
+  final ValueChanged<String> onDeleted;
   const _EditPlaceholder({
     required this.board,
     required this.onBack,
     required this.onUpdated,
+    required this.onDeleted,
   });
 
   @override
@@ -865,6 +879,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
   bool _savingTitle = false;
   bool _savingDesc = false;
   bool _savingCover = false;
+  bool _deleting = false;
 
   @override
   void initState() {
@@ -1061,6 +1076,47 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
       _showSnack('No se pudo actualizar la portada');
     } finally {
       if (mounted) setState(() => _savingCover = false);
+    }
+  }
+
+  Future<void> _confirmDelete() async {
+    if (_deleting) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AppColors.card,
+          title: const Text('Seguro que quieres eliminar?'),
+          content: const Text(
+            'Se eliminará el tablero y todos sus items. Esta acción no se puede deshacer.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Eliminar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirm != true) return;
+
+    setState(() => _deleting = true);
+    try {
+      await _service.eliminarTableroConItems(_board.id);
+      _showSnack('Tablero eliminado');
+      widget.onDeleted(_board.id);
+    } catch (_) {
+      _showSnack('No se pudo eliminar el tablero');
+    } finally {
+      if (mounted) setState(() => _deleting = false);
     }
   }
 
@@ -1318,12 +1374,42 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
                 ),
                 const SizedBox(height: 14),
                 const Text(
-                  'Los cambios se guardan al instante.',
-                  style: TextStyle(
-                    color: AppColors.mutedForeground,
-                    fontSize: 12,
+              'Los cambios se guardan al instante.',
+              style: TextStyle(
+                color: AppColors.mutedForeground,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                onPressed: _deleting ? null : _confirmDelete,
+                child: _deleting
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Borrar tablero',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ),
               ],
             ),
           ),
