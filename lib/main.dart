@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'models/models.dart';
 import 'data/mock_data.dart';
 import 'theme/app_theme.dart';
@@ -24,6 +25,8 @@ void main() async {
     url: 'https://qthjufceuesqwrypwqgx.supabase.co',
     anonKey: 'sb_publishable_lw7OkHrufOLfqCw1J4Am3A_FB601r5d',
   );
+
+  await dotenv.load(fileName: ".env");
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

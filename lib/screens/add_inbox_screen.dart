@@ -136,7 +136,9 @@ class _AddInboxScreenState extends State<AddInboxScreen> {
     if (lower.endsWith('.png') ||
         lower.endsWith('.jpg') ||
         lower.endsWith('.jpeg') ||
-        lower.endsWith('.webp')) return 'imagen';
+        lower.endsWith('.webp')) {
+      return 'imagen';
+    }
     if (lower.endsWith('.mp3') || lower.endsWith('.wav') || lower.endsWith('.m4a')) return 'audio';
     if (lower.endsWith('.mp4') || lower.endsWith('.mov')) return 'video';
     return 'archivo';

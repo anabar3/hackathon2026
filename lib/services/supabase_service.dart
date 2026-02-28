@@ -242,13 +242,12 @@ class SupabaseService {
     final objectPath =
         '$userId/${DateTime.now().millisecondsSinceEpoch}-$randomSuffix-$safeName';
 
-    await _supabase.storage.from('inbox-uploads').uploadBinary(
+    await _supabase.storage
+        .from('inbox-uploads')
+        .uploadBinary(
           objectPath,
           bytes,
-          fileOptions: FileOptions(
-            contentType: mimeType,
-            upsert: false,
-          ),
+          fileOptions: FileOptions(contentType: mimeType, upsert: false),
         );
 
     // URL firmada por 7 días. El front puede renovarla o usar getPublicUrl si el bucket se marca como público.
@@ -256,10 +255,7 @@ class SupabaseService {
         .from('inbox-uploads')
         .createSignedUrl(objectPath, 60 * 60 * 24 * 7);
 
-    return {
-      'path': objectPath,
-      'signedUrl': signedUrl,
-    };
+    return {'path': objectPath, 'signedUrl': signedUrl};
   }
 
   // Imagenes mock para ahorrar espacio
@@ -281,5 +277,35 @@ class SupabaseService {
         .eq('user_id', userId)
         .order('visto_en', ascending: false);
     return List<Map<String, dynamic>>.from(res);
+  }
+
+  // ─── AI SUGGESTIONS ─────────────────────────────
+  Future<void> aplicarSugerencia({
+    required String itemId,
+    required String tableroId,
+  }) async {
+    await _supabase
+        .from('items')
+        .update({'tablero_id': tableroId, 'estado': 'organizado'})
+        .eq('id', itemId);
+  }
+
+  Future<String> crearTableroConRetornoId({
+    required String userId,
+    required String titulo,
+    String? descripcion,
+  }) async {
+    final res = await _supabase
+        .from('tableros')
+        .insert({
+          'user_id': userId,
+          'titulo': titulo,
+          if (descripcion != null) 'descripcion': descripcion,
+          'is_public': false,
+        })
+        .select('id')
+        .single();
+
+    return res['id'] as String;
   }
 }
