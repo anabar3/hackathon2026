@@ -1,6 +1,8 @@
 # Manual de Usuario — BoardMee
 
-BoardMee es tu **cerebro digital social**: captura todo lo que te interesa, organízalo con ayuda de IA y descubre el conocimiento de la gente que se cruza contigo mediante Bluetooth Low Energy (BLE). Este manual te guía paso a paso por cada pantalla y flujo para que aproveches al máximo la experiencia.
+BoardMee es tu **cerebro digital social**: captura todo lo que te interesa, organízalo con ayuda de IA y descubre el conocimiento de la gente que se cruza contigo mediante Bluetooth Low Energy (BLE). Este manual te guía paso a paso por cada pantalla y flujo para que aproveches al máximo la experiencia.  
+
+Para buildear la aplicación: flutter build apk
 
 ---
 
