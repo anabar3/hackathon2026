@@ -23,6 +23,7 @@ class GroqService {
             'id': b['id'] ?? '',
             'name': b['titulo'] ?? '',
             'description': b['descripcion'] ?? '',
+            'ai_summary': b['ai_summary'] ?? '',
           },
         )
         .toList();
@@ -42,6 +43,7 @@ IMPORTANT CLASSIFICATION RULES (STRICTLY ENFORCED):
 2. NO FORMAT BOARDS: UNDER NO CIRCUMSTANCES should you create a board related to file formats, types, or general media categories. DO NOT produce categories like "Images", "Pictures", "Photos", "Videos", "Documents", "Files", or "Links".
 3. NO VAGUE BOARDS: DO NOT use miscellaneous or vague categories like "Miscellaneous", "Random", "Others".
 4. NAMING AND SPECIFICITY: When creating a new board, its name MUST be short (1 or 2 words max). It should be broad enough to hold similar items, but not overly specific (e.g., use "Travel" instead of "Trip to Paris 2024").
+5. USE BOARD AI SUMMARIES: When considering existing boards, pay close attention to each board's "ai_summary". This summary represents the actual contents currently stored in that board. If an item matches the semantic context described in a board's ai_summary, prioritize moving the item to that existing board.
 
 Actions can be:
 - "use_existing": move the item to an existing board.
@@ -58,7 +60,7 @@ Output STRICTLY in the following JSON schema:
          "name": "string",
          "description": "string"
       } or null,
-      "reasoning": "short explanation of why you grouped this item here, referencing its relationship to other inbox items if applicable"
+      "reasoning": "short explanation of why you grouped this item here, referencing its relationship to other inbox items or an existing board's ai_summary if applicable. Do not include the item id in the reasoning, use the name instead."
     }
   ]
 }
@@ -246,5 +248,130 @@ Output STRICTLY in the following JSON schema:
       print('Error fetching link content: $e');
     }
     return null;
+  }
+
+  Future<String> summarizeItem(Map<String, dynamic> item) async {
+    final apiKey = dotenv.env['GROQ_API_KEY'];
+    if (apiKey == null || apiKey.isEmpty || apiKey == 'pon_tu_api_key_aqui') {
+      throw Exception('GROQ_API_KEY is not properly set in .env');
+    }
+
+    final tipo = item['tipo'] ?? '';
+    final isImage = tipo == 'imagen';
+    final isLink = tipo == 'link';
+    final isAudio = tipo == 'audio';
+    final isArchivo = tipo == 'archivo';
+    final contentVal = item['contenido'] ?? '';
+    final rawData = item['metadatos'] ?? item['raw_data'] ?? {};
+
+    String extraContent = "";
+    if (isLink && rawData is Map && rawData.containsKey('scraped_text')) {
+      extraContent = "Scraped Link Content:\n${rawData['scraped_text']}";
+    } else if (isAudio &&
+        rawData is Map &&
+        rawData.containsKey('transcription')) {
+      extraContent = "Audio Transcription:\n${rawData['transcription']}";
+    } else if (isArchivo &&
+        rawData is Map &&
+        rawData.containsKey('extracted_text')) {
+      extraContent = "Document Content:\n${rawData['extracted_text']}";
+    }
+
+    final itemContext = "Title: ${item['titulo'] ?? ''}\n$extraContent\n";
+    final systemPrompt =
+        "You are an AI assistant that provides an insightful summary of the content of an item. Provide ONLY the summary text.";
+
+    final List<Map<String, dynamic>> userContentArray = [
+      {"type": "text", "text": "Please summarize this item:\n"},
+    ];
+
+    if (isImage && contentVal.toString().isNotEmpty) {
+      userContentArray.add({
+        "type": "text",
+        "text": itemContext + "Image content:\n",
+      });
+      userContentArray.add({
+        "type": "image_url",
+        "image_url": {"url": contentVal},
+      });
+    } else {
+      userContentArray.add({
+        "type": "text",
+        "text": itemContext + "Content: $contentVal\n",
+      });
+    }
+
+    final response = await http.post(
+      Uri.parse(_baseUrl),
+      headers: {
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "messages": [
+          {"role": "system", "content": systemPrompt},
+          {"role": "user", "content": userContentArray},
+        ],
+        "temperature": 0.3,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['choices'][0]['message']['content'] ?? '';
+    } else {
+      throw Exception(
+        'Failed to summarize item: ${response.statusCode} \n ${response.body}',
+      );
+    }
+  }
+
+  Future<String> summarizeBoard(
+    Map<String, dynamic> board,
+    List<Map<String, dynamic>> items,
+  ) async {
+    final apiKey = dotenv.env['GROQ_API_KEY'];
+    if (apiKey == null || apiKey.isEmpty || apiKey == 'pon_tu_api_key_aqui') {
+      throw Exception('GROQ_API_KEY is not properly set in .env');
+    }
+
+    final systemPrompt =
+        "You are an AI assistant that writes insightful summaries for boards containing multiple items. You will receive the board's title, description, and the summaries of all the items inside the board. Create an insightful, holistic text summary of the board's entire contents. The summary should quickly help the user to understand the content of the board. You can include bullet points if it helps to make the summary more insightful. Provide ONLY the summary text.";
+
+    String itemsText = "";
+    for (var i in items) {
+      final title = i['titulo'] ?? 'Untitled';
+      final summary = i['ai_summary'] ?? 'No summary available';
+      itemsText += "- Item: $title\n  Summary: $summary\n\n";
+    }
+
+    final userContent =
+        "Board Title: ${board['titulo'] ?? ''}\nBoard Description: ${board['descripcion'] ?? ''}\n\nItems in Board:\n$itemsText";
+
+    final response = await http.post(
+      Uri.parse(_baseUrl),
+      headers: {
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "messages": [
+          {"role": "system", "content": systemPrompt},
+          {"role": "user", "content": userContent},
+        ],
+        "temperature": 0.3,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['choices'][0]['message']['content'] ?? '';
+    } else {
+      throw Exception(
+        'Failed to summarize board: ${response.statusCode} \n ${response.body}',
+      );
+    }
   }
 }

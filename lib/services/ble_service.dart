@@ -79,7 +79,10 @@ class BleService {
   Future<void> init(String userId) async {
     print('[BLE] init() called for user: $userId');
     _userId = userId;
-    final ok = await requestPermissions();
+
+    // In background isolates, we cannot request permissions as there is no UI Activity.
+    // Instead we check silently. The UI should have requested them beforehand.
+    final ok = await checkPermissionsSilently();
     if (!ok) {
       print('[BLE] Permissions denied, cannot start.');
       return;

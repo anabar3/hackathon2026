@@ -12,8 +12,10 @@ class BoardScreen extends StatefulWidget {
   final void Function(Board) onBoardSelect;
   final void Function(ContentItem) onItemSelect;
   final VoidCallback onEdit;
+  final void Function(String parentId) onCreateSubBoard;
   final VoidCallback onAiOrganize;
-  final VoidCallback onAiSummarize;
+  final Future<void> Function() onAiSummarize;
+  final VoidCallback onOpenSuggestions;
 
   const BoardScreen({
     super.key,
@@ -24,8 +26,10 @@ class BoardScreen extends StatefulWidget {
     required this.onBoardSelect,
     required this.onItemSelect,
     required this.onEdit,
+    required this.onCreateSubBoard,
     required this.onAiOrganize,
     required this.onAiSummarize,
+    required this.onOpenSuggestions,
   });
 
   @override
@@ -35,6 +39,8 @@ class BoardScreen extends StatefulWidget {
 class _BoardScreenState extends State<BoardScreen> {
   String _activeFilter = 'All';
   final _filters = ['All', 'Images', 'Videos', 'Links', 'Notes'];
+  bool _showAiSummary = false;
+  bool _loadingAiSummary = false;
 
   List<ContentItem> get _filteredItems {
     final boardItems = widget.items
@@ -51,8 +57,50 @@ class _BoardScreenState extends State<BoardScreen> {
   }
 
   @override
+  void didUpdateWidget(covariant BoardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.board.id != widget.board.id) {
+      _showAiSummary = false;
+      _loadingAiSummary = false;
+    }
+  }
+
+  Future<void> _handleAiSummaryPressed() async {
+    if (_showAiSummary) {
+      setState(() => _showAiSummary = false);
+      return;
+    }
+
+    final hasSummary =
+        widget.board.aiSummary != null && widget.board.aiSummary!.isNotEmpty;
+
+    if (!hasSummary) {
+      setState(() => _loadingAiSummary = true);
+      try {
+        await widget.onAiSummarize();
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo generar el resumen del tablero'),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _loadingAiSummary = false);
+      }
+    }
+
+    if (mounted) setState(() => _showAiSummary = true);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final board = widget.board;
     final items = _filteredItems;
+    final allBoardItems = widget.items
+        .where((i) => i.boardId == widget.board.id)
+        .toList();
     final childrenBoards = widget.boards
         .where((b) => b.parentId == widget.board.id)
         .toList();
@@ -69,38 +117,84 @@ class _BoardScreenState extends State<BoardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _BoardHeader(
-                    board: widget.board,
+                    board: board,
+                    itemCount: allBoardItems.length,
                     onBack: widget.onBack,
                     onAiOrganize: widget.onAiOrganize,
-                    onAiSummarize: widget.onAiSummarize,
+                    onAiSummarize: _handleAiSummaryPressed,
                     onEdit: widget.onEdit,
+                    onOpenSuggestions: widget.onOpenSuggestions,
                   ),
-                  const SizedBox(height: 20),
-                  if (childrenBoards.isNotEmpty)
+                  if (_showAiSummary)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Subtableros',
-                            style: TextStyle(
-                              color: AppColors.foreground,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1,
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _AiSummaryCard(
+                        summary: board.aiSummary,
+                        loading: _loadingAiSummary,
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Subtableros',
+                              style: TextStyle(
+                                color: AppColors.foreground,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                              ),
+                              onPressed: () => widget.onCreateSubBoard(widget.board.id),
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text(
+                                'Nuevo',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (childrenBoards.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            decoration: BoxDecoration(
+                              color: AppColors.card,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'Sin subtableros aún',
+                                style: TextStyle(
+                                  color: AppColors.mutedForeground,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
                           GridView.builder(
                             physics: const NeverScrollableScrollPhysics(),
                             shrinkWrap: true,
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 16,
-                              childAspectRatio: 0.9,
-                            ),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 16,
+                                  childAspectRatio: 0.9,
+                                ),
                             itemCount: childrenBoards.length,
                             itemBuilder: (context, i) {
                               final board = childrenBoards[i];
@@ -113,9 +207,9 @@ class _BoardScreenState extends State<BoardScreen> {
                               );
                             },
                           ),
-                        ],
-                      ),
+                      ],
                     ),
+                  ),
 
                   // Filters
                   Padding(
@@ -155,7 +249,9 @@ class _BoardScreenState extends State<BoardScreen> {
                                     : AppColors.secondary,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: active ? AppColors.foreground : AppColors.border,
+                                  color: active
+                                      ? AppColors.foreground
+                                      : AppColors.border,
                                   width: 2,
                                 ),
                               ),
@@ -180,7 +276,10 @@ class _BoardScreenState extends State<BoardScreen> {
                   if (items.isEmpty)
                     Center(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 40,
+                        ),
                         child: TweenAnimationBuilder<double>(
                           tween: Tween(begin: 0.8, end: 1.0),
                           duration: const Duration(milliseconds: 1000),
@@ -537,6 +636,95 @@ class _PrimaryBtn extends StatelessWidget {
   }
 }
 
+class _AiSummaryCard extends StatelessWidget {
+  final String? summary;
+  final bool loading;
+
+  const _AiSummaryCard({required this.summary, required this.loading});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border, width: 2),
+        boxShadow: const [
+          BoxShadow(color: AppColors.border, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'AI Summary',
+                style: TextStyle(
+                  color: AppColors.foreground,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              if (loading)
+                const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (loading)
+            const Text(
+              'Generando resumen...',
+              style: TextStyle(
+                color: AppColors.mutedForeground,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            )
+          else if (summary != null && summary!.isNotEmpty)
+            Text(
+              summary!,
+              style: const TextStyle(
+                color: AppColors.foreground,
+                fontSize: 15,
+                height: 1.5,
+                fontWeight: FontWeight.w600,
+              ),
+            )
+          else
+            const Text(
+              'Aún no hay un resumen para este tablero. Pulsa el botón para generarlo.',
+              style: TextStyle(
+                color: AppColors.mutedForeground,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PublicBadge extends StatelessWidget {
   final bool isPublic;
   const _PublicBadge({required this.isPublic});
@@ -575,17 +763,21 @@ class _PublicBadge extends StatelessWidget {
 
 class _BoardHeader extends StatelessWidget {
   final Board board;
+  final int itemCount;
   final VoidCallback onBack;
   final VoidCallback onAiOrganize;
   final VoidCallback onAiSummarize;
   final VoidCallback onEdit;
+  final VoidCallback onOpenSuggestions;
 
   const _BoardHeader({
     required this.board,
+    required this.itemCount,
     required this.onBack,
     required this.onAiOrganize,
     required this.onAiSummarize,
     required this.onEdit,
+    required this.onOpenSuggestions,
   });
 
   @override
@@ -622,9 +814,8 @@ class _BoardHeader extends StatelessWidget {
                       ? Image.network(
                           board.coverImage!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: AppColors.secondary,
-                          ),
+                          errorBuilder: (_, __, ___) =>
+                              Container(color: AppColors.secondary),
                         )
                       : Container(color: AppColors.secondary),
                 ),
@@ -655,20 +846,26 @@ class _BoardHeader extends StatelessWidget {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _CircleBtn(icon: Icons.arrow_back_rounded, onTap: onBack),
-                    Row(
-                      children: [
-                        _GroupIdeaBtn(onTap: onAiOrganize),
+          children: [
+            _CircleBtn(icon: Icons.arrow_back_rounded, onTap: onBack),
+            Row(
+              children: [
+                _GroupIdeaBtn(onTap: onOpenSuggestions),
                         const SizedBox(width: 8),
                         _PrimaryBtn(
-                          label: 'AI Summarize',
-                          icon: Icons.auto_awesome,
-                          onTap: onAiSummarize,
+                          label: 'AI Organize',
+                          icon: Icons.auto_fix_high_rounded,
+                          onTap: onAiOrganize,
                         ),
-                        const SizedBox(width: 8),
+                const SizedBox(width: 8),
+                _PrimaryBtn(
+                  label: 'AI Summary',
+                  icon: Icons.auto_awesome,
+                  onTap: onAiSummarize,
+                ),
+                const SizedBox(width: 8),
                         _PrimaryBtn(
-                          label: 'Editar',
+                          label: 'Edit',
                           icon: Icons.edit_outlined,
                           onTap: onEdit,
                         ),
@@ -694,7 +891,7 @@ class _BoardHeader extends StatelessWidget {
                     _PublicBadge(isPublic: board.isPublic),
                     const SizedBox(width: 10),
                     Text(
-                      '${board.itemCount} items',
+                      '$itemCount items',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 11,
@@ -703,7 +900,8 @@ class _BoardHeader extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (board.description != null && board.description!.isNotEmpty) ...[
+                if (board.description != null &&
+                    board.description!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(
                     board.description!,

@@ -120,14 +120,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Title — left aligned like reference ──
-              Text(
-                'My Profile',
-                style: GoogleFonts.dmSans(
-                  color: AppColors.foreground,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
+              // ── Title & Logout ──
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'My Profile',
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.foreground,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: widget.onLogout,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFFECACA),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.logout_rounded,
+                            color: Color(0xFFDC2626),
+                            size: 15,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Salir',
+                            style: GoogleFonts.dmSans(
+                              color: const Color(0xFFDC2626),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
 
@@ -394,47 +437,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
-              const SizedBox(height: 24),
-
-              // ── Logout ──
-              Center(
-                child: GestureDetector(
-                  onTap: widget.onLogout,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 28,
-                      vertical: 14,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF2F2),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: const Color(0xFFFECACA),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.logout_rounded,
-                          color: Color(0xFFDC2626),
-                          size: 17,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Cerrar Sesión',
-                          style: GoogleFonts.dmSans(
-                            color: const Color(0xFFDC2626),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              // Nothing below except padding
             ],
           ),
         ),

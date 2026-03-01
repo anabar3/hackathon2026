@@ -282,3 +282,8 @@ create policy notas_delete on notas for delete using (auth.uid() = user_id);
 insert into storage.buckets (id,name,public)
 values ('inbox-uploads','inbox-uploads',false)
 on conflict do nothing;
+
+
+
+ALTER TABLE public.tableros ADD COLUMN ai_summary TEXT;
+ALTER TABLE public.items ADD COLUMN ai_summary TEXT;

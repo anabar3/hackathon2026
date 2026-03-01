@@ -16,6 +16,7 @@ enum Screen {
   aiOrganize,
   personBoards,
   publicBoard,
+  boardSuggestions,
   profile,
 }
 
@@ -33,6 +34,7 @@ class ContentItem {
   final String? duration;
   final String? size;
   final String? author;
+  final String? aiSummary;
   bool saved;
 
   ContentItem({
@@ -49,6 +51,7 @@ class ContentItem {
     this.duration,
     this.size,
     this.author,
+    this.aiSummary,
     required this.saved,
   });
 
@@ -67,6 +70,7 @@ class ContentItem {
       duration: duration,
       size: size,
       author: author,
+      aiSummary: aiSummary,
       saved: saved ?? this.saved,
     );
   }
@@ -83,6 +87,7 @@ class Board {
   final String icon;
   final bool isPublic;
   final bool isPinned;
+  final String? aiSummary;
 
   const Board({
     required this.id,
@@ -95,6 +100,7 @@ class Board {
     required this.icon,
     required this.isPublic,
     this.isPinned = false,
+    this.aiSummary,
   });
 }
 

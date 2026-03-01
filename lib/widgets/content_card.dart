@@ -32,7 +32,8 @@ class ContentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = item.type != ContentType.note &&
+    final hasImage =
+        item.type != ContentType.note &&
         item.thumbnail != null &&
         (item.type == ContentType.image ||
             item.type == ContentType.video ||
@@ -58,8 +59,9 @@ class ContentCard extends StatelessWidget {
               Stack(
                 children: [
                   ClipRRect(
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(21)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(21),
+                    ),
                     child: Image.network(
                       item.thumbnail!,
                       height: 170,
@@ -215,6 +217,19 @@ class ContentCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (item.author != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'por ${item.author!}',
+                        style: const TextStyle(
+                          color: AppColors.mutedForeground,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ],
                 ),
               ),
