@@ -1,0 +1,13 @@
+flutter_launcher_icons:
+  android: true
+  ios: true
+  
+  # For iOS and older Androids (API < 26)
+  image_path: "assets/icon.png" # Replace with your icon path
+  
+  # For Android 8.0+ (API 26+) Adaptive Icons
+  adaptive_icon_background: "#FAFAF0" # Or point to a background image, e.g. "assets/icon_bg.png"
+  adaptive_icon_foreground: "assets/icon.png" # Replace with your foreground logo padding removed
+
+  # Optional but recommended to reduce iOS minimum scale issues:
+  remove_alpha_ios: true
