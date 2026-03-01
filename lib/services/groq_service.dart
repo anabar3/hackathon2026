@@ -98,6 +98,11 @@ Output STRICTLY in the following JSON schema:
         extraContent = "Document Content:\n${rawData['extracted_text']}";
       }
 
+      if (rawData is Map && rawData.containsKey('linked_content')) {
+        extraContent +=
+            "\nLinked Content Explored:\n${rawData['linked_content']}";
+      }
+
       final itemContext =
           "Item ID: ${i['id']}\nTitle: ${i['titulo'] ?? ''}\n$extraContent\n";
 
@@ -276,6 +281,11 @@ Output STRICTLY in the following JSON schema:
         rawData is Map &&
         rawData.containsKey('extracted_text')) {
       extraContent = "Document Content:\n${rawData['extracted_text']}";
+    }
+
+    if (rawData is Map && rawData.containsKey('linked_content')) {
+      extraContent +=
+          "\nLinked Content Explored:\n${rawData['linked_content']}";
     }
 
     final itemContext = "Title: ${item['titulo'] ?? ''}\n$extraContent\n";
