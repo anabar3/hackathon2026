@@ -6,8 +6,9 @@ class ContentCard extends StatelessWidget {
   final ContentItem item;
   final VoidCallback onTap;
   final VoidCallback? onImport;
+  final VoidCallback? onDownload;
 
-  const ContentCard({super.key, required this.item, required this.onTap, this.onImport});
+  const ContentCard({super.key, required this.item, required this.onTap, this.onImport, this.onDownload});
 
   IconData _typeIcon() {
     switch (item.type) {
@@ -278,6 +279,54 @@ class ContentCard extends StatelessWidget {
                         Text(
                           'Import to Inbox',
                           style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (onDownload != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                child: GestureDetector(
+                  onTap: onDownload,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withAlpha(26),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.primary.withAlpha(60),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          item.type == ContentType.note
+                              ? Icons.copy_rounded
+                              : item.type == ContentType.link
+                                  ? Icons.open_in_new_rounded
+                                  : Icons.download_rounded,
+                          color: AppColors.primary,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          item.type == ContentType.note
+                              ? 'Copiar texto'
+                              : item.type == ContentType.link
+                                  ? 'Abrir enlace'
+                                  : 'Descargar',
+                          style: const TextStyle(
                             color: AppColors.primary,
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
