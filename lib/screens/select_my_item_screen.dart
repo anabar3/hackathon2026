@@ -7,11 +7,13 @@ import '../widgets/animated_entry.dart';
 class SelectMyItemScreen extends StatefulWidget {
   final List<ContentItem> items;
   final VoidCallback onBack;
+  final Future<dynamic> Function()? onCreateNew;
 
   const SelectMyItemScreen({
     super.key,
     required this.items,
     required this.onBack,
+    this.onCreateNew,
   });
 
   @override
@@ -148,6 +150,18 @@ class _SelectMyItemScreenState extends State<SelectMyItemScreen> {
           ],
         ),
       ),
+      floatingActionButton: widget.onCreateNew == null
+          ? null
+          : FloatingActionButton(
+              onPressed: () async {
+                final newItem = await widget.onCreateNew!();
+                if (newItem != null && context.mounted) {
+                  Navigator.pop(context, newItem);
+                }
+              },
+              backgroundColor: AppColors.primary,
+              child: const Icon(Icons.add, color: AppColors.background),
+            ),
     );
   }
 }

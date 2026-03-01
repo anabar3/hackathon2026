@@ -428,6 +428,45 @@ class SupabaseService {
     return res;
   }
 
+  /// Sugiere un archivo subiéndolo a Storage sin crear un item en inbox.
+  Future<Map<String, dynamic>> sugerirItemNuevoConArchivo({
+    required Uint8List bytes,
+    required String fileName,
+    required String mimeType,
+    required String tipo,
+    required String targetUserId,
+    required String targetTableroId,
+    String? titulo,
+    String? descripcion,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+
+    final uploadInfo = await _subirAStorageInbox(
+      bytes: bytes,
+      userId: user.id,
+      fileName: fileName,
+      mimeType: mimeType,
+    );
+    final contenidoUrl = uploadInfo['signedUrl']!;
+
+    final rawData = {
+      'storage_path': uploadInfo['path'],
+      'mime_type': mimeType,
+      'file_name': fileName,
+      'size_bytes': bytes.lengthInBytes,
+    };
+
+    return await sugerirItemNuevo(
+      targetUserId: targetUserId,
+      targetTableroId: targetTableroId,
+      titulo: titulo ?? fileName,
+      contenido: contenidoUrl,
+      tipo: tipo,
+      rawData: {"description": descripcion, ...rawData},
+    );
+  }
+
   /// Lista sugerencias recibidas y pendientes para un tablero del usuario actual.
   Future<List<Map<String, dynamic>>> getSugerenciasTablero(
     String tableroId,
@@ -599,7 +638,7 @@ class SupabaseService {
       'titulo': titulo,
       'contenido': contenido,
       'tipo': 'texto',
-      'estado': 'inbox',
+      'estado': tableroId != null ? 'organizado' : 'inbox',
       if (tags != null) 'tags': tags,
       'metadatos': metadatos.isEmpty
           ? contenido
@@ -637,7 +676,7 @@ class SupabaseService {
       'titulo': titulo,
       'contenido': url,
       'tipo': 'link',
-      'estado': 'inbox',
+      'estado': tableroId != null ? 'organizado' : 'inbox',
       if (tags != null) 'tags': tags,
       'metadatos': rawData,
     };
@@ -734,7 +773,7 @@ class SupabaseService {
       'titulo': titulo ?? fileName,
       'contenido': contenidoUrl,
       'tipo': tipo,
-      'estado': 'inbox',
+      'estado': tableroId != null ? 'organizado' : 'inbox',
       if (tags != null) 'tags': tags,
       'metadatos': rawData,
     };
