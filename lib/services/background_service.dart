@@ -90,7 +90,7 @@ void onStart(ServiceInstance service) async {
     if (service is AndroidServiceInstance) {
       await service.setForegroundNotificationInfo(
         title: "Collect / Drift Radar",
-        content: "Scanning for nearby people...",
+        content: "Buscando personas cercanas...",
       );
     }
     await BleService.instance.init(user.id);

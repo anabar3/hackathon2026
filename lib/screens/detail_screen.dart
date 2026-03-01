@@ -503,7 +503,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        board.isPublic ? 'Public' : 'Private',
+                                        board.isPublic ? 'Público' : 'Privado',
                                         style: const TextStyle(
                                           color: AppColors.mutedForeground,
                                           fontSize: 11,
@@ -691,7 +691,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                     size: 20,
                                   ),
                                   label: const Text(
-                                    'Open Link',
+                                    'Abrir enlace',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
@@ -736,7 +736,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                         )
                                       : const Icon(Icons.auto_awesome, size: 20),
                                   label: Text(
-                                    _showAiSummary ? 'Ocultar resumen' : 'AI Summary',
+                                    _showAiSummary ? 'Ocultar resumen' : 'Resumen IA',
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
@@ -762,7 +762,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                         )
                                       : const Icon(Icons.delete_outline_rounded, size: 20),
                                   label: const Text(
-                                    'Delete item',
+                                    'Eliminar elemento',
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
@@ -809,7 +809,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                       ),
                                       const SizedBox(width: 10),
                                       const Text(
-                                        'AI Summary',
+                                        'Resumen IA',
                                         style: TextStyle(
                                           color: AppColors.foreground,
                                           fontSize: 15,
