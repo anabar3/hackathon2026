@@ -3,6 +3,7 @@ import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../services/supabase_service.dart';
 import '../widgets/animated_entry.dart';
+import '../widgets/fade_scroll.dart';
 
 class DashboardScreen extends StatefulWidget {
   final List<Board> boards;
@@ -200,16 +201,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
 
         Expanded(
-          child: ShaderMask(
-            shaderCallback: (Rect bounds) {
-              return const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.black, Colors.transparent],
-                stops: [0.9, 1.0], // Only fade at the bottom 10%
-              ).createShader(bounds);
-            },
-            blendMode: BlendMode.dstIn,
+          child: FadeScrollView(
+            topFade: 0.0,
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
               child: Column(
