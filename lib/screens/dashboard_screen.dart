@@ -168,7 +168,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ],
                         image: DecorationImage(
-                          image: NetworkImage(_userAvatar!),
+                          image: _userAvatar!.startsWith('assets/')
+                              ? AssetImage(_userAvatar!) as ImageProvider
+                              : NetworkImage(_userAvatar!),
                           fit: BoxFit.cover,
                         ),
                       ),

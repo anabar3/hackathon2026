@@ -141,9 +141,7 @@ class _DriftScreenState extends State<DriftScreen> {
           NearbyPerson(
             id: id,
             name:
-                profile['nombre_completo'] ??
-                profile['username'] ??
-                'Anónimo',
+                profile['nombre_completo'] ?? profile['username'] ?? 'Anónimo',
             avatar: profile['avatar_url'] ?? '',
             bio: profile['bio'] ?? '',
             lastSeenLocation: 'Se cruzó en tu camino',
@@ -956,13 +954,21 @@ class _PersonCard extends StatelessWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(24),
                       child: person.avatar.isNotEmpty
-                          ? Image.network(
-                              person.avatar,
-                              width: 48,
-                              height: 48,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _avatarFallback(),
-                            )
+                          ? (person.avatar.startsWith('assets/')
+                                ? Image.asset(
+                                    person.avatar,
+                                    width: 48,
+                                    height: 48,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Image.network(
+                                    person.avatar,
+                                    width: 48,
+                                    height: 48,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        _avatarFallback(),
+                                  ))
                           : _avatarFallback(),
                     ),
                     Positioned(

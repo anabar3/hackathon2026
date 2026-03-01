@@ -37,10 +37,14 @@ class SupabaseService {
     // Módificado: el trigger de la base de datos (handle_new_user)
     // crea una fila por defecto en "perfiles", por lo que aquí hacemos upsert
     // para rellenar los datos extra sin saltar error de duplicado.
+    final randomAvatarIndex = Random().nextInt(5) + 1;
+    final avatarUrl = 'assets/avatar/ovejas/oveja$randomAvatarIndex.png';
+
     await upsertPerfil(
       userId: user.id,
       username: username,
       nombreCompleto: fullName,
+      avatarUrl: avatarUrl,
     );
     // Cache immediately after signup
     cachedUserName = fullName;
@@ -118,7 +122,9 @@ class SupabaseService {
     const bucket = 'inbox-uploads';
     final objectPath = '${user.id}/avatar-$randomSuffix-$safeName';
 
-    await _supabase.storage.from(bucket).uploadBinary(
+    await _supabase.storage
+        .from(bucket)
+        .uploadBinary(
           objectPath,
           bytes,
           fileOptions: FileOptions(contentType: mimeType, upsert: true),

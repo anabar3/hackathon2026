@@ -121,7 +121,8 @@ class _BoardSuggestionsScreenState extends State<BoardSuggestionsScreen> {
                         }
 
                         final itemData =
-                            (sug['item'] ?? <String, dynamic>{}) as Map<String, dynamic>;
+                            (sug['item'] ?? <String, dynamic>{})
+                                as Map<String, dynamic>;
                         final autorData =
                             sug['autor_perfil'] as Map<String, dynamic>?;
 
@@ -157,7 +158,7 @@ class _BoardSuggestionsScreenState extends State<BoardSuggestionsScreen> {
                             itemData['thumbnail_url'] ??
                             (sug['raw_data'] is Map
                                 ? (sug['raw_data']['thumbnail'] ??
-                                    sug['raw_data']['image'])
+                                      sug['raw_data']['image'])
                                 : null);
                         final urlRaw = itemData['url'] ?? sug['contenido'];
 
@@ -174,12 +175,13 @@ class _BoardSuggestionsScreenState extends State<BoardSuggestionsScreen> {
                           url: urlRaw?.toString(),
                           thumbnail: thumbRaw?.toString(),
                           boardId: (sug['target_tablero_id'] ?? '').toString(),
-                          createdAt: (itemData['created_at'] ??
-                                  sug['created_at'] ??
-                                  '')
-                              .toString()
-                              .split('T')
-                              .first,
+                          createdAt:
+                              (itemData['created_at'] ??
+                                      sug['created_at'] ??
+                                      '')
+                                  .toString()
+                                  .split('T')
+                                  .first,
                           duration: null,
                           size: null,
                           tags: const [],
@@ -203,9 +205,23 @@ class _BoardSuggestionsScreenState extends State<BoardSuggestionsScreen> {
                                       backgroundColor: AppColors.primary,
                                       backgroundImage:
                                           autorData?['avatar_url'] != null
-                                          ? NetworkImage(
-                                              autorData!['avatar_url'],
-                                            )
+                                          ? (autorData?['avatar_url']
+                                                        .toString()
+                                                        .startsWith(
+                                                          'assets/',
+                                                        ) ==
+                                                    true
+                                                ? AssetImage(
+                                                        autorData?['avatar_url']
+                                                                .toString() ??
+                                                            '',
+                                                      )
+                                                      as ImageProvider
+                                                : NetworkImage(
+                                                    autorData?['avatar_url']
+                                                            .toString() ??
+                                                        '',
+                                                  ))
                                           : null,
                                       child: autorData?['avatar_url'] == null
                                           ? const Icon(

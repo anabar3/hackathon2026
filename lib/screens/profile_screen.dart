@@ -137,10 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         mimeType: mimeType,
       );
 
-      await _service.upsertPerfil(
-        userId: user.id,
-        avatarUrl: publicUrl,
-      );
+      await _service.upsertPerfil(userId: user.id, avatarUrl: publicUrl);
 
       // refresca datos locales
       await _loadPerfil();
@@ -153,7 +150,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _message = 'Error subiendo la imagen: ${e.toString().split(']').last}';
+          _message =
+              'Error subiendo la imagen: ${e.toString().split(']').last}';
         });
       }
     } finally {
@@ -277,7 +275,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: AppColors.primary.withAlpha(18),
                             image: _avatarUrl != null && _avatarUrl!.isNotEmpty
                                 ? DecorationImage(
-                                    image: NetworkImage(_avatarUrl!),
+                                    image: _avatarUrl!.startsWith('assets/')
+                                        ? AssetImage(_avatarUrl!)
+                                              as ImageProvider
+                                        : NetworkImage(_avatarUrl!),
                                     fit: BoxFit.cover,
                                   )
                                 : null,

@@ -80,22 +80,29 @@ class PersonBoardsScreen extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(32),
-                    child: Image.network(
-                      person.avatar,
-                      width: 64,
-                      height: 64,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 64,
-                        height: 64,
-                        color: AppColors.surface,
-                        child: const Icon(
-                          Icons.person,
-                          color: AppColors.mutedForeground,
-                          size: 32,
-                        ),
-                      ),
-                    ),
+                    child: person.avatar.startsWith('assets/')
+                        ? Image.asset(
+                            person.avatar,
+                            width: 64,
+                            height: 64,
+                            fit: BoxFit.cover,
+                          )
+                        : Image.network(
+                            person.avatar,
+                            width: 64,
+                            height: 64,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 64,
+                              height: 64,
+                              color: AppColors.surface,
+                              child: const Icon(
+                                Icons.person,
+                                color: AppColors.mutedForeground,
+                                size: 32,
+                              ),
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -322,7 +329,7 @@ class PersonBoardsScreen extends StatelessWidget {
                                           ),
                                         ),
                                         Text(
-                                        '${board.itemCount} elementos',
+                                          '${board.itemCount} elementos',
                                           style: const TextStyle(
                                             color: AppColors.mutedForeground,
                                             fontSize: 11,
