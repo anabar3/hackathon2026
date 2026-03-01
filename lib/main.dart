@@ -1,9 +1,12 @@
-import 'dart:typed_data';
+// Unnecessary import removed. All elements provided by flutter/services.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'dart:async';
+import 'dart:io';
 import 'models/models.dart';
 import 'data/mock_data.dart';
 import 'theme/app_theme.dart';
@@ -188,6 +191,7 @@ class _CollectHomeState extends State<CollectHome> {
   Board? _selectedPublicBoard;
   List<ContentItem> _publicBoardItems = [];
   bool _loadingBoards = true;
+  StreamSubscription? _intentSub;
 
   @override
   void initState() {
@@ -205,12 +209,123 @@ class _CollectHomeState extends State<CollectHome> {
 
     _loadBoards();
     _loadInbox();
+
+    // Listen to media sharing coming from outside the app while the app is in the memory.
+    _intentSub = ReceiveSharingIntent.instance.getMediaStream().listen(
+      (List<SharedMediaFile> value) {
+        _handleSharedMedia(value);
+      },
+      onError: (err) {
+        print("getIntentDataStream error: \$err");
+      },
+    );
+
+    // Get the media sharing coming from outside the app while the app is closed.
+    ReceiveSharingIntent.instance.getInitialMedia().then((
+      List<SharedMediaFile> value,
+    ) {
+      _handleSharedMedia(value);
+      // Tell the library that we are done processing the intent.
+      ReceiveSharingIntent.instance.reset();
+    });
   }
 
   @override
   void dispose() {
+    _intentSub?.cancel();
     BleService.instance.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSharedMedia(List<SharedMediaFile> files) async {
+    if (files.isEmpty) return;
+
+    // Process only if user is logged in
+    final user = _service.currentUser;
+    if (user == null) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Guardando items en el Inbox...')),
+    );
+
+    bool hasError = false;
+
+    for (var file in files) {
+      try {
+        if (file.type == SharedMediaType.text ||
+            file.type == SharedMediaType.url) {
+          final content = file.path; // path contains the text/url content
+          final isLink =
+              file.type == SharedMediaType.url ||
+              content.startsWith('http://') ||
+              content.startsWith('https://');
+
+          if (isLink) {
+            await _service.guardarLinkEnInbox(
+              url: content,
+              titulo: null,
+              descripcion: null,
+            );
+          } else {
+            await _service.guardarTextoEnInbox(
+              contenido: content,
+              titulo: null,
+            );
+          }
+        } else {
+          // It's a file (image, video, file)
+          final bytes = File(file.path).readAsBytesSync();
+          final fileName = file.path.split('/').last;
+
+          String tipo = 'archivo';
+          if (file.type == SharedMediaType.image) tipo = 'imagen';
+          if (file.type == SharedMediaType.video) tipo = 'video';
+
+          // Guess mime roughly or fallback
+          String mime = file.mimeType ?? 'application/octet-stream';
+          if (file.mimeType == null) {
+            final ext = fileName.split('.').last.toLowerCase();
+            if (['png', 'jpg', 'jpeg', 'webp'].contains(ext)) {
+              mime = 'image/\$ext';
+            } else if (['mp4', 'mov'].contains(ext)) {
+              mime = 'video/\$ext';
+            } else if (['mp3', 'wav', 'm4a'].contains(ext)) {
+              mime = 'audio/\$ext';
+            } else if (ext == 'pdf') {
+              mime = 'application/pdf';
+            }
+          }
+
+          await _service.guardarArchivoEnInbox(
+            bytes: bytes,
+            fileName: fileName,
+            mimeType: mime,
+            tipo: tipo,
+            titulo: fileName,
+            descripcion:
+                file.message, // Optional message sent along with iOS share
+            tableroId: null,
+          );
+        }
+      } catch (e) {
+        hasError = true;
+        print("Error saving shared media: \$e");
+      }
+    }
+
+    if (mounted) {
+      if (hasError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error guardando algunos items.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Guardado en el Inbox correctamente.')),
+        );
+      }
+      // Refresh inbox to show new items
+      _loadInbox();
+    }
   }
 
   void _navigate(Screen s) {
