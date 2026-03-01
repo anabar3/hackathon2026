@@ -492,9 +492,14 @@ class _CollectHomeState extends State<CollectHome> {
     await _service.actualizarItem(itemId: itemId, contenido: newDescription);
     setState(() {
       _items = _items
-          .map((i) => i.id == itemId
-              ? _updatedItem(i, description: newDescription.isEmpty ? null : newDescription)
-              : i)
+          .map(
+            (i) => i.id == itemId
+                ? _updatedItem(
+                    i,
+                    description: newDescription.isEmpty ? null : newDescription,
+                  )
+                : i,
+          )
           .toList();
       if (_selectedItem.id == itemId) {
         _selectedItem = _items.firstWhere((i) => i.id == itemId);
@@ -516,10 +521,7 @@ class _CollectHomeState extends State<CollectHome> {
       fileName: fileName,
       mimeType: mimeType,
     );
-    await _service.actualizarItem(
-      itemId: itemId,
-      rawData: {'thumbnail': url},
-    );
+    await _service.actualizarItem(itemId: itemId, rawData: {'thumbnail': url});
     setState(() {
       _items = _items
           .map((i) => i.id == itemId ? _updatedItem(i, thumbnail: url) : i)
@@ -690,11 +692,24 @@ class _CollectHomeState extends State<CollectHome> {
         );
       case Screen.publicBoard:
         if (_selectedPublicBoard == null) return const SizedBox.shrink();
+
+        final subboards =
+            _selectedPerson?.publicBoards
+                .where((b) => b.parentId == _selectedPublicBoard!.id)
+                .toList() ??
+            [];
+
         return PublicBoardScreen(
           board: _selectedPublicBoard!,
           ownerName: _selectedPerson?.name ?? '',
           items: _publicBoardItems,
           myItems: _items,
+          subboards: subboards,
+          onSubboardSelect: (b) {
+            if (_selectedPerson != null) {
+              _handlePublicBoardSelect(b, _selectedPerson!);
+            }
+          },
           onBack: _handleBack,
           onItemSelect: _handleItemSelect,
           onExport: (item) async {
@@ -1054,7 +1069,8 @@ class _CollectHomeState extends State<CollectHome> {
       final autor = i['autor'] as Map<String, dynamic>;
       authorName = autor['username'] ?? autor['nombre_completo'];
     }
-    final thumb = i['thumbnail'] ??
+    final thumb =
+        i['thumbnail'] ??
         (i['metadatos'] is Map ? (i['metadatos']['thumbnail']) : null) ??
         (ct == ContentType.image ? contenido : null);
     return ContentItem(

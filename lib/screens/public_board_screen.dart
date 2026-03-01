@@ -10,6 +10,8 @@ class PublicBoardScreen extends StatefulWidget {
   final String ownerName;
   final List<ContentItem> items;
   final List<ContentItem> myItems;
+  final List<Board> subboards;
+  final void Function(Board)? onSubboardSelect;
   final VoidCallback onBack;
   final void Function(ContentItem) onItemSelect;
   final Future<void> Function(ContentItem) onSuggest;
@@ -21,6 +23,8 @@ class PublicBoardScreen extends StatefulWidget {
     required this.ownerName,
     required this.items,
     required this.myItems,
+    this.subboards = const [],
+    this.onSubboardSelect,
     required this.onBack,
     required this.onItemSelect,
     required this.onSuggest,
@@ -102,6 +106,52 @@ class _PublicBoardScreenState extends State<PublicBoardScreen> {
                     },
                   ),
                   const SizedBox(height: 20),
+
+                  if (widget.subboards.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Subtableros',
+                            style: TextStyle(
+                              color: AppColors.foreground,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          GridView.builder(
+                            physics: const NeverScrollableScrollPhysics(),
+                            shrinkWrap: true,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 16,
+                                  childAspectRatio: 0.9,
+                                ),
+                            itemCount: widget.subboards.length,
+                            itemBuilder: (context, i) {
+                              final board = widget.subboards[i];
+                              return AnimatedEntry(
+                                index: i,
+                                child: _SubBoardCard(
+                                  board: board,
+                                  onTap: widget.onSubboardSelect != null
+                                      ? () => widget.onSubboardSelect!(board)
+                                      : null,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
 
                   // Filters
                   Padding(
@@ -324,9 +374,9 @@ class _ExportableCardState extends State<_ExportableCard> {
                         }
                       } catch (e) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $e')),
-                          );
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text('Error: $e')));
                         }
                       } finally {
                         if (mounted) setState(() => _exporting = false);
@@ -548,6 +598,91 @@ class _PublicBoardHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SubBoardCard extends StatelessWidget {
+  final Board board;
+  final VoidCallback? onTap;
+  const _SubBoardCard({required this.board, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border, width: 2),
+          boxShadow: const [
+            BoxShadow(color: AppColors.border, offset: Offset(0, 4)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(18),
+                ),
+                child: board.coverImage != null
+                    ? Image.network(board.coverImage!, fit: BoxFit.cover)
+                    : Container(
+                        color: AppColors.secondary,
+                        child: Icon(
+                          Icons.dashboard_customize,
+                          color: AppColors.primary.withAlpha(120),
+                          size: 28,
+                        ),
+                      ),
+              ),
+            ),
+            Container(height: 2, color: AppColors.border),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          board.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.foreground,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      if (board.isPinned)
+                        const Icon(
+                          Icons.push_pin,
+                          size: 14,
+                          color: AppColors.primary,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${board.itemCount} items',
+                    style: const TextStyle(
+                      color: AppColors.mutedForeground,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
