@@ -48,7 +48,7 @@ IMPORTANT CLASSIFICATION RULES (STRICTLY ENFORCED):
 
 Actions can be:
 - "use_existing": move the item to an existing board.
-- "create_new": suggest creating a new board that would fit this item's topic (and potentially other similar items in the inbox).
+- "create_new": suggest creating a new board that would fit this item's topic (and potentially other similar items in the inbox) In spanish.
 
 Output STRICTLY in the following JSON schema:
 {
@@ -61,7 +61,7 @@ Output STRICTLY in the following JSON schema:
          "name": "string",
          "description": "string"
       } or null,
-      "reasoning": "short explanation of why you grouped this item here, referencing its relationship to other inbox items or an existing board's ai_summary if applicable. Do not include the item id in the reasoning, use the name instead."
+      "reasoning": "short explanation of why you grouped this item here, referencing its relationship to other inbox items or an existing board's ai_summary if applicable. Do not include the item id in the reasoning, use the name instead. In spanish."
     }
   ]
 }
@@ -290,7 +290,7 @@ Output STRICTLY in the following JSON schema:
 
     final itemContext = "Title: ${item['titulo'] ?? ''}\n$extraContent\n";
     final systemPrompt =
-        "You are an AI assistant that provides an insightful summary of the content of an item. Provide ONLY the summary text.";
+        "You are an AI assistant that provides an insightful summary of the content of an item. Provide ONLY the summary text. In spanish.";
 
     final List<Map<String, dynamic>> userContentArray = [
       {"type": "text", "text": "Please summarize this item:\n"},
@@ -348,7 +348,7 @@ Output STRICTLY in the following JSON schema:
     }
 
     final systemPrompt =
-        "You are an AI assistant that writes insightful summaries for boards containing multiple items. You will receive the board's title, description, and the summaries of all the items inside the board. Create an insightful, holistic text summary of the board's entire contents. The summary should quickly help the user to understand the content of the board. You can include bullet points if it helps to make the summary more insightful. Provide ONLY the summary text.";
+        "You are an AI assistant that writes insightful summaries for boards containing multiple items. You will receive the board's title, description, and the summaries of all the items inside the board. Create an insightful, holistic text summary of the board's entire contents. The summary should quickly help the user to understand the content of the board. You can include bullet points if it helps to make the summary more insightful. Provide ONLY the summary text. In spanish.";
 
     String itemsText = "";
     for (var i in items) {
@@ -405,7 +405,7 @@ You will receive a list of "My Boards" and "Other User's Boards". Each board has
 
 Your task is to:
 1. Compare the contents of the boards to understand both users' interests.
-2. Generate an "insightful_summary" (1-3 sentences) directly addressing the first user (e.g., "You both seem to love..." or "While you focus on X, they are more into Y, but you both share an interest in Z.") analyzing how their interests overlap or differ.
+2. Generate an "insightful_summary" (1-3 sentences) directly addressing the first user (e.g., "You both seem to love..." or "While you focus on X, they are more into Y, but you both share an interest in Z.") analyzing how their interests overlap or differ. In spanish.
 3. Rank the "Other User's Boards" in order of how similar they are to "My Boards".
 4. Return a JSON object with two fields:
    - "insightful_summary": The generated summary text.
@@ -471,7 +471,7 @@ ${formatBoards(otherBoards)}
     }
   }
 
-  Future<Map<String, int>> scoreUsersCompatibility({
+  Future<List<String>> rankUsers({
     required String myBio,
     required List<String> myInterests,
     required List<Map<String, dynamic>> otherUsers,
@@ -481,25 +481,17 @@ ${formatBoards(otherBoards)}
       throw Exception('GROQ_API_KEY is not properly set in .env');
     }
 
-    if (otherUsers.isEmpty) return {};
+    if (otherUsers.isEmpty) return [];
 
     final systemPrompt = """
-You are an AI assistant that calculates an "interest compatibility score" between a primary user and a list of other users based on their bios, interests, and an AI-generated insight of their digital boards.
-Your goal is to evaluate how likely it is they would get along or find each other interesting. Provide an integer score from 1 to 100 for each user.
-Look for deep semantic connections, but score them strictly based on the strength of the connection. 
-If an "AI Insight" is provided for a user, USE IT to heavily influence the compatibility score. If the insight says they share interests, the score should be high.
-- 85-100: Very high compatibility (strong overlap in exact interests, identical hobbies, or highly complementary AI insight).
-- 50-84: Good compatibility (some shared broad interests, generally positive insight).
-- 25-49: Moderate compatibility (few shared interests, but still potential for conversation).
-- 10-24: Low compatibility (very weak semantic connections, e.g., one likes "vegetables" and another likes "fruit", or both simply like "food").
-- 1-9: No compatibility (absolutely nothing in common, completely opposite vibes, very negative insight).
+You are an AI assistant that ranks a list of users based on their bios, interests, and an AI-generated insight of their digital boards.
+Your goal is to evaluate how likely it is they would get along with the primary user. Provide an ordered list of user IDs, from most compatible to least compatible.
+Look for deep semantic connections. 
+If an "AI Insight" is provided for a user, USE IT to heavily influence the ranking. 
 
-Output STRICTLY in the following JSON schema, replacing integer_score with a NUMBER (not a string):
+Output STRICTLY in the following JSON schema:
 {
-  "scores": {
-    "user_id_1": integer_score,
-    "user_id_2": integer_score
-  }
+  "ranked_user_ids": ["string", "string"]
 }
 """;
 
@@ -549,19 +541,10 @@ ${formatOtherUsers(otherUsers)}
       final content = data['choices'][0]['message']['content'];
       final decoded = jsonDecode(content);
 
-      final Map<String, int> scores = {};
-      final rawScores = decoded['scores'] as Map<String, dynamic>? ?? {};
-      rawScores.forEach((key, value) {
-        if (value is int) {
-          scores[key] = value;
-        } else if (value is String) {
-          scores[key] = int.tryParse(value) ?? 0;
-        }
-      });
-      return scores;
+      return List<String>.from(decoded['ranked_user_ids'] ?? []);
     } else {
       throw Exception(
-        'Failed to score user compatibility: \${response.statusCode} \n \${response.body}',
+        'Failed to rank users: \${response.statusCode} \n \${response.body}',
       );
     }
   }

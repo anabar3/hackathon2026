@@ -183,7 +183,7 @@ class _DriftScreenState extends State<DriftScreen> {
 
                   if (myProfile?['bio'] != null) {
                     GroqService()
-                        .scoreUsersCompatibility(
+                        .rankUsers(
                           myBio: myProfile!['bio'] ?? '',
                           myInterests: myInterests,
                           otherUsers: [
@@ -195,7 +195,7 @@ class _DriftScreenState extends State<DriftScreen> {
                             },
                           ],
                         )
-                        .then((scores) {
+                        .then((rankedUserIds) {
                           if (mounted) {
                             setState(() {
                               final idx = _walkedPeople.indexWhere(
@@ -225,21 +225,14 @@ class _DriftScreenState extends State<DriftScreen> {
                                   lastSeenTime: p.lastSeenTime,
                                   sharedInterests: p.sharedInterests,
                                   sharedInterestsSummary: insight,
-                                  compatibilityScore: scores[person.id],
                                   publicBoards: newBoards,
-                                );
-                                _walkedPeople.sort(
-                                  (a, b) => (b.compatibilityScore ?? 0)
-                                      .compareTo(a.compatibilityScore ?? 0),
                                 );
                               }
                             });
                           }
                         })
                         .catchError((e) {
-                          print(
-                            '[DriftScreen] Error scoring walked user compatibility: $e',
-                          );
+                          print('[DriftScreen] Error ranking walked user: $e');
                         });
                   }
                 })
@@ -493,7 +486,6 @@ class _DriftScreenState extends State<DriftScreen> {
                   lastSeenTime: 'Just now',
                   sharedInterests: shared,
                   sharedInterestsSummary: insightsSummary,
-                  compatibilityScore: 0, // Placeholder
                   publicBoards: boards,
                 ),
               );
@@ -503,7 +495,7 @@ class _DriftScreenState extends State<DriftScreen> {
           // Score the user compatibility asynchronously
           if (myProfile?['bio'] != null) {
             GroqService()
-                .scoreUsersCompatibility(
+                .rankUsers(
                   myBio: myProfile!['bio'] ?? '',
                   myInterests: myInterests,
                   otherUsers: [
@@ -515,7 +507,7 @@ class _DriftScreenState extends State<DriftScreen> {
                     },
                   ],
                 )
-                .then((scores) {
+                .then((rankedUserIds) {
                   if (mounted) {
                     setState(() {
                       final personIndex = _nearPeople.indexWhere(
@@ -533,20 +525,14 @@ class _DriftScreenState extends State<DriftScreen> {
                           sharedInterests: oldPerson.sharedInterests,
                           sharedInterestsSummary:
                               oldPerson.sharedInterestsSummary,
-                          compatibilityScore: scores[id],
                           publicBoards: oldPerson.publicBoards,
-                        );
-                        _nearPeople.sort(
-                          (a, b) => (b.compatibilityScore ?? 0).compareTo(
-                            a.compatibilityScore ?? 0,
-                          ),
                         );
                       }
                     });
                   }
                 })
                 .catchError((e) {
-                  print('Error scoring compatibility for new user: $e');
+                  print('Error ranking new user: $e');
                 });
           }
         }
@@ -1043,37 +1029,6 @@ class _PersonCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-
-            // Compatibility Score
-            if (person.compatibilityScore != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Row(
-                  children: [
-                    Icon(
-                      person.compatibilityScore! >= 80
-                          ? Icons.favorite
-                          : Icons.person_add_alt_1,
-                      size: 14,
-                      color: person.compatibilityScore! >= 80
-                          ? AppColors.green
-                          : AppColors.primary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${person.compatibilityScore}% Match',
-                      style: TextStyle(
-                        color: person.compatibilityScore! >= 80
-                            ? AppColors.green
-                            : AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
             // Location + time
             Row(
