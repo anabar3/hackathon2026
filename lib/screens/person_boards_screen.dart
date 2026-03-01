@@ -11,7 +11,7 @@ class PersonBoardsScreen extends StatelessWidget {
     super.key,
     required this.person,
     required this.onBack,
-    this.onBoardSelect,
+    required this.onBoardSelect,
   });
 
   IconData _boardIcon(String icon) {

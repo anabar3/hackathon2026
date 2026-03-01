@@ -802,9 +802,32 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
                 child: Row(
                   children: [
-                    _SolidBtn(
-                      icon: Icons.arrow_back_rounded,
-                      onTap: widget.onBack,
+                    _SolidBtn(icon: Icons.arrow_back_rounded, onTap: widget.onBack),
+                    Row(
+                      children: [
+                        _SolidBtn(
+                          icon: widget.item.saved
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          color: widget.item.saved
+                              ? AppColors.accent
+                              : AppColors.foreground,
+                          onTap: () => widget.onToggleSaved(widget.item.id),
+                        ),
+                        const SizedBox(width: 8),
+                        _SolidBtn(
+                          icon: Icons.library_add_rounded,
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Guardando en Inbox...')),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _SolidBtn(icon: Icons.share_rounded, onTap: () {}),
+                        const SizedBox(width: 8),
+                        _SolidBtn(icon: Icons.more_horiz_rounded, onTap: () {}),
+                      ],
                     ),
                   ],
                 ),

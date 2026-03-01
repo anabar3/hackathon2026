@@ -16,6 +16,7 @@ enum Screen {
   aiOrganize,
   personBoards,
   publicBoard,
+  boardSuggestions,
   profile,
 }
 
