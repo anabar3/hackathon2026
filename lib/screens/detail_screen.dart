@@ -9,7 +9,10 @@ class DetailScreen extends StatefulWidget {
   final ContentItem item;
   final VoidCallback onBack;
   final void Function(String) onToggleSaved;
-  final VoidCallback? onAiSummarize;
+  /// Callback that triggers AI summarization for this item. Should return a
+  /// Future that completes when the summary has been stored in Supabase and the
+  /// parent state refreshed.
+  final Future<void> Function()? onAiSummarize;
   final Future<void> Function(String, String) onUpdateTitle;
   final Future<void> Function(String, String) onUpdateDescription;
   final Future<String> Function(
@@ -44,6 +47,8 @@ class _DetailScreenState extends State<DetailScreen> {
   bool _savingDesc = false;
   bool _deleting = false;
   bool _uploadingThumb = false;
+  bool _showAiSummary = false;
+  bool _loadingAiSummary = false;
 
   Future<void> _editTitle() async {
     if (_savingTitle) return;
@@ -105,6 +110,8 @@ class _DetailScreenState extends State<DetailScreen> {
     if (oldWidget.item.id != widget.item.id ||
         oldWidget.item.thumbnail != widget.item.thumbnail) {
       _thumbUrl = widget.item.thumbnail;
+      _showAiSummary = false;
+      _loadingAiSummary = false;
     }
   }
 
@@ -259,6 +266,39 @@ class _DetailScreenState extends State<DetailScreen> {
       default:
         return Icons.image_outlined;
     }
+  }
+
+  Future<void> _handleAiSummaryPressed() async {
+    // Hide if already visible
+    if (_showAiSummary) {
+      setState(() => _showAiSummary = false);
+      return;
+    }
+
+    final hasSummary =
+        widget.item.aiSummary != null && widget.item.aiSummary!.isNotEmpty;
+
+    if (!hasSummary && widget.onAiSummarize != null) {
+      setState(() => _loadingAiSummary = true);
+      try {
+        final maybeFuture = widget.onAiSummarize!();
+        if (maybeFuture is Future) {
+          await maybeFuture;
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo generar el resumen automáticamente'),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _loadingAiSummary = false);
+      }
+    }
+
+    if (mounted) setState(() => _showAiSummary = true);
   }
 
   @override
@@ -605,11 +645,20 @@ class _DetailScreenState extends State<DetailScreen> {
                             children: [
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  onPressed: widget.onSummarize,
-                                  icon: const Icon(Icons.auto_awesome, size: 20),
-                                  label: const Text(
-                                    'AI Summarize',
-                                    style: TextStyle(
+                                  onPressed: _loadingAiSummary ? null : _handleAiSummaryPressed,
+                                  icon: _loadingAiSummary
+                                      ? const SizedBox(
+                                          height: 18,
+                                          width: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.auto_awesome, size: 20),
+                                  label: Text(
+                                    _showAiSummary ? 'Ocultar resumen' : 'AI Summary',
+                                    style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
                                     ),
@@ -648,6 +697,89 @@ class _DetailScreenState extends State<DetailScreen> {
                               ),
                             ],
                           ),
+
+                          if (_showAiSummary) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.card,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.border, width: 2),
+                                boxShadow: const [
+                                  BoxShadow(color: AppColors.border, offset: Offset(0, 3)),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(
+                                          Icons.auto_awesome,
+                                          color: AppColors.primary,
+                                          size: 18,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      const Text(
+                                        'AI Summary',
+                                        style: TextStyle(
+                                          color: AppColors.foreground,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      if (_loadingAiSummary)
+                                        const SizedBox(
+                                          height: 18,
+                                          width: 18,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (_loadingAiSummary)
+                                    const Text(
+                                      'Generando resumen...',
+                                      style: TextStyle(
+                                        color: AppColors.mutedForeground,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    )
+                                  else if (widget.item.aiSummary != null &&
+                                      widget.item.aiSummary!.isNotEmpty)
+                                    Text(
+                                      widget.item.aiSummary!,
+                                      style: const TextStyle(
+                                        color: AppColors.foreground,
+                                        fontSize: 15,
+                                        height: 1.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    )
+                                  else
+                                    const Text(
+                                      'Aún no hay un resumen para este item. Pulsa el botón para generarlo.',
+                                      style: TextStyle(
+                                        color: AppColors.mutedForeground,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
