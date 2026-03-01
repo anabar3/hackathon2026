@@ -190,8 +190,6 @@ class _CollectHomeState extends State<CollectHome> {
   final List<String> _boardHistory = [];
   List<Map<String, dynamic>> _inboxItems = [];
   bool _loadingInbox = false;
-  Board? _selectedPublicBoard;
-  List<ContentItem> _publicBoardItems = [];
   bool _loadingBoards = true;
 
   @override
@@ -237,8 +235,6 @@ class _CollectHomeState extends State<CollectHome> {
         _screen = Screen.personBoards;
       } else if (_screen == Screen.boardSuggestions) {
         _screen = Screen.board;
-      } else if (_screen == Screen.publicBoard) {
-        _screen = Screen.personBoards;
       } else if (_screen == Screen.personBoards) {
         _screen = Screen.drift;
       } else if (_screen == Screen.profile) {
@@ -390,7 +386,6 @@ class _CollectHomeState extends State<CollectHome> {
       _screen != Screen.personBoards &&
       _screen != Screen.publicBoard &&
       _screen != Screen.boardSuggestions &&
-      _screen != Screen.publicBoard &&
       _screen != Screen.login &&
       _screen != Screen.boardTree;
 
@@ -474,12 +469,14 @@ class _CollectHomeState extends State<CollectHome> {
         return PersonBoardsScreen(
           person: _selectedPerson!,
           onBack: _handleBack,
-          onBoardSelect: _handlePublicBoardSelect,
+          onBoardSelect: (board) =>
+              _handlePublicBoardSelect(board, _selectedPerson!),
         );
       case Screen.publicBoard:
         if (_selectedPublicBoard == null) return const SizedBox.shrink();
         return PublicBoardScreen(
           board: _selectedPublicBoard!,
+          ownerName: _selectedPerson?.name ?? '',
           items: _publicBoardItems,
           myItems: _items,
           onBack: _handleBack,
@@ -526,16 +523,6 @@ class _CollectHomeState extends State<CollectHome> {
             await _syncItems();
             await _loadBoards();
           },
-          onBoardSelect: (board) =>
-              _handlePublicBoardSelect(board, _selectedPerson!),
-        );
-      case Screen.publicBoard:
-        if (_selectedPublicBoard == null) return const SizedBox.shrink();
-        return PublicBoardScreen(
-          board: _selectedPublicBoard!,
-          ownerName: _selectedPerson?.name ?? 'Unknown',
-          items: _publicBoardItems,
-          onBack: _handleBack,
         );
       case Screen.profile:
         return ProfileScreen(onBack: _handleBack, onLogout: _handleLogout);
@@ -577,30 +564,31 @@ class _CollectHomeState extends State<CollectHome> {
         backgroundColor: AppColors.background,
         resizeToAvoidBottomInset: false,
         body: PatternBackground(
-        child: SafeArea(
-          bottom: false,
-          child: SizedBox.expand(
-            child: Stack(
-              children: [
-                _buildScreen(),
-                if (_showBottomNav)
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: BottomNav(
-                      activeScreen: _screen,
-                      onNavigate: (s) {
-                        setState(() {
-                          _prevScreen = _screen;
-                          _screen = s;
-                        });
-                        if (s == Screen.inbox) _loadInbox();
-                        if (s == Screen.dashboard) _loadBoards();
-                      },
+          child: SafeArea(
+            bottom: false,
+            child: SizedBox.expand(
+              child: Stack(
+                children: [
+                  _buildScreen(),
+                  if (_showBottomNav)
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: BottomNav(
+                        activeScreen: _screen,
+                        onNavigate: (s) {
+                          setState(() {
+                            _prevScreen = _screen;
+                            _screen = s;
+                          });
+                          if (s == Screen.inbox) _loadInbox();
+                          if (s == Screen.dashboard) _loadBoards();
+                        },
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -706,6 +694,15 @@ class _CollectHomeState extends State<CollectHome> {
         _selectedBoard = _boards.first;
       }
     });
+  }
+
+  Future<void> _handleOpenSuggestions() async {
+    if (_selectedBoard == null) return;
+    final sugs = await _service.getSugerenciasTablero(_selectedBoard!.id);
+    setState(() {
+      _boardSuggestions = sugs;
+    });
+    _navigate(Screen.boardSuggestions);
   }
 
   Future<void> _handleAiSummarize() async {
