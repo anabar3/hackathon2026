@@ -1149,7 +1149,19 @@ class _CollectHomeState extends State<CollectHome> {
       title: title?.isNotEmpty == true ? title! : contenido,
       description: description,
       thumbnail: thumb,
-      url: ct == ContentType.link ? contenido : null,
+      url: ct == ContentType.link
+          ? contenido
+          : (contenido.startsWith('http') &&
+                  const {
+                    ContentType.file,
+                    ContentType.audio,
+                    ContentType.video,
+                    ContentType.image,
+                    ContentType.document,
+                    ContentType.link,
+                  }.contains(ct)
+              ? contenido
+              : null),
       tags: (i['tags'] as List?)?.cast<String>() ?? [],
       boardId: i['tablero_id'] ?? '',
       createdAt: i['created_at'] ?? '',

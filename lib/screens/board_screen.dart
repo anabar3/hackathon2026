@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/content_card.dart';
@@ -365,6 +367,47 @@ class _MasonryGrid extends StatelessWidget {
 
   const _MasonryGrid({required this.items, required this.onItemTap});
 
+  VoidCallback _downloadCallback(ContentItem item, BuildContext context) {
+    // Notes and plain text: copy content to clipboard
+    if (item.type == ContentType.note) {
+      final text = [item.title, item.description]
+          .where((s) => s != null && s.isNotEmpty)
+          .join('\n\n');
+      return () async {
+        await Clipboard.setData(ClipboardData(text: text));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nota copiada al portapapeles')),
+          );
+        }
+      };
+    }
+    // All other types: open URL
+    final url = item.url;
+    if (url != null && url.isNotEmpty) {
+      return () async {
+        try {
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        } catch (_) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No se pudo abrir el archivo')),
+            );
+          }
+        }
+      };
+    }
+    // Fallback: copy title to clipboard
+    return () async {
+      await Clipboard.setData(ClipboardData(text: item.title));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Copiado al portapapeles')),
+        );
+      }
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final left = <ContentItem>[];
@@ -392,6 +435,7 @@ class _MasonryGrid extends StatelessWidget {
                       child: ContentCard(
                         item: entry.value,
                         onTap: () => onItemTap(entry.value),
+                        onDownload: _downloadCallback(entry.value, context),
                       ),
                     ),
                   ),
@@ -413,6 +457,7 @@ class _MasonryGrid extends StatelessWidget {
                       child: ContentCard(
                         item: entry.value,
                         onTap: () => onItemTap(entry.value),
+                        onDownload: _downloadCallback(entry.value, context),
                       ),
                     ),
                   ),

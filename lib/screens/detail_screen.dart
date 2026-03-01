@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 
@@ -213,6 +215,35 @@ class _DetailScreenState extends State<DetailScreen> {
       }
     } finally {
       if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  Future<void> _copyNoteToClipboard() async {
+    final text = [
+      widget.item.title,
+      if (widget.item.description != null && widget.item.description!.isNotEmpty)
+        widget.item.description!,
+    ].join('\n\n');
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nota copiada al portapapeles')),
+      );
+    }
+  }
+
+  Future<void> _downloadFile() async {
+    final url = widget.item.url;
+    if (url == null || url.isEmpty) return;
+    final uri = Uri.parse(url);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el archivo')),
+        );
+      }
     }
   }
 
@@ -625,26 +656,68 @@ class _DetailScreenState extends State<DetailScreen> {
                             ),
                           ],
 
-                          if (widget.item.url != null) ...[
-                            const SizedBox(height: 32),
+                          // Action button: always visible for all types
+                          const SizedBox(height: 32),
+                          if (widget.item.type == ContentType.note)
                             SizedBox(
                               width: double.infinity,
                               height: 56,
                               child: ElevatedButton.icon(
-                                onPressed: () {},
-                                icon: const Icon(
-                                  Icons.open_in_new_rounded,
-                                  size: 20,
-                                ),
+                                onPressed: _copyNoteToClipboard,
+                                icon: const Icon(Icons.copy_rounded, size: 20),
                                 label: const Text(
-                                  'Open Link',
+                                  'Copiar texto',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
                               ),
-                            ),
+                            )
+                          else if (widget.item.url != null) ...[
+                            if (widget.item.type == ContentType.link)
+                              SizedBox(
+                                width: double.infinity,
+                                height: 56,
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final uri = Uri.parse(widget.item.url!);
+                                    try {
+                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                    } catch (_) {}
+                                  },
+                                  icon: const Icon(
+                                    Icons.open_in_new_rounded,
+                                    size: 20,
+                                  ),
+                                  label: const Text(
+                                    'Open Link',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              SizedBox(
+                                width: double.infinity,
+                                height: 56,
+                                child: ElevatedButton.icon(
+                                  onPressed: _downloadFile,
+                                  icon: const Icon(
+                                    Icons.download_rounded,
+                                    size: 20,
+                                  ),
+                                  label: const Text(
+                                    'Descargar archivo',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                           const SizedBox(height: 28),
                           Row(
