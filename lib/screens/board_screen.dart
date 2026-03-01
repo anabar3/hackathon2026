@@ -14,6 +14,7 @@ class BoardScreen extends StatefulWidget {
   final void Function(ContentItem) onItemSelect;
   final VoidCallback onEdit;
   final void Function(String parentId) onCreateSubBoard;
+  final void Function(String boardId) onCreateItem;
   final Future<void> Function() onAiSummarize;
   final VoidCallback onOpenSuggestions;
   final Future<void> Function(Board board, bool toPublic) onToggleVisibility;
@@ -28,6 +29,7 @@ class BoardScreen extends StatefulWidget {
     required this.onItemSelect,
     required this.onEdit,
     required this.onCreateSubBoard,
+    required this.onCreateItem,
     required this.onAiSummarize,
     required this.onOpenSuggestions,
     required this.onToggleVisibility,
@@ -115,247 +117,263 @@ class _BoardScreenState extends State<BoardScreen> {
               padding: const EdgeInsets.only(bottom: 100),
               physics: const BouncingScrollPhysics(),
               child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _BoardHeader(
-                    board: board,
-                    itemCount: allBoardItems.length,
-                    onBack: widget.onBack,
-                    onAiSummarize: _handleAiSummaryPressed,
-                    onEdit: widget.onEdit,
-                    onOpenSuggestions: widget.onOpenSuggestions,
-                    onToggleVisibility: () =>
-                        widget.onToggleVisibility(board, !board.isPublic),
-                  ),
-                  if (_showAiSummary)
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _BoardHeader(
+                      board: board,
+                      itemCount: allBoardItems.length,
+                      onBack: widget.onBack,
+                      onAiSummarize: _handleAiSummaryPressed,
+                      onEdit: widget.onEdit,
+                      onOpenSuggestions: widget.onOpenSuggestions,
+                      onToggleVisibility: () =>
+                          widget.onToggleVisibility(board, !board.isPublic),
+                    ),
+                    if (_showAiSummary)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        child: _AiSummaryCard(
+                          summary: board.aiSummary,
+                          loading: _loadingAiSummary,
+                        ),
+                      ),
+                    const SizedBox(height: 20),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                      child: _AiSummaryCard(
-                        summary: board.aiSummary,
-                        loading: _loadingAiSummary,
-                      ),
-                    ),
-                  const SizedBox(height: 20),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Subtableros',
-                              style: TextStyle(
-                                color: AppColors.foreground,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                            TextButton.icon(
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppColors.primary,
-                              ),
-                              onPressed: () => widget.onCreateSubBoard(widget.board.id),
-                              icon: const Icon(Icons.add, size: 18),
-                              label: const Text(
-                                'Nuevo',
-                                style: TextStyle(fontWeight: FontWeight.w700),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        if (childrenBoards.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            decoration: BoxDecoration(
-                              color: AppColors.card,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                'Sin subtableros aún',
-                                style: TextStyle(
-                                  color: AppColors.mutedForeground,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          GridView.builder(
-                            physics: const NeverScrollableScrollPhysics(),
-                            shrinkWrap: true,
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 16,
-                                  childAspectRatio: 0.9,
-                                ),
-                            itemCount: childrenBoards.length,
-                            itemBuilder: (context, i) {
-                              final board = childrenBoards[i];
-                              return AnimatedEntry(
-                                index: i,
-                                child: _SubBoardCard(
-                                  board: board,
-                                  onTap: () => widget.onBoardSelect(board),
-                                ),
-                              );
-                            },
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // Filters
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Row(
-                      children: const [
-                        Text(
-                          'Elementos',
-                          style: TextStyle(
-                            color: AppColors.foreground,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: _filters.map((f) {
-                          final active = f == _activeFilter;
-                          return GestureDetector(
-                            onTap: () => setState(() => _activeFilter = f),
-                            child: Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: active
-                                    ? AppColors.foreground
-                                    : AppColors.secondary,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: active
-                                      ? AppColors.foreground
-                                      : AppColors.border,
-                                  width: 2,
-                                ),
-                              ),
-                              child: Text(
-                                f,
-                                style: TextStyle(
-                                  color: active
-                                      ? AppColors.background
-                                      : AppColors.secondaryForeground,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-                  if (items.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 40,
-                          vertical: 40,
-                        ),
-                        child: TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0.8, end: 1.0),
-                          duration: const Duration(milliseconds: 1000),
-                          curve: Curves.elasticOut,
-                          builder: (context, scale, child) {
-                            return Transform.scale(scale: scale, child: child);
-                          },
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  color: AppColors.secondary,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AppColors.border,
-                                    width: 4,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.border.withAlpha(50),
-                                      blurRadius: 20,
-                                      spreadRadius: 5,
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.explore_off_rounded,
-                                  color: AppColors.primary,
-                                  size: 48,
-                                ),
-                              ),
-                              const SizedBox(height: 24),
                               const Text(
-                                'Aún no hay elementos',
+                                'Subtableros',
                                 style: TextStyle(
                                   color: AppColors.foreground,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.5,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1,
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'Añade algo aquí para empezar tu colección.',
-                                style: TextStyle(
-                                  color: AppColors.mutedForeground,
-                                  fontSize: 15,
-                                  height: 1.4,
-                                  fontWeight: FontWeight.w600,
+                              TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
                                 ),
-                                textAlign: TextAlign.center,
+                                onPressed: () =>
+                                    widget.onCreateSubBoard(widget.board.id),
+                                icon: const Icon(Icons.add, size: 18),
+                                label: const Text(
+                                  'Nuevo',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                      ),
-                    )
-                  else
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                      child: _MasonryGrid(
-                        items: items,
-                        onItemTap: widget.onItemSelect,
+                          const SizedBox(height: 12),
+                          if (childrenBoards.isEmpty)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 20),
+                              decoration: BoxDecoration(
+                                color: AppColors.card,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'Sin subtableros aún',
+                                  style: TextStyle(
+                                    color: AppColors.mutedForeground,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            GridView.builder(
+                              physics: const NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 16,
+                                    childAspectRatio: 0.9,
+                                  ),
+                              itemCount: childrenBoards.length,
+                              itemBuilder: (context, i) {
+                                final board = childrenBoards[i];
+                                return AnimatedEntry(
+                                  index: i,
+                                  child: _SubBoardCard(
+                                    board: board,
+                                    onTap: () => widget.onBoardSelect(board),
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
                       ),
                     ),
-                ],
+
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Elementos',
+                            style: TextStyle(
+                              color: AppColors.foreground,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                            ),
+                            onPressed: () =>
+                                widget.onCreateItem(widget.board.id),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text(
+                              'Nuevo',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: _filters.map((f) {
+                            final active = f == _activeFilter;
+                            return GestureDetector(
+                              onTap: () => setState(() => _activeFilter = f),
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: active
+                                      ? AppColors.foreground
+                                      : AppColors.secondary,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: active
+                                        ? AppColors.foreground
+                                        : AppColors.border,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Text(
+                                  f,
+                                  style: TextStyle(
+                                    color: active
+                                        ? AppColors.background
+                                        : AppColors.secondaryForeground,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+                    if (items.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 40,
+                            vertical: 40,
+                          ),
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0.8, end: 1.0),
+                            duration: const Duration(milliseconds: 1000),
+                            curve: Curves.elasticOut,
+                            builder: (context, scale, child) {
+                              return Transform.scale(
+                                scale: scale,
+                                child: child,
+                              );
+                            },
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.secondary,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.border,
+                                      width: 4,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.border.withAlpha(50),
+                                        blurRadius: 20,
+                                        spreadRadius: 5,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.explore_off_rounded,
+                                    color: AppColors.primary,
+                                    size: 48,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                const Text(
+                                  'Aún no hay elementos',
+                                  style: TextStyle(
+                                    color: AppColors.foreground,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Añade algo aquí para empezar tu colección.',
+                                  style: TextStyle(
+                                    color: AppColors.mutedForeground,
+                                    fontSize: 15,
+                                    height: 1.4,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                        child: _MasonryGrid(
+                          items: items,
+                          onItemTap: widget.onItemSelect,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
-          ),
           );
         },
       ),
@@ -391,14 +409,14 @@ class _MasonryGrid extends StatelessWidget {
                 .map(
                   (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                  child: AnimatedEntry(
-                    index: entry.key * 2,
-                    child: ContentCard(
-                      item: entry.value,
-                      onTap: () => onItemTap(entry.value),
+                    child: AnimatedEntry(
+                      index: entry.key * 2,
+                      child: ContentCard(
+                        item: entry.value,
+                        onTap: () => onItemTap(entry.value),
+                      ),
                     ),
                   ),
-                ),
                 )
                 .toList(),
           ),
@@ -412,14 +430,14 @@ class _MasonryGrid extends StatelessWidget {
                 .map(
                   (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                  child: AnimatedEntry(
-                    index: entry.key * 2 + 1,
-                    child: ContentCard(
-                      item: entry.value,
-                      onTap: () => onItemTap(entry.value),
+                    child: AnimatedEntry(
+                      index: entry.key * 2 + 1,
+                      child: ContentCard(
+                        item: entry.value,
+                        onTap: () => onItemTap(entry.value),
+                      ),
                     ),
                   ),
-                ),
                 )
                 .toList(),
           ),

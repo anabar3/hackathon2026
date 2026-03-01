@@ -1,5 +1,25 @@
 enum ContentType { image, video, link, audio, note, document, file }
 
+extension ContentTypeX on ContentType {
+  String get toDbType {
+    switch (this) {
+      case ContentType.image:
+        return 'imagen';
+      case ContentType.video:
+        return 'video';
+      case ContentType.link:
+        return 'link';
+      case ContentType.audio:
+        return 'audio';
+      case ContentType.note:
+        return 'texto';
+      case ContentType.document:
+      case ContentType.file:
+        return 'archivo';
+    }
+  }
+}
+
 enum Screen {
   login,
   dashboard,

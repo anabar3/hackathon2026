@@ -15,6 +15,7 @@ class PublicBoardScreen extends StatefulWidget {
   final VoidCallback onBack;
   final void Function(ContentItem) onItemSelect;
   final Future<void> Function(ContentItem) onSuggest;
+  final Future<dynamic> Function()? onCreateNew;
   final Future<void> Function(ContentItem)? onExport;
 
   const PublicBoardScreen({
@@ -28,6 +29,7 @@ class PublicBoardScreen extends StatefulWidget {
     required this.onBack,
     required this.onItemSelect,
     required this.onSuggest,
+    this.onCreateNew,
     this.onExport,
   });
 
@@ -73,19 +75,22 @@ class _PublicBoardScreenState extends State<PublicBoardScreen> {
                     onBack: widget.onBack,
                     isSuggesting: _isSuggesting,
                     onSuggest: () async {
-                      final selected = await Navigator.push<ContentItem>(
+                      final selected = await Navigator.push<dynamic>(
                         context,
                         MaterialPageRoute(
                           builder: (_) => SelectMyItemScreen(
                             items: widget.myItems,
                             onBack: () => Navigator.pop(context),
+                            onCreateNew: widget.onCreateNew,
                           ),
                         ),
                       );
                       if (selected != null) {
                         setState(() => _isSuggesting = true);
                         try {
-                          await widget.onSuggest(selected);
+                          if (selected is ContentItem) {
+                            await widget.onSuggest(selected);
+                          }
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Suggestion sent!')),

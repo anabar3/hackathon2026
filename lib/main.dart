@@ -409,23 +409,15 @@ class _CollectHomeState extends State<CollectHome> {
     );
   }
 
-  Future<void> _handleToggleBoardVisibility(
-    Board board,
-    bool toPublic,
-  ) async {
+  Future<void> _handleToggleBoardVisibility(Board board, bool toPublic) async {
     try {
-      await _service.actualizarTablero(
-        tableroId: board.id,
-        isPublic: toPublic,
-      );
+      await _service.actualizarTablero(tableroId: board.id, isPublic: toPublic);
 
       if (!mounted) return;
       setState(() {
         _boards = _boards
             .map(
-              (b) => b.id == board.id
-                  ? _withUpdatedVisibility(b, toPublic)
-                  : b,
+              (b) => b.id == board.id ? _withUpdatedVisibility(b, toPublic) : b,
             )
             .toList();
 
@@ -433,8 +425,10 @@ class _CollectHomeState extends State<CollectHome> {
           _selectedBoard = _withUpdatedVisibility(_selectedBoard!, toPublic);
         }
         if (_selectedPublicBoard?.id == board.id) {
-          _selectedPublicBoard =
-              _withUpdatedVisibility(_selectedPublicBoard!, toPublic);
+          _selectedPublicBoard = _withUpdatedVisibility(
+            _selectedPublicBoard!,
+            toPublic,
+          );
         }
       });
 
@@ -450,11 +444,7 @@ class _CollectHomeState extends State<CollectHome> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No se pudo cambiar la visibilidad',
-            ),
-          ),
+          const SnackBar(content: Text('No se pudo cambiar la visibilidad')),
         );
       }
     }
@@ -705,6 +695,7 @@ class _CollectHomeState extends State<CollectHome> {
           onEdit: () => _navigate(Screen.edit),
           onCreateSubBoard: (parentId) =>
               _openCreateBoard(parentId: parentId, lockedParentId: parentId),
+          onCreateItem: (boardId) => _openCreateItem(boardId: boardId),
           onAiSummarize: _handleAiSummarize,
           onOpenSuggestions: _handleOpenSuggestions,
           onToggleVisibility: _handleToggleBoardVisibility,
@@ -717,17 +708,17 @@ class _CollectHomeState extends State<CollectHome> {
         );
         final currentBoard = _viewingPublicDetail
             ? (_selectedPublicBoard ??
-                Board(
-                  id: currentItem.boardId,
-                  name: 'Tablero público',
-                  description: null,
-                  parentId: null,
-                  itemCount: 0,
-                  coverImage: null,
-                  color: '#FFFFFF',
-                  icon: 'folder',
-                  isPublic: true,
-                ))
+                  Board(
+                    id: currentItem.boardId,
+                    name: 'Tablero público',
+                    description: null,
+                    parentId: null,
+                    itemCount: 0,
+                    coverImage: null,
+                    color: '#FFFFFF',
+                    icon: 'folder',
+                    isPublic: true,
+                  ))
             : _boards.firstWhere(
                 (b) => b.id == currentItem.boardId,
                 orElse: () => _boards.isNotEmpty
@@ -759,14 +750,11 @@ class _CollectHomeState extends State<CollectHome> {
           isPublicView: _viewingPublicDetail,
           onExportToInbox: _viewingPublicDetail && _selectedPerson != null
               ? (item) async {
-                  final tipo = (item.type == ContentType.document || item.type == ContentType.file)
-                      ? 'note'
-                      : item.type.name;
                   await _service.guardarItemEnInbox(
                     sourceItemId: item.id,
                     sourceUserId: _selectedPerson!.id,
                     titulo: item.title,
-                    tipo: tipo,
+                    tipo: item.type.toDbType,
                     contenido: item.description,
                     url: item.url,
                     thumbnailUrl: item.thumbnail,
@@ -838,7 +826,7 @@ class _CollectHomeState extends State<CollectHome> {
               sourceItemId: item.id,
               sourceUserId: _selectedPerson?.id ?? '',
               titulo: item.title,
-              tipo: item.type.name,
+              tipo: item.type.toDbType,
               contenido: item.description,
               url: item.url,
               thumbnailUrl: item.thumbnail,
@@ -852,6 +840,13 @@ class _CollectHomeState extends State<CollectHome> {
               itemId: item.id,
               targetTableroId: _selectedPublicBoard!.id,
             );
+          },
+          onCreateNew: () async {
+            final res = await _showCreateItemModal(
+              suggestionTargetUserId: _selectedPerson?.id,
+              suggestionTargetTableroId: _selectedPublicBoard?.id,
+            );
+            return res; // Pass back the raw dynamic data
           },
         );
       case Screen.boardSuggestions:
@@ -1203,16 +1198,16 @@ class _CollectHomeState extends State<CollectHome> {
       url: ct == ContentType.link
           ? contenido
           : (contenido.startsWith('http') &&
-                  const {
-                    ContentType.file,
-                    ContentType.audio,
-                    ContentType.video,
-                    ContentType.image,
-                    ContentType.document,
-                    ContentType.link,
-                  }.contains(ct)
-              ? contenido
-              : null),
+                    const {
+                      ContentType.file,
+                      ContentType.audio,
+                      ContentType.video,
+                      ContentType.image,
+                      ContentType.document,
+                      ContentType.link,
+                    }.contains(ct)
+                ? contenido
+                : null),
       tags: (i['tags'] as List?)?.cast<String>() ?? [],
       boardId: i['tablero_id'] ?? '',
       createdAt: i['created_at'] ?? '',
@@ -1223,6 +1218,375 @@ class _CollectHomeState extends State<CollectHome> {
       aiSummary: i['ai_summary'],
       saved: false,
     );
+  }
+
+  Future<void> _openCreateItem({required String boardId}) async {
+    final newItemData = await _showCreateItemModal(boardId: boardId);
+    if (newItemData != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Elemento añadido')));
+      }
+      await _syncItems();
+    }
+  }
+
+  Future<Map<String, dynamic>?> _showCreateItemModal({
+    String? boardId,
+    String? suggestionTargetUserId,
+    String? suggestionTargetTableroId,
+  }) async {
+    final titleController = TextEditingController();
+    final urlController = TextEditingController();
+    bool saving = false;
+    Uint8List? pickedBytes;
+    String? pickedFileName;
+    String? pickedMime;
+    String? pickedTipo;
+
+    String _guessMime(String? ext) {
+      if (ext == null) return 'text/plain';
+      final e = ext.toLowerCase();
+      switch (e) {
+        case 'png':
+          return 'image/png';
+        case 'jpg':
+        case 'jpeg':
+          return 'image/jpeg';
+        case 'webp':
+          return 'image/webp';
+        case 'gif':
+          return 'image/gif';
+        case 'mp3':
+          return 'audio/mpeg';
+        case 'wav':
+          return 'audio/wav';
+        case 'm4a':
+          return 'audio/mp4';
+        case 'ogg':
+          return 'audio/ogg';
+        case 'mp4':
+          return 'video/mp4';
+        case 'mov':
+          return 'video/quicktime';
+        case 'pdf':
+          return 'application/pdf';
+        case 'md':
+          return 'text/markdown';
+        case 'txt':
+          return 'text/plain';
+        default:
+          return 'text/plain';
+      }
+    }
+
+    String _determineTipo(String? mime, String name) {
+      final m = mime ?? '';
+      if (m.startsWith('image/')) return 'imagen';
+      if (m.startsWith('audio/')) return 'audio';
+      if (m.startsWith('video/')) return 'video';
+      final lower = name.toLowerCase();
+      if (lower.endsWith('.png') ||
+          lower.endsWith('.jpg') ||
+          lower.endsWith('.jpeg') ||
+          lower.endsWith('.webp'))
+        return 'imagen';
+      if (lower.endsWith('.mp3') ||
+          lower.endsWith('.wav') ||
+          lower.endsWith('.m4a') ||
+          lower.endsWith('.ogg'))
+        return 'audio';
+      if (lower.endsWith('.mp4') || lower.endsWith('.mov')) return 'video';
+      return 'archivo';
+    }
+
+    final createdItemData = await showDialog<Map<String, dynamic>?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (dialogContext, setState) {
+            Future<void> _pickFile() async {
+              final result = await FilePicker.platform.pickFiles(
+                withData: true,
+                allowMultiple: false,
+              );
+              if (result == null || result.files.isEmpty) return;
+              final file = result.files.first;
+              if (file.bytes == null) return;
+              setState(() {
+                pickedBytes = file.bytes;
+                pickedFileName = file.name;
+                pickedMime = _guessMime(file.extension);
+                pickedTipo = _determineTipo(pickedMime, pickedFileName!);
+              });
+            }
+
+            Future<void> _save() async {
+              final text = urlController.text.trim();
+              final hasFile = pickedBytes != null && pickedFileName != null;
+              if (text.isEmpty && !hasFile) return;
+
+              setState(() => saving = true);
+              Map<String, dynamic>? newItem;
+              try {
+                final isSuggesting =
+                    suggestionTargetUserId != null &&
+                    suggestionTargetTableroId != null;
+
+                if (hasFile) {
+                  final tipo =
+                      pickedTipo ?? _determineTipo(pickedMime, pickedFileName!);
+                  if (isSuggesting) {
+                    newItem = await _service.sugerirItemNuevoConArchivo(
+                      bytes: pickedBytes!,
+                      fileName: pickedFileName!,
+                      mimeType: pickedMime ?? 'application/octet-stream',
+                      tipo: tipo,
+                      targetUserId: suggestionTargetUserId,
+                      targetTableroId: suggestionTargetTableroId,
+                      titulo: titleController.text.trim().isEmpty
+                          ? pickedFileName
+                          : titleController.text.trim(),
+                      descripcion: text.isNotEmpty ? text : null,
+                    );
+                  } else {
+                    newItem = await _service.guardarArchivoEnInbox(
+                      bytes: pickedBytes!,
+                      fileName: pickedFileName!,
+                      mimeType: pickedMime ?? 'application/octet-stream',
+                      tipo: tipo,
+                      titulo: titleController.text.trim().isEmpty
+                          ? pickedFileName
+                          : titleController.text.trim(),
+                      descripcion: text.isNotEmpty ? text : null,
+                      tableroId: boardId,
+                    );
+                  }
+                } else {
+                  final isLink =
+                      text.startsWith('http://') || text.startsWith('https://');
+
+                  if (isSuggesting) {
+                    newItem = await _service.sugerirItemNuevo(
+                      targetUserId: suggestionTargetUserId,
+                      targetTableroId: suggestionTargetTableroId,
+                      titulo: titleController.text.trim().isEmpty
+                          ? 'Nuevo elemento'
+                          : titleController.text.trim(),
+                      contenido: text,
+                      tipo: isLink ? 'link' : 'texto',
+                    );
+                  } else {
+                    if (isLink) {
+                      newItem = await _service.guardarLinkEnInbox(
+                        url: text,
+                        titulo: titleController.text.trim().isEmpty
+                            ? null
+                            : titleController.text.trim(),
+                        descripcion: null,
+                        tableroId: boardId,
+                      );
+                    } else {
+                      newItem = await _service.guardarTextoEnInbox(
+                        contenido: text,
+                        titulo: titleController.text.trim().isEmpty
+                            ? null
+                            : titleController.text.trim(),
+                        tableroId: boardId,
+                      );
+                    }
+                  }
+                }
+                if (dialogContext.mounted) {
+                  Navigator.pop(dialogContext, newItem);
+                }
+              } catch (e) {
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(
+                    dialogContext,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              } finally {
+                if (dialogContext.mounted) {
+                  setState(() => saving = false);
+                }
+              }
+            }
+
+            return AlertDialog(
+              backgroundColor: AppColors.card,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text('Nuevo elemento'),
+              content: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Título (opcional)',
+                        style: TextStyle(
+                          color: AppColors.mutedForeground,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _ModalRoundedField(
+                        controller: titleController,
+                        hint: 'Idea, enlace, recordatorio...',
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Contenido',
+                        style: TextStyle(
+                          color: AppColors.mutedForeground,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _ModalRoundedField(
+                        controller: urlController,
+                        hint: 'Pega un link o escribe algo',
+                        maxLines: 4,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: saving ? null : _pickFile,
+                            icon: const Icon(Icons.attach_file, size: 18),
+                            label: const Text('Adjuntar '),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.surface,
+                              foregroundColor: AppColors.foreground,
+                              side: const BorderSide(color: AppColors.border),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          if (pickedFileName != null)
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.insert_drive_file_outlined,
+                                      color: AppColors.primary,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        pickedFileName!,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: AppColors.foreground,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: saving
+                                          ? null
+                                          : () {
+                                              setState(() {
+                                                pickedBytes = null;
+                                                pickedFileName = null;
+                                                pickedMime = null;
+                                                pickedTipo = null;
+                                              });
+                                            },
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(4.0),
+                                        child: Icon(
+                                          Icons.close,
+                                          size: 16,
+                                          color: AppColors.mutedForeground,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (pickedBytes != null && pickedTipo == 'imagen') ...[
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: AspectRatio(
+                            aspectRatio: 4 / 3,
+                            child: Image.memory(
+                              pickedBytes!,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (saving)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 16),
+                          child: LinearProgressIndicator(),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving
+                      ? null
+                      : () => Navigator.pop(dialogContext, null),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: AppColors.mutedForeground),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: saving ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    return createdItemData;
   }
 
   Future<void> _openCreateBoard({
