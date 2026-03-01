@@ -112,6 +112,7 @@ class NearbyPerson {
   final String lastSeenLocation;
   final String lastSeenTime;
   final List<String> sharedInterests;
+  final String? sharedInterestsSummary;
   final List<Board> publicBoards;
 
   const NearbyPerson({
@@ -122,6 +123,7 @@ class NearbyPerson {
     required this.lastSeenLocation,
     required this.lastSeenTime,
     required this.sharedInterests,
+    this.sharedInterestsSummary,
     required this.publicBoards,
   });
 
@@ -157,6 +159,7 @@ class NearbyPerson {
       lastSeenLocation: row['ubicacion'] ?? 'Nearby',
       lastSeenTime: timeAgo,
       sharedInterests: shared,
+      sharedInterestsSummary: row['shared_interests_summary'],
       publicBoards: boards,
     );
   }

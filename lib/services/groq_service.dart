@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/ai_suggestion.dart';
+import '../models/models.dart';
 
 class GroqService {
   static const String _baseUrl =
@@ -371,6 +372,91 @@ Output STRICTLY in the following JSON schema:
     } else {
       throw Exception(
         'Failed to summarize board: ${response.statusCode} \n ${response.body}',
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> compareBoards({
+    required List<Board> myBoards,
+    required List<Board> otherBoards,
+  }) async {
+    final apiKey = dotenv.env['GROQ_API_KEY'];
+    if (apiKey == null || apiKey.isEmpty || apiKey == 'pon_tu_api_key_aqui') {
+      throw Exception('GROQ_API_KEY is not properly set in .env');
+    }
+
+    if (otherBoards.isEmpty) {
+      return {'insightful_summary': null, 'ranked_board_ids': <String>[]};
+    }
+
+    final systemPrompt = """
+You are an AI assistant that analyzes the interests of two users to find commonalities and differences based on their digital boards.
+You will receive a list of "My Boards" and "Other User's Boards". Each board has a title, description, and an AI summary of its contents.
+
+Your task is to:
+1. Compare the contents of the boards to understand both users' interests.
+2. Generate an "insightful_summary" (1-3 sentences) directly addressing the first user (e.g., "You both seem to love..." or "While you focus on X, they are more into Y, but you both share an interest in Z.") analyzing how their interests overlap or differ.
+3. Rank the "Other User's Boards" in order of how similar they are to "My Boards".
+4. Return a JSON object with two fields:
+   - "insightful_summary": The generated summary text.
+   - "ranked_board_ids": A list of board IDs from the "Other User's Boards", ordered from most similar to least similar.
+
+Focus deeply on the semantic meaning of the board contents, not just keyword matching.
+
+Output STRICTLY in the following JSON schema:
+{
+  "insightful_summary": "string",
+  "ranked_board_ids": ["string", "string"]
+}
+""";
+
+    String formatBoards(List<Board> boards) {
+      return boards
+          .map((b) {
+            return "- Board ID: ${b.id}\n  Title: ${b.name}\n  Description: ${b.description ?? 'None'}\n  AI Summary: ${b.aiSummary ?? 'None'}\n";
+          })
+          .join('\n');
+    }
+
+    final userContent =
+        """
+My Boards:
+${formatBoards(myBoards)}
+
+Other User's Boards:
+${formatBoards(otherBoards)}
+""";
+
+    final response = await http.post(
+      Uri.parse(_baseUrl),
+      headers: {
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "response_format": {"type": "json_object"},
+        "messages": [
+          {"role": "system", "content": systemPrompt},
+          {"role": "user", "content": userContent},
+        ],
+        "temperature": 0.3,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final content = data['choices'][0]['message']['content'];
+      final decoded = jsonDecode(content);
+      return {
+        'insightful_summary': decoded['insightful_summary'] as String?,
+        'ranked_board_ids': List<String>.from(
+          decoded['ranked_board_ids'] ?? [],
+        ),
+      };
+    } else {
+      throw Exception(
+        'Failed to compare boards: ${response.statusCode} \n ${response.body}',
       );
     }
   }
