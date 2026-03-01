@@ -328,6 +328,103 @@ class _CollectHomeState extends State<CollectHome> {
     });
   }
 
+  ContentItem _updatedItem(
+    ContentItem item, {
+    String? title,
+    String? description,
+    String? thumbnail,
+  }) {
+    return ContentItem(
+      id: item.id,
+      type: item.type,
+      title: title ?? item.title,
+      description: description ?? item.description,
+      thumbnail: thumbnail ?? item.thumbnail,
+      url: item.url,
+      tags: item.tags,
+      boardId: item.boardId,
+      createdAt: item.createdAt,
+      color: item.color,
+      duration: item.duration,
+      size: item.size,
+      author: item.author,
+      saved: item.saved,
+    );
+  }
+
+  Future<void> _handleUpdateItemTitle(String itemId, String newTitle) async {
+    await _service.actualizarItem(itemId: itemId, titulo: newTitle);
+    setState(() {
+      _items = _items
+          .map((i) => i.id == itemId ? _updatedItem(i, title: newTitle) : i)
+          .toList();
+      if (_selectedItem.id == itemId) {
+        _selectedItem = _items.firstWhere((i) => i.id == itemId);
+      }
+    });
+  }
+
+  Future<void> _handleUpdateItemDescription(
+    String itemId,
+    String newDescription,
+  ) async {
+    // We map description to the item's contenido field in Supabase.
+    await _service.actualizarItem(itemId: itemId, contenido: newDescription);
+    setState(() {
+      _items = _items
+          .map((i) => i.id == itemId
+              ? _updatedItem(i, description: newDescription.isEmpty ? null : newDescription)
+              : i)
+          .toList();
+      if (_selectedItem.id == itemId) {
+        _selectedItem = _items.firstWhere((i) => i.id == itemId);
+      }
+    });
+  }
+
+  Future<String> _handleUpdateItemThumbnail(
+    String itemId,
+    Uint8List bytes,
+    String fileName,
+    String mimeType,
+  ) async {
+    final userId = _service.currentUser?.id;
+    if (userId == null) throw Exception('Debes iniciar sesión');
+    final url = await _service.subirImagenPortada(
+      userId: userId,
+      bytes: bytes,
+      fileName: fileName,
+      mimeType: mimeType,
+    );
+    await _service.actualizarItem(
+      itemId: itemId,
+      rawData: {'thumbnail': url},
+    );
+    setState(() {
+      _items = _items
+          .map((i) => i.id == itemId ? _updatedItem(i, thumbnail: url) : i)
+          .toList();
+      if (_selectedItem.id == itemId) {
+        _selectedItem = _items.firstWhere((i) => i.id == itemId);
+      }
+    });
+    return url;
+  }
+
+  Future<void> _handleDeleteItem(String itemId) async {
+    await _service.eliminarItem(itemId);
+    setState(() {
+      _items = _items.where((i) => i.id != itemId).toList();
+      if (_selectedItem.id == itemId) {
+        if (_items.isNotEmpty) {
+          _selectedItem = _items.first;
+        }
+        _screen = _prevScreen == Screen.detail ? Screen.board : _prevScreen;
+      }
+    });
+    _handleBack();
+  }
+
   void _handleBoardUpdated(Board updated) {
     setState(() {
       _boards = _boards
@@ -428,6 +525,11 @@ class _CollectHomeState extends State<CollectHome> {
           onBack: _handleBack,
           onToggleSaved: _handleToggleSaved,
           onAiSummarize: () => _handleAiSummarizeItem(currentItem.id),
+          onUpdateTitle: _handleUpdateItemTitle,
+          onUpdateDescription: _handleUpdateItemDescription,
+          onUpdateThumbnail: _handleUpdateItemThumbnail,
+          onDeleteItem: _handleDeleteItem,
+          onSummarize: _handleAiSummarize,
         );
       case Screen.add:
         return AddScreen(onClose: _handleBack);
@@ -770,12 +872,15 @@ class _CollectHomeState extends State<CollectHome> {
     final description =
         i['descripcion'] as String? ??
         (ct == ContentType.note || tipo == 'texto' ? contenido : null);
+    final thumb = i['thumbnail'] ??
+        (i['metadatos'] is Map ? (i['metadatos']['thumbnail']) : null) ??
+        (ct == ContentType.image ? contenido : null);
     return ContentItem(
       id: i['id'] ?? '',
       type: ct,
       title: title?.isNotEmpty == true ? title! : contenido,
       description: description,
-      thumbnail: ct == ContentType.image ? contenido : null,
+      thumbnail: thumb,
       url: ct == ContentType.link ? contenido : null,
       tags: (i['tags'] as List?)?.cast<String>() ?? [],
       boardId: i['tablero_id'] ?? '',
