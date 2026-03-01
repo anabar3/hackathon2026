@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:file_picker/file_picker.dart';
 import '../theme/app_theme.dart';
 import '../services/supabase_service.dart';
 import '../widgets/animated_entry.dart';
@@ -23,9 +24,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _usernameCtrl = TextEditingController();
   final _nombreCtrl = TextEditingController();
   final _bioCtrl = TextEditingController();
+  String? _avatarUrl;
 
   bool _loading = true;
   bool _saving = false;
+  bool _uploadingAvatar = false;
   String? _message;
 
   @override
@@ -51,6 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _usernameCtrl.text = perfil['username'] ?? '';
         _nombreCtrl.text = perfil['nombre_completo'] ?? '';
         _bioCtrl.text = perfil['bio'] ?? '';
+        _avatarUrl = perfil['avatar_url'];
       }
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
@@ -92,6 +96,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _pickAndUploadAvatar() async {
+    final user = _service.currentUser;
+    if (user == null) return;
+
+    setState(() {
+      _uploadingAvatar = true;
+      _message = null;
+    });
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) {
+        setState(() => _uploadingAvatar = false);
+        return;
+      }
+      final file = result.files.first;
+      if (file.bytes == null) {
+        setState(() {
+          _uploadingAvatar = false;
+          _message = 'No se pudo leer la imagen seleccionada';
+        });
+        return;
+      }
+
+      final ext = (file.extension ?? '').toLowerCase();
+      final mimeType = switch (ext) {
+        'png' => 'image/png',
+        'jpg' || 'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        _ => 'image/jpeg',
+      };
+      final publicUrl = await _service.uploadAvatar(
+        bytes: file.bytes!,
+        fileName: file.name,
+        mimeType: mimeType,
+      );
+
+      await _service.upsertPerfil(
+        userId: user.id,
+        avatarUrl: publicUrl,
+      );
+
+      // refresca datos locales
+      await _loadPerfil();
+      if (mounted) {
+        setState(() {
+          _avatarUrl = publicUrl;
+          _message = '✓ Foto de perfil actualizada';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _message = 'Error subiendo la imagen: ${e.toString().split(']').last}';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -126,7 +195,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    'My Profile',
+                    'Mi Perfil',
                     style: GoogleFonts.dmSans(
                       color: AppColors.foreground,
                       fontSize: 28,
@@ -206,40 +275,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               width: 2,
                             ),
                             color: AppColors.primary.withAlpha(18),
+                            image: _avatarUrl != null && _avatarUrl!.isNotEmpty
+                                ? DecorationImage(
+                                    image: NetworkImage(_avatarUrl!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
                           ),
-                          child: Center(
-                            child: Text(
-                              initial,
-                              style: GoogleFonts.dmSans(
-                                color: AppColors.primary,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
+                          child: (_avatarUrl == null || _avatarUrl!.isEmpty)
+                              ? Center(
+                                  child: Text(
+                                    initial,
+                                    style: GoogleFonts.dmSans(
+                                      color: AppColors.primary,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                )
+                              : null,
                         ),
                         const Spacer(),
                         // Edit Image button (like reference)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: AppColors.border,
-                              width: 1.5,
+                        GestureDetector(
+                          onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 10,
                             ),
-                          ),
-                          child: Text(
-                            'Edit Image',
-                            style: GoogleFonts.dmSans(
-                              color: AppColors.foreground,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: AppColors.border,
+                                width: 1.5,
+                              ),
                             ),
+                            child: _uploadingAvatar
+                                ? const SizedBox(
+                                    height: 16,
+                                    width: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.primary,
+                                    ),
+                                  )
+                                : Text(
+                                    'Editar foto',
+                                    style: GoogleFonts.dmSans(
+                                      color: AppColors.foreground,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
                         ),
                       ],

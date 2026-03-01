@@ -440,9 +440,9 @@ class _DriftScreenState extends State<DriftScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
@@ -465,22 +465,6 @@ class _DriftScreenState extends State<DriftScreen> {
                             ),
                           ),
                         ],
-                      ),
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withAlpha(20),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.primary.withAlpha(40),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.tune,
-                          color: AppColors.primary,
-                          size: 22,
-                        ),
                       ),
                     ],
                   ),
