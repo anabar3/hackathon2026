@@ -7,6 +7,7 @@ import 'select_my_item_screen.dart';
 
 class PublicBoardScreen extends StatefulWidget {
   final Board board;
+  final String ownerName;
   final List<ContentItem> items;
   final List<ContentItem> myItems;
   final VoidCallback onBack;
@@ -17,6 +18,7 @@ class PublicBoardScreen extends StatefulWidget {
   const PublicBoardScreen({
     super.key,
     required this.board,
+    required this.ownerName,
     required this.items,
     required this.myItems,
     required this.onBack,

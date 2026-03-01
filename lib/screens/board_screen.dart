@@ -12,6 +12,7 @@ class BoardScreen extends StatefulWidget {
   final void Function(Board) onBoardSelect;
   final void Function(ContentItem) onItemSelect;
   final VoidCallback onEdit;
+  final void Function(String parentId) onCreateSubBoard;
   final VoidCallback onAiOrganize;
   final VoidCallback onAiSummarize;
   final VoidCallback onOpenSuggestions;
@@ -25,6 +26,7 @@ class BoardScreen extends StatefulWidget {
     required this.onBoardSelect,
     required this.onItemSelect,
     required this.onEdit,
+    required this.onCreateSubBoard,
     required this.onAiOrganize,
     required this.onAiSummarize,
     required this.onOpenSuggestions,
@@ -83,22 +85,57 @@ class _BoardScreenState extends State<BoardScreen> {
                     onOpenSuggestions: widget.onOpenSuggestions,
                   ),
                   const SizedBox(height: 20),
-                  if (childrenBoards.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Subtableros',
-                            style: TextStyle(
-                              color: AppColors.foreground,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Subtableros',
+                              style: TextStyle(
+                                color: AppColors.foreground,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                              ),
+                              onPressed: () => widget.onCreateSubBoard(widget.board.id),
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text(
+                                'Nuevo',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (childrenBoards.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            decoration: BoxDecoration(
+                              color: AppColors.card,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'Sin subtableros aún',
+                                style: TextStyle(
+                                  color: AppColors.mutedForeground,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
                           GridView.builder(
                             physics: const NeverScrollableScrollPhysics(),
                             shrinkWrap: true,
@@ -121,9 +158,9 @@ class _BoardScreenState extends State<BoardScreen> {
                               );
                             },
                           ),
-                        ],
-                      ),
+                      ],
                     ),
+                  ),
 
                   // Filters
                   Padding(

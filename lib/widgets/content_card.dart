@@ -5,8 +5,9 @@ import '../theme/app_theme.dart';
 class ContentCard extends StatelessWidget {
   final ContentItem item;
   final VoidCallback onTap;
+  final VoidCallback? onImport;
 
-  const ContentCard({super.key, required this.item, required this.onTap});
+  const ContentCard({super.key, required this.item, required this.onTap, this.onImport});
 
   IconData _typeIcon() {
     switch (item.type) {
@@ -245,6 +246,46 @@ class ContentCard extends StatelessWidget {
                   ),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            if (onImport != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+                child: GestureDetector(
+                  onTap: onImport,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withAlpha(26),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.primary.withAlpha(60),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.download_rounded,
+                          color: AppColors.primary,
+                          size: 16,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Import to Inbox',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
           ],
