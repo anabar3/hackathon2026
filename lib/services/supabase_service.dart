@@ -544,6 +544,32 @@ class SupabaseService {
   }
 
   // ─── ITEMS (INBOX) ──────────────────────────────
+  Future<String?> _extractAndScrapeLinks(String text) async {
+    final urlRegExp = RegExp(r'(https?:\/\/[^\s]+)');
+    final matches = urlRegExp.allMatches(text);
+    if (matches.isEmpty) return null;
+
+    final links = matches.map((m) => m.group(0)!).toSet().toList();
+    if (links.isEmpty) return null;
+
+    final groq = GroqService();
+    String linkedContent = '';
+
+    // limit to 3 links max to avoid very long scraping times
+    for (var url in links.take(3)) {
+      try {
+        final content = await groq.fetchLinkContent(url);
+        if (content != null && content.trim().isNotEmpty) {
+          linkedContent += "\n--- Content from $url ---\n$content\n";
+        }
+      } catch (e) {
+        debugPrint('Error scraping $url: $e');
+      }
+    }
+
+    return linkedContent.isNotEmpty ? linkedContent : null;
+  }
+
   /// Guarda texto libre en el inbox (sin tablero por defecto).
   Future<Map<String, dynamic>> guardarTextoEnInbox({
     required String contenido,
@@ -555,6 +581,12 @@ class SupabaseService {
     if (user == null) throw Exception('Debes iniciar sesión primero');
     await _ensurePerfil();
 
+    final linkedContent = await _extractAndScrapeLinks(contenido);
+    Map<String, dynamic> metadatos = {};
+    if (linkedContent != null) {
+      metadatos['linked_content'] = linkedContent;
+    }
+
     final payload = {
       'user_id': user.id,
       'tablero_id': tableroId,
@@ -563,7 +595,9 @@ class SupabaseService {
       'tipo': 'texto',
       'estado': 'inbox',
       if (tags != null) 'tags': tags,
-      'metadatos': contenido,
+      'metadatos': metadatos.isEmpty
+          ? contenido
+          : {'original_text': contenido, ...metadatos},
     };
 
     return await _insertItemConFallback(payload);
@@ -664,12 +698,23 @@ class SupabaseService {
           document.dispose();
           if (text.isNotEmpty) {
             // PostgreSQL db does not support '\u0000' character storage natively in text fields without specialized encoding
-            rawData['extracted_text'] = text.replaceAll('\u0000', '');
+            final cleanedText = text.replaceAll('\u0000', '');
+            rawData['extracted_text'] = cleanedText;
+
+            final linkedContent = await _extractAndScrapeLinks(cleanedText);
+            if (linkedContent != null) {
+              rawData['linked_content'] = linkedContent;
+            }
           }
         } else if (mimeType == 'text/markdown' || mimeType == 'text/plain') {
           final String text = utf8.decode(bytes, allowMalformed: true);
           if (text.isNotEmpty) {
             rawData['extracted_text'] = text;
+
+            final linkedContent = await _extractAndScrapeLinks(text);
+            if (linkedContent != null) {
+              rawData['linked_content'] = linkedContent;
+            }
           }
         }
       } catch (e) {

@@ -48,6 +48,25 @@ class _DriftScreenState extends State<DriftScreen> {
       final myProfile = await _service.getPerfil(myUserId);
       final myInterests = List<String>.from(myProfile?['intereses'] ?? []);
 
+      List<Board> myBoards = [];
+      try {
+        final myBoardsData = await _service.getTablerosPublicos(myUserId);
+        myBoards = myBoardsData.map((b) {
+          return Board(
+            id: b['id'] ?? '',
+            name: b['titulo'] ?? '',
+            description: b['descripcion'],
+            parentId: b['parent_id'],
+            itemCount: 0,
+            coverImage: b['imagen_portada'],
+            color: '#1e1e32',
+            icon: 'compass',
+            isPublic: true,
+            aiSummary: b['ai_summary'],
+          );
+        }).toList();
+      } catch (_) {}
+
       List<NearbyPerson> walked = [];
       for (final enc in encounters) {
         final profile = enc['usuario_encontrado'];
@@ -139,12 +158,98 @@ class _DriftScreenState extends State<DriftScreen> {
       final nearIds = _nearPeople.map((p) => p.id).toSet();
       walked.removeWhere((p) => nearIds.contains(p.id));
 
-      print('[DriftScreen] Final walked list: ${walked.length} people');
+      // Set initial state for walked people so UI renders immediately
       if (mounted) {
         setState(() {
           _walkedPeople = walked;
           _initialLoading = false;
         });
+      }
+
+      // Asynchronously fetch board comparisons for walked users
+      if (myBoards.isNotEmpty) {
+        for (final person in walked) {
+          if (person.publicBoards.isNotEmpty) {
+            GroqService()
+                .compareBoards(
+                  myBoards: myBoards,
+                  otherBoards: person.publicBoards,
+                )
+                .then((comparisonResult) {
+                  final insight =
+                      comparisonResult['insightful_summary'] as String?;
+                  final rankedIds =
+                      comparisonResult['ranked_board_ids'] as List<String>;
+
+                  if (myProfile?['bio'] != null) {
+                    GroqService()
+                        .scoreUsersCompatibility(
+                          myBio: myProfile!['bio'] ?? '',
+                          myInterests: myInterests,
+                          otherUsers: [
+                            {
+                              'id': person.id,
+                              'bio': person.bio,
+                              'intereses': person.sharedInterests,
+                              'ai_insight': insight,
+                            },
+                          ],
+                        )
+                        .then((scores) {
+                          if (mounted) {
+                            setState(() {
+                              final idx = _walkedPeople.indexWhere(
+                                (p) => p.id == person.id,
+                              );
+                              if (idx != -1) {
+                                final p = _walkedPeople[idx];
+                                final newBoards = List<Board>.from(
+                                  p.publicBoards,
+                                );
+
+                                newBoards.sort((a, b) {
+                                  final indexA = rankedIds.indexOf(a.id);
+                                  final indexB = rankedIds.indexOf(b.id);
+                                  if (indexA == -1 && indexB == -1) return 0;
+                                  if (indexA == -1) return 1;
+                                  if (indexB == -1) return -1;
+                                  return indexA.compareTo(indexB);
+                                });
+
+                                _walkedPeople[idx] = NearbyPerson(
+                                  id: p.id,
+                                  name: p.name,
+                                  avatar: p.avatar,
+                                  bio: p.bio,
+                                  lastSeenLocation: p.lastSeenLocation,
+                                  lastSeenTime: p.lastSeenTime,
+                                  sharedInterests: p.sharedInterests,
+                                  sharedInterestsSummary: insight,
+                                  compatibilityScore: scores[person.id],
+                                  publicBoards: newBoards,
+                                );
+                                _walkedPeople.sort(
+                                  (a, b) => (b.compatibilityScore ?? 0)
+                                      .compareTo(a.compatibilityScore ?? 0),
+                                );
+                              }
+                            });
+                          }
+                        })
+                        .catchError((e) {
+                          print(
+                            '[DriftScreen] Error scoring walked user compatibility: $e',
+                          );
+                        });
+                  }
+                })
+                .catchError((e) {
+                  print(
+                    '[DriftScreen] Error comparing boards for walked user: $e',
+                  );
+                });
+          }
+        }
       }
     } catch (e) {
       print('[DriftScreen] ERROR loading walked: $e');
@@ -232,11 +337,12 @@ class _DriftScreenState extends State<DriftScreen> {
     final myUserId = _service.currentUser?.id;
     final myInterests = <String>[];
     List<Board> myBoards = [];
+    Map<String, dynamic>? myProfile;
     if (myUserId != null) {
       try {
-        final profile = await _service.getPerfil(myUserId);
-        if (profile != null) {
-          myInterests.addAll(List<String>.from(profile['intereses'] ?? []));
+        myProfile = await _service.getPerfil(myUserId);
+        if (myProfile != null) {
+          myInterests.addAll(List<String>.from(myProfile['intereses'] ?? []));
         }
         final myBoardsData = await _service.getTablerosPublicos(myUserId);
         myBoards = myBoardsData.map((b) {
@@ -387,11 +493,62 @@ class _DriftScreenState extends State<DriftScreen> {
                   lastSeenTime: 'Justo ahora',
                   sharedInterests: shared,
                   sharedInterestsSummary: insightsSummary,
+                  compatibilityScore: 0, // Placeholder
                   publicBoards: boards,
                 ),
               );
             }
           });
+
+          // Score the user compatibility asynchronously
+          if (myProfile?['bio'] != null) {
+            GroqService()
+                .scoreUsersCompatibility(
+                  myBio: myProfile!['bio'] ?? '',
+                  myInterests: myInterests,
+                  otherUsers: [
+                    {
+                      'id': id,
+                      'bio': profileData['bio'] ?? '',
+                      'intereses': shared,
+                      'ai_insight': insightsSummary,
+                    },
+                  ],
+                )
+                .then((scores) {
+                  if (mounted) {
+                    setState(() {
+                      final personIndex = _nearPeople.indexWhere(
+                        (p) => p.id == id,
+                      );
+                      if (personIndex != -1) {
+                        final oldPerson = _nearPeople[personIndex];
+                        _nearPeople[personIndex] = NearbyPerson(
+                          id: oldPerson.id,
+                          name: oldPerson.name,
+                          avatar: oldPerson.avatar,
+                          bio: oldPerson.bio,
+                          lastSeenLocation: oldPerson.lastSeenLocation,
+                          lastSeenTime: oldPerson.lastSeenTime,
+                          sharedInterests: oldPerson.sharedInterests,
+                          sharedInterestsSummary:
+                              oldPerson.sharedInterestsSummary,
+                          compatibilityScore: scores[id],
+                          publicBoards: oldPerson.publicBoards,
+                        );
+                        _nearPeople.sort(
+                          (a, b) => (b.compatibilityScore ?? 0).compareTo(
+                            a.compatibilityScore ?? 0,
+                          ),
+                        );
+                      }
+                    });
+                  }
+                })
+                .catchError((e) {
+                  print('Error scoring compatibility for new user: $e');
+                });
+          }
         }
       } catch (e) {
         // Ignore failed fetches
@@ -870,6 +1027,37 @@ class _PersonCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
+
+            // Compatibility Score
+            if (person.compatibilityScore != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    Icon(
+                      person.compatibilityScore! >= 80
+                          ? Icons.favorite
+                          : Icons.person_add_alt_1,
+                      size: 14,
+                      color: person.compatibilityScore! >= 80
+                          ? AppColors.green
+                          : AppColors.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${person.compatibilityScore}% Match',
+                      style: TextStyle(
+                        color: person.compatibilityScore! >= 80
+                            ? AppColors.green
+                            : AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             // Location + time
             Row(
