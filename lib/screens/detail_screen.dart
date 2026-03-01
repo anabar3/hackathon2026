@@ -802,17 +802,17 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
                 child: Row(
                   children: [
-                    _SolidBtn(icon: Icons.arrow_back_rounded, onTap: onBack),
+                    _SolidBtn(icon: Icons.arrow_back_rounded, onTap: widget.onBack),
                     Row(
                       children: [
                         _SolidBtn(
-                          icon: item.saved
+                          icon: widget.item.saved
                               ? Icons.favorite_rounded
                               : Icons.favorite_border_rounded,
-                          color: item.saved
+                          color: widget.item.saved
                               ? AppColors.accent
                               : AppColors.foreground,
-                          onTap: () => onToggleSaved(item.id),
+                          onTap: () => widget.onToggleSaved(widget.item.id),
                         ),
                         const SizedBox(width: 8),
                         _SolidBtn(
@@ -828,9 +828,6 @@ class _DetailScreenState extends State<DetailScreen> {
                         const SizedBox(width: 8),
                         _SolidBtn(icon: Icons.more_horiz_rounded, onTap: () {}),
                       ],
-                    _SolidBtn(
-                      icon: Icons.arrow_back_rounded,
-                      onTap: widget.onBack,
                     ),
                   ],
                 ),
