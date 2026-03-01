@@ -15,6 +15,8 @@ enum Screen {
   drift,
   aiOrganize,
   personBoards,
+  publicBoard,
+  boardSuggestions,
   profile,
 }
 

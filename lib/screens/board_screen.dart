@@ -14,6 +14,7 @@ class BoardScreen extends StatefulWidget {
   final VoidCallback onEdit;
   final VoidCallback onAiOrganize;
   final VoidCallback onAiSummarize;
+  final VoidCallback onOpenSuggestions;
 
   const BoardScreen({
     super.key,
@@ -26,6 +27,7 @@ class BoardScreen extends StatefulWidget {
     required this.onEdit,
     required this.onAiOrganize,
     required this.onAiSummarize,
+    required this.onOpenSuggestions,
   });
 
   @override
@@ -53,6 +55,9 @@ class _BoardScreenState extends State<BoardScreen> {
   @override
   Widget build(BuildContext context) {
     final items = _filteredItems;
+    final allBoardItems = widget.items
+        .where((i) => i.boardId == widget.board.id)
+        .toList();
     final childrenBoards = widget.boards
         .where((b) => b.parentId == widget.board.id)
         .toList();
@@ -70,10 +75,12 @@ class _BoardScreenState extends State<BoardScreen> {
                 children: [
                   _BoardHeader(
                     board: widget.board,
+                    itemCount: allBoardItems.length,
                     onBack: widget.onBack,
                     onAiOrganize: widget.onAiOrganize,
                     onAiSummarize: widget.onAiSummarize,
                     onEdit: widget.onEdit,
+                    onOpenSuggestions: widget.onOpenSuggestions,
                   ),
                   const SizedBox(height: 20),
                   if (childrenBoards.isNotEmpty)
@@ -95,12 +102,13 @@ class _BoardScreenState extends State<BoardScreen> {
                           GridView.builder(
                             physics: const NeverScrollableScrollPhysics(),
                             shrinkWrap: true,
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 16,
-                              childAspectRatio: 0.9,
-                            ),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 16,
+                                  childAspectRatio: 0.9,
+                                ),
                             itemCount: childrenBoards.length,
                             itemBuilder: (context, i) {
                               final board = childrenBoards[i];
@@ -155,7 +163,9 @@ class _BoardScreenState extends State<BoardScreen> {
                                     : AppColors.secondary,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: active ? AppColors.foreground : AppColors.border,
+                                  color: active
+                                      ? AppColors.foreground
+                                      : AppColors.border,
                                   width: 2,
                                 ),
                               ),
@@ -180,7 +190,10 @@ class _BoardScreenState extends State<BoardScreen> {
                   if (items.isEmpty)
                     Center(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 40,
+                        ),
                         child: TweenAnimationBuilder<double>(
                           tween: Tween(begin: 0.8, end: 1.0),
                           duration: const Duration(milliseconds: 1000),
@@ -575,17 +588,21 @@ class _PublicBadge extends StatelessWidget {
 
 class _BoardHeader extends StatelessWidget {
   final Board board;
+  final int itemCount;
   final VoidCallback onBack;
   final VoidCallback onAiOrganize;
   final VoidCallback onAiSummarize;
   final VoidCallback onEdit;
+  final VoidCallback onOpenSuggestions;
 
   const _BoardHeader({
     required this.board,
+    required this.itemCount,
     required this.onBack,
     required this.onAiOrganize,
     required this.onAiSummarize,
     required this.onEdit,
+    required this.onOpenSuggestions,
   });
 
   @override
@@ -622,9 +639,8 @@ class _BoardHeader extends StatelessWidget {
                       ? Image.network(
                           board.coverImage!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: AppColors.secondary,
-                          ),
+                          errorBuilder: (_, __, ___) =>
+                              Container(color: AppColors.secondary),
                         )
                       : Container(color: AppColors.secondary),
                 ),
@@ -659,7 +675,13 @@ class _BoardHeader extends StatelessWidget {
                     _CircleBtn(icon: Icons.arrow_back_rounded, onTap: onBack),
                     Row(
                       children: [
-                        _GroupIdeaBtn(onTap: onAiOrganize),
+                        _GroupIdeaBtn(onTap: onOpenSuggestions),
+                        const SizedBox(width: 8),
+                        _PrimaryBtn(
+                          label: 'AI Organize',
+                          icon: Icons.auto_fix_high_rounded,
+                          onTap: onAiOrganize,
+                        ),
                         const SizedBox(width: 8),
                         _PrimaryBtn(
                           label: 'AI Summarize',
@@ -668,7 +690,7 @@ class _BoardHeader extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         _PrimaryBtn(
-                          label: 'Editar',
+                          label: 'Edit',
                           icon: Icons.edit_outlined,
                           onTap: onEdit,
                         ),
@@ -694,7 +716,7 @@ class _BoardHeader extends StatelessWidget {
                     _PublicBadge(isPublic: board.isPublic),
                     const SizedBox(width: 10),
                     Text(
-                      '${board.itemCount} items',
+                      '$itemCount items',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 11,
@@ -703,7 +725,8 @@ class _BoardHeader extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (board.description != null && board.description!.isNotEmpty) ...[
+                if (board.description != null &&
+                    board.description!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(
                     board.description!,

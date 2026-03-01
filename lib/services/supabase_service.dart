@@ -122,6 +122,19 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(res);
   }
 
+  /// Cuenta cuántos items tiene un tablero de un usuario
+  Future<int> countItemsPorTablero({
+    required String userId,
+    required String tableroId,
+  }) async {
+    final res = await _supabase
+        .from('items')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('tablero_id', tableroId);
+    return (res as List).length;
+  }
+
   /// Items públicos de un usuario (opcionalmente filtrados por tablero)
   Future<List<Map<String, dynamic>>> getItemsPublicos({
     required String userId,
@@ -129,7 +142,7 @@ class SupabaseService {
   }) async {
     var query = _supabase
         .from('items')
-        .select()
+        .select('*, autor:autor_id(nombre_completo, username, avatar_url)')
         .eq('user_id', userId)
         .eq('is_public', true);
     if (tableroId != null) {
@@ -144,15 +157,14 @@ class SupabaseService {
     final user = currentUser;
     if (user == null) throw Exception('Debes iniciar sesión primero');
 
-    // Obtener item público
+    // Obtener item (puede o no ser público individualmente; viene de un tablero público)
     final origen = await _supabase
         .from('items')
         .select()
         .eq('id', itemId)
-        .eq('is_public', true)
         .maybeSingle();
     if (origen == null) {
-      throw Exception('Item no encontrado o no es público');
+      throw Exception('Item no encontrado');
     }
 
     final payload = {
@@ -169,6 +181,41 @@ class SupabaseService {
         'source_item_id': origen['id'],
         'copied_at': DateTime.now().toIso8601String(),
         'original_raw_data': origen['metadatos'],
+      },
+    };
+
+    return await _insertItemConFallback(payload);
+  }
+
+  /// Guarda un item de otro usuario directamente en tu inbox usando los datos ya disponibles en UI.
+  Future<Map<String, dynamic>> guardarItemEnInbox({
+    required String sourceItemId,
+    required String sourceUserId,
+    required String titulo,
+    required String tipo,
+    String? contenido,
+    String? url,
+    String? thumbnailUrl,
+    List<String>? tags,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Debes iniciar sesión primero');
+
+    final payload = {
+      'user_id': user.id,
+      'tablero_id': null,
+      'titulo': titulo,
+      'contenido': contenido ?? url,
+      'tipo': tipo,
+      'estado': 'inbox',
+      'tags': tags ?? [],
+      'is_public': false,
+      'metadatos': {
+        'source_user_id': sourceUserId,
+        'source_item_id': sourceItemId,
+        'url': url,
+        'thumbnail_url': thumbnailUrl,
+        'copied_at': DateTime.now().toIso8601String(),
       },
     };
 
@@ -329,7 +376,7 @@ class SupabaseService {
     return res;
   }
 
-  /// Lista sugerencias recibidas para un tablero del usuario actual.
+  /// Lista sugerencias recibidas y pendientes para un tablero del usuario actual.
   Future<List<Map<String, dynamic>>> getSugerenciasTablero(
     String tableroId,
   ) async {
@@ -341,8 +388,31 @@ class SupabaseService {
         .select()
         .eq('target_user_id', user.id)
         .eq('target_tablero_id', tableroId)
+        .eq('estado', 'pendiente')
         .order('created_at', ascending: false);
-    return List<Map<String, dynamic>>.from(res);
+
+    final List<Map<String, dynamic>> suggestions = List.from(res);
+
+    // Fetch profiles for the authors
+    for (var sug in suggestions) {
+      final autorId = sug['autor_id'] as String?;
+      if (autorId != null) {
+        try {
+          final perfil = await _supabase
+              .from('perfiles')
+              .select('nombre_completo, username, avatar_url')
+              .eq('id', autorId)
+              .maybeSingle();
+          if (perfil != null) {
+            sug['autor_perfil'] = perfil;
+          }
+        } catch (e) {
+          // Ignore if profile fails
+        }
+      }
+    }
+
+    return suggestions;
   }
 
   /// Aceptar o rechazar una sugerencia. Si se acepta, se crea el item en el tablero destino.
@@ -610,7 +680,7 @@ class SupabaseService {
   Future<List<Map<String, dynamic>>> getItems(String userId) async {
     final res = await _supabase
         .from('items')
-        .select()
+        .select('*, autor:autor_id(nombre_completo, username, avatar_url)')
         .eq('user_id', userId)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(res);
@@ -622,7 +692,7 @@ class SupabaseService {
   }) async {
     final res = await _supabase
         .from('items')
-        .select()
+        .select('*, autor:autor_id(nombre_completo, username, avatar_url)')
         .eq('user_id', userId)
         .eq('tablero_id', tableroId)
         .order('created_at', ascending: false);

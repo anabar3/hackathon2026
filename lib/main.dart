@@ -20,6 +20,8 @@ import 'screens/inbox_screen.dart';
 import 'screens/letters_screen.dart';
 import 'screens/drift_screen.dart';
 import 'screens/person_boards_screen.dart';
+import 'screens/public_board_screen.dart';
+import 'screens/board_suggestions_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/permissions_screen.dart';
 import 'services/ble_service.dart';
@@ -176,10 +178,13 @@ class _CollectHomeState extends State<CollectHome> {
   Screen _screen = Screen.dashboard;
   Screen _prevScreen = Screen.dashboard;
   Board? _selectedBoard;
+  Board? _selectedPublicBoard;
   late ContentItem _selectedItem;
   NearbyPerson? _selectedPerson;
   late List<ContentItem> _items;
+  List<ContentItem> _publicBoardItems = [];
   List<Board> _boards = [];
+  List<dynamic> _boardSuggestions = [];
   List<Map<String, dynamic>> _inboxItems = [];
   bool _loadingInbox = false;
   bool _loadingBoards = true;
@@ -223,6 +228,10 @@ class _CollectHomeState extends State<CollectHome> {
         _screen = _prevScreen == Screen.detail ? Screen.board : _prevScreen;
       } else if (_screen == Screen.edit || _screen == Screen.aiOrganize) {
         _screen = Screen.board;
+      } else if (_screen == Screen.publicBoard) {
+        _screen = Screen.personBoards;
+      } else if (_screen == Screen.boardSuggestions) {
+        _screen = Screen.board;
       } else if (_screen == Screen.personBoards) {
         _screen = Screen.drift;
       } else if (_screen == Screen.profile) {
@@ -259,6 +268,34 @@ class _CollectHomeState extends State<CollectHome> {
     });
   }
 
+  Future<void> _handlePublicBoardSelect(Board board) async {
+    setState(() {
+      _selectedPublicBoard = board;
+      _publicBoardItems = [];
+    });
+
+    _navigate(Screen.publicBoard);
+
+    if (_selectedPerson != null) {
+      final data = await _service.getItemsPorTablero(
+        userId: _selectedPerson!.id,
+        tableroId: board.id,
+      );
+      setState(() {
+        _publicBoardItems = data.map((i) => _mapToContentItem(i)).toList();
+      });
+    }
+  }
+
+  Future<void> _handleOpenSuggestions() async {
+    if (_selectedBoard == null) return;
+    final sugs = await _service.getSugerenciasTablero(_selectedBoard!.id);
+    setState(() {
+      _boardSuggestions = sugs;
+    });
+    _navigate(Screen.boardSuggestions);
+  }
+
   void _handleToggleSaved(String itemId) {
     setState(() {
       _items = _items.map((item) {
@@ -285,6 +322,8 @@ class _CollectHomeState extends State<CollectHome> {
       _screen != Screen.edit &&
       _screen != Screen.addInbox &&
       _screen != Screen.personBoards &&
+      _screen != Screen.publicBoard &&
+      _screen != Screen.boardSuggestions &&
       _screen != Screen.login &&
       _screen != Screen.boardTree;
 
@@ -320,6 +359,7 @@ class _CollectHomeState extends State<CollectHome> {
           onEdit: () => _navigate(Screen.edit),
           onAiOrganize: () => _navigate(Screen.aiOrganize),
           onAiSummarize: _handleAiSummarize,
+          onOpenSuggestions: _handleOpenSuggestions,
         );
       case Screen.detail:
         final currentItem = _items.firstWhere(
@@ -364,6 +404,58 @@ class _CollectHomeState extends State<CollectHome> {
         return PersonBoardsScreen(
           person: _selectedPerson!,
           onBack: _handleBack,
+          onBoardSelect: _handlePublicBoardSelect,
+        );
+      case Screen.publicBoard:
+        if (_selectedPublicBoard == null) return const SizedBox.shrink();
+        return PublicBoardScreen(
+          board: _selectedPublicBoard!,
+          items: _publicBoardItems,
+          myItems: _items,
+          onBack: _handleBack,
+          onItemSelect: _handleItemSelect,
+          onExport: (item) async {
+            await _service.guardarItemEnInbox(
+              sourceItemId: item.id,
+              sourceUserId: _selectedPerson?.id ?? '',
+              titulo: item.title,
+              tipo: item.type.name,
+              contenido: item.description,
+              url: item.url,
+              thumbnailUrl: item.thumbnail,
+              tags: item.tags,
+            );
+          },
+          onSuggest: (item) async {
+            if (_selectedPublicBoard == null || _selectedPerson == null) return;
+            await _service.sugerirItemExistente(
+              targetUserId: _selectedPerson!.id,
+              itemId: item.id,
+              targetTableroId: _selectedPublicBoard!.id,
+            );
+          },
+        );
+      case Screen.boardSuggestions:
+        if (_selectedBoard == null) return const SizedBox.shrink();
+        return BoardSuggestionsScreen(
+          board: _selectedBoard!,
+          suggestions: _boardSuggestions,
+          onBack: _handleBack,
+          onResolve: (sugId, accept) async {
+            await _service.resolverSugerencia(
+              sugerenciaId: sugId,
+              aceptar: accept,
+            );
+            // Refresh
+            final sugs = await _service.getSugerenciasTablero(
+              _selectedBoard!.id,
+            );
+            setState(() {
+              _boardSuggestions = sugs;
+            });
+            await _syncItems();
+            await _loadBoards();
+          },
         );
       case Screen.profile:
         return ProfileScreen(onBack: _handleBack, onLogout: _handleLogout);
@@ -391,30 +483,32 @@ class _CollectHomeState extends State<CollectHome> {
     return Scaffold(
       backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        bottom: false,
-        child: PatternBackground(
-          child: Stack(
-            children: [
-              _buildScreen(),
-              if (_showBottomNav)
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: BottomNav(
-                    activeScreen: _screen,
-                    onNavigate: (s) {
-                      setState(() {
-                        _prevScreen = _screen;
-                        _screen = s;
-                      });
-                      if (s == Screen.inbox) _loadInbox();
-                      if (s == Screen.dashboard) _loadBoards();
-                    },
+      body: PatternBackground(
+        child: SafeArea(
+          bottom: false,
+          child: SizedBox.expand(
+            child: Stack(
+              children: [
+                _buildScreen(),
+                if (_showBottomNav)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: BottomNav(
+                      activeScreen: _screen,
+                      onNavigate: (s) {
+                        setState(() {
+                          _prevScreen = _screen;
+                          _screen = s;
+                        });
+                        if (s == Screen.inbox) _loadInbox();
+                        if (s == Screen.dashboard) _loadBoards();
+                      },
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -542,6 +636,12 @@ class _CollectHomeState extends State<CollectHome> {
     final description =
         i['descripcion'] as String? ??
         (ct == ContentType.note || tipo == 'texto' ? contenido : null);
+
+    String? authorName;
+    if (i['autor'] != null) {
+      final autor = i['autor'] as Map<String, dynamic>;
+      authorName = autor['username'] ?? autor['nombre_completo'];
+    }
     return ContentItem(
       id: i['id'] ?? '',
       type: ct,
@@ -555,7 +655,7 @@ class _CollectHomeState extends State<CollectHome> {
       color: null,
       duration: null,
       size: null,
-      author: null,
+      author: authorName,
       saved: false,
     );
   }

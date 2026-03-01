@@ -65,20 +65,25 @@ class _DriftScreenState extends State<DriftScreen> {
         List<Board> boards = [];
         try {
           final boardsData = await _service.getTablerosPublicos(id);
-          boards = boardsData
-              .map(
-                (b) => Board(
-                  id: b['id'] ?? '',
-                  name: b['titulo'] ?? '',
-                  description: b['descripcion'],
-                  itemCount: 0,
-                  coverImage: b['imagen_portada'],
-                  color: '#1e1e32',
-                  icon: 'compass',
-                  isPublic: true,
-                ),
-              )
-              .toList();
+          boards = await Future.wait(boardsData.map((b) async {
+            int count = 0;
+            try {
+              count = await _service.countItemsPorTablero(
+                userId: id,
+                tableroId: b['id'] ?? '',
+              );
+            } catch (_) {}
+            return Board(
+              id: b['id'] ?? '',
+              name: b['titulo'] ?? '',
+              description: b['descripcion'],
+              itemCount: count,
+              coverImage: b['imagen_portada'],
+              color: '#1e1e32',
+              icon: 'compass',
+              isPublic: true,
+            );
+          }));
         } catch (_) {}
 
         final theirInterests = List<String>.from(profile['intereses'] ?? []);
@@ -251,20 +256,25 @@ class _DriftScreenState extends State<DriftScreen> {
         List<Board> boards = [];
         try {
           final boardsData = await _service.getTablerosPublicos(id);
-          boards = boardsData
-              .map(
-                (b) => Board(
-                  id: b['id'] ?? '',
-                  name: b['titulo'] ?? '',
-                  description: b['descripcion'],
-                  itemCount: 0,
-                  coverImage: b['imagen_portada'],
-                  color: '#1e1e32',
-                  icon: 'compass',
-                  isPublic: true,
-                ),
-              )
-              .toList();
+          boards = await Future.wait(boardsData.map((b) async {
+            int count = 0;
+            try {
+              count = await _service.countItemsPorTablero(
+                userId: id,
+                tableroId: b['id'] ?? '',
+              );
+            } catch (_) {}
+            return Board(
+              id: b['id'] ?? '',
+              name: b['titulo'] ?? '',
+              description: b['descripcion'],
+              itemCount: count,
+              coverImage: b['imagen_portada'],
+              color: '#1e1e32',
+              icon: 'compass',
+              isPublic: true,
+            );
+          }));
         } catch (_) {}
 
         if (!BleService.instance.nearbyUsers.value.contains(id)) continue;

@@ -427,6 +427,15 @@ class DetailScreen extends StatelessWidget {
                           onTap: () => onToggleSaved(item.id),
                         ),
                         const SizedBox(width: 8),
+                        _SolidBtn(
+                          icon: Icons.library_add_rounded,
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Guardando en Inbox...')),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
                         _SolidBtn(icon: Icons.share_rounded, onTap: () {}),
                         const SizedBox(width: 8),
                         _SolidBtn(icon: Icons.more_horiz_rounded, onTap: () {}),

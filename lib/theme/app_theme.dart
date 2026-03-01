@@ -35,6 +35,7 @@ ThemeData buildAppTheme() {
     brightness: Brightness.light,
     scaffoldBackgroundColor: AppColors.background,
     textTheme: baseTextTheme,
+    fontFamily: GoogleFonts.dmSans().fontFamily,
     colorScheme: const ColorScheme.light(
       surface: AppColors.card,
       primary: AppColors.primary,
