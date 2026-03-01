@@ -31,3 +31,7 @@ Hemos construido una solución de alta fidelidad utilizando tecnologías de vang
 - **Background Intelligence:** Un servicio persistente que mantiene viva la red social incluso con la pantalla apagada.
 
 
+## Más información (muy recomendable)
+Dejamos aquí el [Manual de Usuario](/ManualDeUsuario.md) donde se explica la configuración, la funcionalidad de la aplicación y la justificación y motivación de cada aspecto de la aplicación.
+
+Por otro lado, dejamos el [Contributing](/CONTRIBUTING.md), donde indicamos los pasos a seguir en caso de querer colaborar en nuestro pequeño proyecto iniciado en la HackUDC2026.
