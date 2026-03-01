@@ -2,11 +2,11 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/models.dart';
-import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
 
 class DetailScreen extends StatefulWidget {
   final ContentItem item;
+  final Board board;
   final VoidCallback onBack;
   final void Function(String) onToggleSaved;
   /// Callback that triggers AI summarization for this item. Should return a
@@ -23,10 +23,12 @@ class DetailScreen extends StatefulWidget {
   ) onUpdateThumbnail;
   final Future<void> Function(String) onDeleteItem;
   final VoidCallback onSummarize;
+  final Future<void> Function(Board board, bool toPublic) onToggleVisibility;
 
   const DetailScreen({
     super.key,
     required this.item,
+    required this.board,
     required this.onBack,
     required this.onToggleSaved,
     this.onAiSummarize,
@@ -35,6 +37,7 @@ class DetailScreen extends StatefulWidget {
     required this.onUpdateThumbnail,
     required this.onDeleteItem,
     required this.onSummarize,
+    required this.onToggleVisibility,
   });
 
   @override
@@ -303,10 +306,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final board = boards.firstWhere(
-      (b) => b.id == widget.item.boardId,
-      orElse: () => boards.first,
-    );
+    final board = widget.board;
     final hasImage = _thumbUrl != null && _thumbUrl!.isNotEmpty;
 
     return Scaffold(
@@ -443,38 +443,44 @@ class _DetailScreenState extends State<DetailScreen> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
+                              GestureDetector(
+                                onTap: () => widget.onToggleVisibility(
+                                  board,
+                                  !board.isPublic,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.card,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: AppColors.border,
-                                    width: 2,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
                                   ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      board.isPublic
-                                          ? Icons.public
-                                          : Icons.lock_outline,
-                                      size: 14,
-                                      color: AppColors.mutedForeground,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.card,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: AppColors.border,
+                                      width: 2,
                                     ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      board.isPublic ? 'Public' : 'Private',
-                                      style: const TextStyle(
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        board.isPublic
+                                            ? Icons.public
+                                            : Icons.lock_outline,
+                                        size: 14,
                                         color: AppColors.mutedForeground,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        board.isPublic ? 'Public' : 'Private',
+                                        style: const TextStyle(
+                                          color: AppColors.mutedForeground,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],

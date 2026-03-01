@@ -15,6 +15,7 @@ class BoardScreen extends StatefulWidget {
   final void Function(String parentId) onCreateSubBoard;
   final Future<void> Function() onAiSummarize;
   final VoidCallback onOpenSuggestions;
+  final Future<void> Function(Board board, bool toPublic) onToggleVisibility;
 
   const BoardScreen({
     super.key,
@@ -28,6 +29,7 @@ class BoardScreen extends StatefulWidget {
     required this.onCreateSubBoard,
     required this.onAiSummarize,
     required this.onOpenSuggestions,
+    required this.onToggleVisibility,
   });
 
   @override
@@ -121,6 +123,8 @@ class _BoardScreenState extends State<BoardScreen> {
                     onAiSummarize: _handleAiSummaryPressed,
                     onEdit: widget.onEdit,
                     onOpenSuggestions: widget.onOpenSuggestions,
+                    onToggleVisibility: () =>
+                        widget.onToggleVisibility(board, !board.isPublic),
                   ),
                   if (_showAiSummary)
                     Padding(
@@ -765,6 +769,7 @@ class _BoardHeader extends StatelessWidget {
   final VoidCallback onAiSummarize;
   final VoidCallback onEdit;
   final VoidCallback onOpenSuggestions;
+  final VoidCallback onToggleVisibility;
 
   const _BoardHeader({
     required this.board,
@@ -773,6 +778,7 @@ class _BoardHeader extends StatelessWidget {
     required this.onAiSummarize,
     required this.onEdit,
     required this.onOpenSuggestions,
+    required this.onToggleVisibility,
   });
 
   @override
@@ -877,7 +883,10 @@ class _BoardHeader extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _PublicBadge(isPublic: board.isPublic),
+                    GestureDetector(
+                      onTap: onToggleVisibility,
+                      child: _PublicBadge(isPublic: board.isPublic),
+                    ),
                     const SizedBox(width: 10),
                     Text(
                       '$itemCount items',

@@ -50,6 +50,7 @@ class BottomNav extends StatelessWidget {
             _NavItem(
               icon: Icons.inbox_rounded,
               active: _isInbox,
+              accent: true,
               onTap: () => onNavigate(Screen.inbox),
             ),
             _NavItem(
@@ -72,11 +73,13 @@ class BottomNav extends StatelessWidget {
 class _NavItem extends StatelessWidget {
   final IconData icon;
   final bool active;
+  final bool accent;
   final VoidCallback onTap;
 
   const _NavItem({
     required this.icon,
     required this.active,
+    this.accent = false,
     required this.onTap,
   });
 
@@ -87,21 +90,38 @@ class _NavItem extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 50,
-        height: 50,
+        width: accent ? 54 : 50,
+        height: accent ? 54 : 50,
         decoration: BoxDecoration(
-          color: active ? const Color(0xFFF3F4F6) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          color: accent
+              ? AppColors.primary
+              : active
+                  ? const Color(0xFFF3F4F6)
+                  : Colors.transparent,
+          borderRadius: BorderRadius.circular(accent ? 24 : 16),
+          boxShadow: accent && active
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.28),
+                    blurRadius: 18,
+                    offset: const Offset(0, 10),
+                  ),
+                ]
+              : null,
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
             Icon(
               icon,
-              color: active ? const Color(0xFF1E293B) : const Color(0xFF9CA3AF),
+              color: accent
+                  ? AppColors.primaryForeground
+                  : active
+                      ? const Color(0xFF1E293B)
+                      : const Color(0xFF9CA3AF),
               size: 26,
             ),
-            if (active)
+            if (active && !accent)
               Positioned(
                 bottom: 6,
                 child: Container(
