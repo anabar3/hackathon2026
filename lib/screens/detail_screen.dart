@@ -26,6 +26,8 @@ class DetailScreen extends StatefulWidget {
   final Future<void> Function(String) onDeleteItem;
   final VoidCallback onSummarize;
   final Future<void> Function(Board board, bool toPublic) onToggleVisibility;
+  final Future<void> Function(ContentItem)? onExportToInbox;
+  final bool isPublicView;
 
   const DetailScreen({
     super.key,
@@ -40,6 +42,8 @@ class DetailScreen extends StatefulWidget {
     required this.onDeleteItem,
     required this.onSummarize,
     required this.onToggleVisibility,
+    this.onExportToInbox,
+    this.isPublicView = false,
   });
 
   @override
@@ -54,6 +58,9 @@ class _DetailScreenState extends State<DetailScreen> {
   bool _uploadingThumb = false;
   bool _showAiSummary = false;
   bool _loadingAiSummary = false;
+  bool _exporting = false;
+
+  bool get _canEdit => !widget.isPublicView;
 
   Future<void> _editTitle() async {
     if (_savingTitle) return;
@@ -247,6 +254,27 @@ class _DetailScreenState extends State<DetailScreen> {
     }
   }
 
+  Future<void> _handleExport() async {
+    if (widget.onExportToInbox == null || _exporting) return;
+    setState(() => _exporting = true);
+    try {
+      await widget.onExportToInbox!(widget.item);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item guardado en tu Inbox ✅')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   Future<void> _pickThumbnail() async {
     if (_uploadingThumb) return;
     final result = await FilePicker.platform.pickFiles(
@@ -393,10 +421,17 @@ class _DetailScreenState extends State<DetailScreen> {
                       Positioned(
                         top: 16,
                         right: 16,
-                        child: _MiniEditIcon(
-                          onTap: _uploadingThumb ? null : _pickThumbnail,
-                          loading: _uploadingThumb,
-                        ),
+                        child: widget.onExportToInbox != null
+                            ? _SolidBtn(
+                                icon: Icons.inbox_rounded,
+                                onTap: _exporting ? () {} : _handleExport,
+                              )
+                            : _canEdit
+                                ? _MiniEditIcon(
+                                    onTap: _uploadingThumb ? null : _pickThumbnail,
+                                    loading: _uploadingThumb,
+                                  )
+                                : const SizedBox.shrink(),
                       ),
                       if (widget.item.type == ContentType.video)
                         Positioned.fill(
@@ -539,10 +574,11 @@ class _DetailScreenState extends State<DetailScreen> {
                                   ),
                                 ),
                               ),
-                              _MiniEditIcon(
-                                onTap: _savingTitle ? null : _editTitle,
-                                loading: _savingTitle,
-                              ),
+                              if (_canEdit)
+                                _MiniEditIcon(
+                                  onTap: _savingTitle ? null : _editTitle,
+                                  loading: _savingTitle,
+                                ),
                             ],
                           ),
                           if (widget.item.author != null) ...[
@@ -594,10 +630,11 @@ class _DetailScreenState extends State<DetailScreen> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              _MiniEditIcon(
-                                onTap: _savingDesc ? null : _editDescription,
-                                loading: _savingDesc,
-                              ),
+                              if (_canEdit)
+                                _MiniEditIcon(
+                                  onTap: _savingDesc ? null : _editDescription,
+                                  loading: _savingDesc,
+                                ),
                             ],
                           ),
                           const SizedBox(height: 24),
@@ -747,33 +784,35 @@ class _DetailScreenState extends State<DetailScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: _deleting ? null : _confirmDelete,
-                                  icon: _deleting
-                                      ? const SizedBox(
-                                          height: 18,
-                                          width: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : const Icon(Icons.delete_outline_rounded, size: 20),
-                                  label: const Text(
-                                    'Eliminar elemento',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
+                              if (_canEdit) ...[
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _deleting ? null : _confirmDelete,
+                                    icon: _deleting
+                                        ? const SizedBox(
+                                            height: 18,
+                                            width: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : const Icon(Icons.delete_outline_rounded, size: 20),
+                                    label: const Text(
+                                      'Eliminar elemento',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
                                     ),
                                   ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                  ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
 

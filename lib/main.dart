@@ -195,6 +195,7 @@ class _CollectHomeState extends State<CollectHome> {
   bool _loadingInbox = false;
   bool _loadingBoards = true;
   StreamSubscription? _intentSub;
+  bool _viewingPublicDetail = false;
 
   @override
   void initState() {
@@ -343,6 +344,7 @@ class _CollectHomeState extends State<CollectHome> {
   void _handleBack() {
     setState(() {
       if (_screen == Screen.detail) {
+        _viewingPublicDetail = false;
         _screen = _prevScreen == Screen.detail ? Screen.board : _prevScreen;
       } else if (_screen == Screen.edit || _screen == Screen.aiOrganize) {
         _screen = Screen.board;
@@ -458,9 +460,10 @@ class _CollectHomeState extends State<CollectHome> {
     }
   }
 
-  void _handleItemSelect(ContentItem item) {
+  void _handleItemSelect(ContentItem item, {bool fromPublic = false}) {
     setState(() {
       _selectedItem = item;
+      _viewingPublicDetail = fromPublic;
       _prevScreen = _screen;
       _screen = Screen.detail;
     });
@@ -707,26 +710,40 @@ class _CollectHomeState extends State<CollectHome> {
           onToggleVisibility: _handleToggleBoardVisibility,
         );
       case Screen.detail:
-        final currentItem = _items.firstWhere(
+        final sourceItems = _viewingPublicDetail ? _publicBoardItems : _items;
+        final currentItem = sourceItems.firstWhere(
           (i) => i.id == _selectedItem.id,
           orElse: () => _selectedItem,
         );
-        final currentBoard = _boards.firstWhere(
-          (b) => b.id == currentItem.boardId,
-          orElse: () => _boards.isNotEmpty
-              ? _boards.first
-              : Board(
+        final currentBoard = _viewingPublicDetail
+            ? (_selectedPublicBoard ??
+                Board(
                   id: currentItem.boardId,
-                  name: 'Board',
+                  name: 'Tablero público',
                   description: null,
                   parentId: null,
                   itemCount: 0,
                   coverImage: null,
                   color: '#FFFFFF',
                   icon: 'folder',
-                  isPublic: false,
-                ),
-        );
+                  isPublic: true,
+                ))
+            : _boards.firstWhere(
+                (b) => b.id == currentItem.boardId,
+                orElse: () => _boards.isNotEmpty
+                    ? _boards.first
+                    : Board(
+                        id: currentItem.boardId,
+                        name: 'Board',
+                        description: null,
+                        parentId: null,
+                        itemCount: 0,
+                        coverImage: null,
+                        color: '#FFFFFF',
+                        icon: 'folder',
+                        isPublic: false,
+                      ),
+              );
         return DetailScreen(
           item: currentItem,
           board: currentBoard,
@@ -739,6 +756,24 @@ class _CollectHomeState extends State<CollectHome> {
           onDeleteItem: _handleDeleteItem,
           onSummarize: _handleAiSummarize,
           onToggleVisibility: _handleToggleBoardVisibility,
+          isPublicView: _viewingPublicDetail,
+          onExportToInbox: _viewingPublicDetail && _selectedPerson != null
+              ? (item) async {
+                  final tipo = (item.type == ContentType.document || item.type == ContentType.file)
+                      ? 'note'
+                      : item.type.name;
+                  await _service.guardarItemEnInbox(
+                    sourceItemId: item.id,
+                    sourceUserId: _selectedPerson!.id,
+                    titulo: item.title,
+                    tipo: tipo,
+                    contenido: item.description,
+                    url: item.url,
+                    thumbnailUrl: item.thumbnail,
+                    tags: item.tags,
+                  );
+                }
+              : null,
         );
       case Screen.add:
         return AddScreen(onClose: _handleBack);
@@ -797,7 +832,7 @@ class _CollectHomeState extends State<CollectHome> {
             }
           },
           onBack: _handleBack,
-          onItemSelect: _handleItemSelect,
+          onItemSelect: (item) => _handleItemSelect(item, fromPublic: true),
           onExport: (item) async {
             await _service.guardarItemEnInbox(
               sourceItemId: item.id,
