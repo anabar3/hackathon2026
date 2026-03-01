@@ -39,7 +39,7 @@ Para trabajar en este proyecto, necesitarás:
 ## Cómo enviar tus cambios
 
 1.  Haz un **Fork** del proyecto.
-2.  Crea tu **Rama de funcionalidad** (`git checkout -b feature/NuevaMejora`).
+2.  Crea tu **Rama de funcionalidad** desde develop (`git checkout -b feature/nueva-mejora`).
 3.  Haz **Commit** de tus cambios (`git commit -m 'Añadida nueva funcionalidad'`).
-4.  Haz **Push** a la rama (`git push origin feature/NuevaMejora`).
-5.  Abre un **Pull Request** detallando tus cambios y qué problemas resuelven.
+4.  Haz **Push** a la rama (`git push origin feature/nueva-mejora`).
+5.  Abre un **Pull Request** a develop detallando tus cambios y qué problemas resuelven.
