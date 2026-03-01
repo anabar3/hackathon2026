@@ -241,10 +241,14 @@ class _CollectHomeState extends State<CollectHome> {
           if (prevBoard.isNotEmpty) {
             _selectedBoard = prevBoard.first;
           }
-          _prevScreen = _boardHistory.isNotEmpty ? Screen.board : Screen.dashboard;
+          _prevScreen = _boardHistory.isNotEmpty
+              ? Screen.board
+              : Screen.dashboard;
           _screen = Screen.board;
         } else {
-          _screen = _prevScreen == Screen.board ? Screen.dashboard : _prevScreen;
+          _screen = _prevScreen == Screen.board
+              ? Screen.dashboard
+              : _prevScreen;
         }
       } else {
         _screen = Screen.dashboard;
@@ -283,7 +287,10 @@ class _CollectHomeState extends State<CollectHome> {
     });
   }
 
-  Future<void> _handlePublicBoardSelect(Board board, NearbyPerson person) async {
+  Future<void> _handlePublicBoardSelect(
+    Board board,
+    NearbyPerson person,
+  ) async {
     setState(() {
       _selectedPublicBoard = board;
       _publicBoardItems = [];
@@ -302,9 +309,9 @@ class _CollectHomeState extends State<CollectHome> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading items: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading items: $e')));
       }
     }
   }
@@ -455,7 +462,8 @@ class _CollectHomeState extends State<CollectHome> {
         return PersonBoardsScreen(
           person: _selectedPerson!,
           onBack: _handleBack,
-          onBoardSelect: (board) => _handlePublicBoardSelect(board, _selectedPerson!),
+          onBoardSelect: (board) =>
+              _handlePublicBoardSelect(board, _selectedPerson!),
         );
       case Screen.publicBoard:
         if (_selectedPublicBoard == null) return const SizedBox.shrink();
@@ -493,33 +501,42 @@ class _CollectHomeState extends State<CollectHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        bottom: false,
-        child: PatternBackground(
-          child: Stack(
-            children: [
-              _buildScreen(),
-              if (_showBottomNav)
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: BottomNav(
-                    activeScreen: _screen,
-                    onNavigate: (s) {
-                      setState(() {
-                        _prevScreen = _screen;
-                        _screen = s;
-                      });
-                      if (s == Screen.inbox) _loadInbox();
-                      if (s == Screen.dashboard) _loadBoards();
-                    },
+    return PopScope(
+      canPop: _screen == Screen.dashboard,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        resizeToAvoidBottomInset: false,
+        body: SafeArea(
+          bottom: false,
+          child: PatternBackground(
+            child: Stack(
+              children: [
+                _buildScreen(),
+                if (_showBottomNav)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: BottomNav(
+                      activeScreen: _screen,
+                      onNavigate: (s) {
+                        setState(() {
+                          _prevScreen = _screen;
+                          _screen = s;
+                        });
+                        if (s == Screen.inbox) _loadInbox();
+                        if (s == Screen.dashboard) _loadBoards();
+                      },
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1069,18 +1086,11 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
 
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
     );
   }
 
-  Board _copyBoard({
-    String? name,
-    String? description,
-    String? cover,
-  }) {
+  Board _copyBoard({String? name, String? description, String? cover}) {
     return Board(
       id: _board.id,
       name: name ?? _board.name,
@@ -1124,8 +1134,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(ctx, controller.text.trim()),
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
               child: const Text('Guardar'),
             ),
           ],
@@ -1133,16 +1142,11 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
       },
     );
     final newTitle = result?.trim();
-    if (newTitle == null ||
-        newTitle.isEmpty ||
-        newTitle == _board.name) return;
+    if (newTitle == null || newTitle.isEmpty || newTitle == _board.name) return;
 
     setState(() => _savingTitle = true);
     try {
-      await _service.actualizarTablero(
-        tableroId: _board.id,
-        titulo: newTitle,
-      );
+      await _service.actualizarTablero(tableroId: _board.id, titulo: newTitle);
       _applyUpdate(_copyBoard(name: newTitle));
       _showSnack('Título actualizado');
     } catch (_) {
@@ -1175,8 +1179,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(ctx, controller.text.trim()),
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
               child: const Text('Guardar'),
             ),
           ],
@@ -1194,9 +1197,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
         tableroId: _board.id,
         descripcion: descForDb,
       );
-      _applyUpdate(
-        _copyBoard(description: newDesc.isEmpty ? null : newDesc),
-      );
+      _applyUpdate(_copyBoard(description: newDesc.isEmpty ? null : newDesc));
       _showSnack('Descripción actualizada');
     } catch (_) {
       _showSnack('No se pudo actualizar la descripción');
@@ -1219,8 +1220,9 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
     try {
       final userId = _service.currentUser?.id;
       if (userId == null) throw Exception('Debes iniciar sesión');
-      final mime =
-          file.extension != null ? 'image/${file.extension}' : 'image/jpeg';
+      final mime = file.extension != null
+          ? 'image/${file.extension}'
+          : 'image/jpeg';
       final url = await _service.subirImagenPortada(
         userId: userId,
         bytes: file.bytes!,
@@ -1257,9 +1259,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Eliminar'),
             ),
@@ -1281,10 +1281,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
     }
   }
 
-  Widget _editIcon({
-    required VoidCallback onTap,
-    required bool loading,
-  }) {
+  Widget _editIcon({required VoidCallback onTap, required bool loading}) {
     return GestureDetector(
       onTap: loading ? null : onTap,
       child: Container(
@@ -1413,10 +1410,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
                               ],
                             ),
                           ),
-                          _editIcon(
-                            onTap: _editTitle,
-                            loading: _savingTitle,
-                          ),
+                          _editIcon(onTap: _editTitle, loading: _savingTitle),
                         ],
                       ),
                       const Divider(color: AppColors.border, height: 24),
@@ -1535,42 +1529,42 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
                 ),
                 const SizedBox(height: 14),
                 const Text(
-              'Los cambios se guardan al instante.',
-              style: TextStyle(
-                color: AppColors.mutedForeground,
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  'Los cambios se guardan al instante.',
+                  style: TextStyle(
+                    color: AppColors.mutedForeground,
+                    fontSize: 12,
                   ),
                 ),
-                onPressed: _deleting ? null : _confirmDelete,
-                child: _deleting
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Borrar tablero',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-              ),
-            ),
+                    ),
+                    onPressed: _deleting ? null : _confirmDelete,
+                    child: _deleting
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Borrar tablero',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                  ),
+                ),
               ],
             ),
           ),
