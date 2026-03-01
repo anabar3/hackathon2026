@@ -248,6 +248,10 @@ class _CollectHomeState extends State<CollectHome> {
     final user = _service.currentUser;
     if (user == null) return;
 
+    if (mounted && _screen != Screen.inbox) {
+      _navigate(Screen.inbox);
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Guardando items en el Inbox...')),
     );
