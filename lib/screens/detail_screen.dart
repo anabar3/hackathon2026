@@ -1,22 +1,247 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models/models.dart';
 import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
 
-class DetailScreen extends StatelessWidget {
+class DetailScreen extends StatefulWidget {
   final ContentItem item;
   final VoidCallback onBack;
   final void Function(String) onToggleSaved;
+  final Future<void> Function(String, String) onUpdateTitle;
+  final Future<void> Function(String, String) onUpdateDescription;
+  final Future<String> Function(
+    String itemId,
+    Uint8List bytes,
+    String fileName,
+    String mimeType,
+  ) onUpdateThumbnail;
+  final Future<void> Function(String) onDeleteItem;
+  final VoidCallback onSummarize;
 
   const DetailScreen({
     super.key,
     required this.item,
     required this.onBack,
     required this.onToggleSaved,
+    required this.onUpdateTitle,
+    required this.onUpdateDescription,
+    required this.onUpdateThumbnail,
+    required this.onDeleteItem,
+    required this.onSummarize,
   });
 
+  @override
+  State<DetailScreen> createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+  String? _thumbUrl;
+  bool _savingTitle = false;
+  bool _savingDesc = false;
+  bool _deleting = false;
+  bool _uploadingThumb = false;
+
+  Future<void> _editTitle() async {
+    if (_savingTitle) return;
+    final controller = TextEditingController(text: widget.item.title);
+    final newTitle = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('Editar título'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Título'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (newTitle == null ||
+        newTitle.isEmpty ||
+        newTitle == widget.item.title) return;
+
+    setState(() => _savingTitle = true);
+    try {
+      await widget.onUpdateTitle(widget.item.id, newTitle);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Título actualizado')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo actualizar el título')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingTitle = false);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _thumbUrl = widget.item.thumbnail;
+  }
+
+  @override
+  void didUpdateWidget(covariant DetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.id != widget.item.id ||
+        oldWidget.item.thumbnail != widget.item.thumbnail) {
+      _thumbUrl = widget.item.thumbnail;
+    }
+  }
+
+  Future<void> _editDescription() async {
+    if (_savingDesc) return;
+    final controller = TextEditingController(text: widget.item.description ?? '');
+    final newDesc = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('Editar descripción'),
+        content: TextField(
+          controller: controller,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            labelText: 'Descripción',
+            hintText: 'Añade más contexto (opcional)',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (newDesc == null) return;
+    if ((widget.item.description ?? '') == newDesc) return;
+
+    setState(() => _savingDesc = true);
+    try {
+      await widget.onUpdateDescription(widget.item.id, newDesc);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Descripción actualizada')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo actualizar la descripción')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingDesc = false);
+    }
+  }
+
+  Future<void> _confirmDelete() async {
+    if (_deleting) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AppColors.card,
+          title: const Text('Seguro que quieres eliminar?'),
+          content: const Text(
+            'Se eliminará este item. Esta acción no se puede deshacer.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Eliminar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirm != true) return;
+
+    setState(() => _deleting = true);
+    try {
+      await widget.onDeleteItem(widget.item.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item eliminado')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo eliminar el item')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  Future<void> _pickThumbnail() async {
+    if (_uploadingThumb) return;
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+      withData: true,
+    );
+    final file = result?.files.first;
+    if (file == null || file.bytes == null) return;
+    setState(() => _uploadingThumb = true);
+    try {
+      final mime =
+          file.extension != null ? 'image/${file.extension}' : 'image/jpeg';
+      final url = await widget.onUpdateThumbnail(
+        widget.item.id,
+        file.bytes!,
+        file.name,
+        mime,
+      );
+      setState(() => _thumbUrl = url);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Imagen actualizada')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo subir la imagen')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingThumb = false);
+    }
+  }
+
   IconData _typeIcon() {
-    switch (item.type) {
+    switch (widget.item.type) {
       case ContentType.video:
         return Icons.play_circle_outline;
       case ContentType.link:
@@ -37,14 +262,10 @@ class DetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final board = boards.firstWhere(
-      (b) => b.id == item.boardId,
+      (b) => b.id == widget.item.boardId,
       orElse: () => boards.first,
     );
-    final hasImage =
-        item.thumbnail != null &&
-        (item.type == ContentType.image ||
-            item.type == ContentType.video ||
-            item.type == ContentType.link);
+    final hasImage = _thumbUrl != null && _thumbUrl!.isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -60,64 +281,74 @@ class DetailScreen extends StatelessWidget {
                   color: AppColors.secondary,
                   height: 320,
                   width: double.infinity,
-                  child: hasImage
-                      ? Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Image.network(
-                              item.thumbnail!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Center(
-                                child: Icon(
-                                  _typeIcon(),
-                                  color: AppColors.primary,
-                                  size: 64,
-                                ),
-                              ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (hasImage && _thumbUrl != null)
+                        Image.network(
+                          _thumbUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Center(
+                            child: Icon(
+                              _typeIcon(),
+                              color: AppColors.primary,
+                              size: 64,
                             ),
-                            Container(
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.center,
-                                  colors: [
-                                    Color(0x88352F20),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                            ),
-                            if (item.type == ContentType.video)
-                              Positioned.fill(
-                                child: Center(
-                                  child: Container(
-                                    width: 72,
-                                    height: 72,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: AppColors.card,
-                                        width: 4,
-                                      ),
-                                    ),
-                                    child: const Icon(
-                                      Icons.play_arrow_rounded,
-                                      color: Colors.white,
-                                      size: 40,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
+                          ),
                         )
-                      : Center(
+                      else
+                        Center(
                           child: Icon(
                             _typeIcon(),
                             color: AppColors.primary,
                             size: 64,
                           ),
                         ),
+                      if (hasImage)
+                        Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.center,
+                              colors: [
+                                Color(0x88352F20),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: _MiniEditIcon(
+                          onTap: _uploadingThumb ? null : _pickThumbnail,
+                          loading: _uploadingThumb,
+                        ),
+                      ),
+                      if (widget.item.type == ContentType.video)
+                        Positioned.fill(
+                          child: Center(
+                            child: Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.card,
+                                  width: 4,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow_rounded,
+                                color: Colors.white,
+                                size: 40,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
 
                 // Content Panel overlapping the image
@@ -159,7 +390,7 @@ class DetailScreen extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      item.type.name,
+                                      widget.item.type.name,
                                       style: const TextStyle(
                                         color: AppColors.primaryForeground,
                                         fontSize: 12,
@@ -207,116 +438,92 @@ class DetailScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Text(
-                            item.title,
-                            style: const TextStyle(
-                              color: AppColors.foreground,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900,
-                              height: 1.2,
+                          const Text(
+                            'Título',
+                            style: TextStyle(
+                              color: AppColors.mutedForeground,
+                              fontSize: 12,
                             ),
                           ),
-                          if (item.author != null) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  widget.item.title,
+                                  style: const TextStyle(
+                                    color: AppColors.foreground,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ),
+                              _MiniEditIcon(
+                                onTap: _savingTitle ? null : _editTitle,
+                                loading: _savingTitle,
+                              ),
+                            ],
+                          ),
+                          if (widget.item.author != null) ...[
                             const SizedBox(height: 8),
                             Text(
-                              'by ${item.author}',
+                              'by ${widget.item.author}',
                               style: const TextStyle(
                                 color: AppColors.mutedForeground,
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                           ],
-                          const SizedBox(height: 24),
-
-                          // Description Box
-                          if (item.description != null &&
-                              item.description!.isNotEmpty) ...[
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: AppColors.card,
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: AppColors.border,
-                                  width: 3,
-                                ),
-                              ),
-                              child: Text(
-                                item.description!,
-                                style: const TextStyle(
-                                  color: AppColors.foreground,
-                                  fontSize: 15,
-                                  height: 1.6,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                          ],
-
-                          // Metadata Table
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: AppColors.secondary,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(
-                                color: AppColors.border,
-                                width: 3,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                _MetaRow(
-                                  icon: Icons.calendar_today_rounded,
-                                  label: 'Added ${item.createdAt}',
-                                ),
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  child: Divider(
-                                    color: AppColors.border,
-                                    thickness: 2,
-                                    height: 2,
-                                  ),
-                                ),
-                                _MetaRow(
-                                  icon: Icons.folder_rounded,
-                                  label: board.name,
-                                ),
-                                if (item.duration != null) ...[
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 12),
-                                    child: Divider(
-                                      color: AppColors.border,
-                                      thickness: 2,
-                                      height: 2,
-                                    ),
-                                  ),
-                                  _MetaRow(
-                                    icon: Icons.access_time_rounded,
-                                    label: item.duration!,
-                                  ),
-                                ],
-                                if (item.size != null) ...[
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 12),
-                                    child: Divider(
-                                      color: AppColors.border,
-                                      thickness: 2,
-                                      height: 2,
-                                    ),
-                                  ),
-                                  _MetaRow(
-                                    icon: Icons.insert_drive_file_rounded,
-                                    label: item.size!,
-                                  ),
-                                ],
-                              ],
+                          const SizedBox(height: 22),
+                          const Text(
+                            'Descripción',
+                            style: TextStyle(
+                              color: AppColors.mutedForeground,
+                              fontSize: 12,
                             ),
                           ),
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  width: double.infinity,
+                                  constraints: const BoxConstraints(minHeight: 140),
+                                  padding: const EdgeInsets.all(4),
+                                  child: Align(
+                                    alignment: Alignment.topLeft,
+                                    child: Text(
+                                      (widget.item.description == null ||
+                                              widget.item.description!.isEmpty)
+                                          ? 'Añade una descripción'
+                                          : widget.item.description!,
+                                      style: TextStyle(
+                                        color: (widget.item.description == null ||
+                                                widget.item.description!.isEmpty)
+                                            ? AppColors.mutedForeground
+                                            : AppColors.foreground,
+                                        fontSize: 15,
+                                        height: 1.6,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _MiniEditIcon(
+                                onTap: _savingDesc ? null : _editDescription,
+                                loading: _savingDesc,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
 
-                          if (item.tags.isNotEmpty) ...[
+                          if (widget.item.tags.isNotEmpty) ...[
                             const SizedBox(height: 32),
                             Row(
                               children: const [
@@ -341,7 +548,7 @@ class DetailScreen extends StatelessWidget {
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
-                              children: item.tags
+                              children: widget.item.tags
                                   .map(
                                     (tag) => Container(
                                       padding: const EdgeInsets.symmetric(
@@ -370,7 +577,7 @@ class DetailScreen extends StatelessWidget {
                             ),
                           ],
 
-                          if (item.url != null) ...[
+                          if (widget.item.url != null) ...[
                             const SizedBox(height: 32),
                             SizedBox(
                               width: double.infinity,
@@ -391,6 +598,54 @@ class DetailScreen extends StatelessWidget {
                               ),
                             ),
                           ],
+                          const SizedBox(height: 28),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: widget.onSummarize,
+                                  icon: const Icon(Icons.auto_awesome, size: 20),
+                                  label: const Text(
+                                    'AI Summarize',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: _deleting ? null : _confirmDelete,
+                                  icon: _deleting
+                                      ? const SizedBox(
+                                          height: 18,
+                                          width: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.delete_outline_rounded, size: 20),
+                                  label: const Text(
+                                    'Delete item',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -412,25 +667,10 @@ class DetailScreen extends StatelessWidget {
                   vertical: 8,
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _SolidBtn(icon: Icons.arrow_back_rounded, onTap: onBack),
-                    Row(
-                      children: [
-                        _SolidBtn(
-                          icon: item.saved
-                              ? Icons.favorite_rounded
-                              : Icons.favorite_border_rounded,
-                          color: item.saved
-                              ? AppColors.accent
-                              : AppColors.foreground,
-                          onTap: () => onToggleSaved(item.id),
-                        ),
-                        const SizedBox(width: 8),
-                        _SolidBtn(icon: Icons.share_rounded, onTap: () {}),
-                        const SizedBox(width: 8),
-                        _SolidBtn(icon: Icons.more_horiz_rounded, onTap: () {}),
-                      ],
+                    _SolidBtn(
+                      icon: Icons.arrow_back_rounded,
+                      onTap: widget.onBack,
                     ),
                   ],
                 ),
@@ -439,33 +679,6 @@ class DetailScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _MetaRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _MetaRow({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: AppColors.mutedForeground),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.foreground,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -492,6 +705,37 @@ class _SolidBtn extends StatelessWidget {
           ],
         ),
         child: Icon(icon, color: color ?? AppColors.foreground, size: 20),
+      ),
+    );
+  }
+}
+
+class _MiniEditIcon extends StatelessWidget {
+  final VoidCallback? onTap;
+  final bool loading;
+  const _MiniEditIcon({required this.onTap, this.loading = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: AppColors.muted.withAlpha(60),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: loading
+            ? const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(
+                Icons.edit_outlined,
+                color: AppColors.mutedForeground,
+                size: 16,
+              ),
       ),
     );
   }
