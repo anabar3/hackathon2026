@@ -949,7 +949,7 @@ class SupabaseService {
     required String mimeType,
   }) async {
     // Prefijo por usuario para aplicar políticas de RLS en Storage
-    final safeName = fileName.replaceAll(' ', '-');
+    final safeName = _sanitizeFileName(fileName);
     final randomSuffix = Random().nextInt(1 << 32);
     final objectPath =
         '$userId/${DateTime.now().millisecondsSinceEpoch}-$randomSuffix-$safeName';
@@ -968,6 +968,90 @@ class SupabaseService {
         .createSignedUrl(objectPath, 60 * 60 * 24 * 7);
 
     return {'path': objectPath, 'signedUrl': signedUrl};
+  }
+
+  /// Sanitiza el nombre del archivo para que Supabase Storage acepte la clave.
+  /// - Quita tildes/acentos.
+  /// - Reemplaza caracteres no permitidos por '-'.
+  /// - Preserva la extensión si existe.
+  String _sanitizeFileName(String original) {
+    final map = {
+      'á': 'a',
+      'à': 'a',
+      'ä': 'a',
+      'â': 'a',
+      'ã': 'a',
+      'Á': 'A',
+      'À': 'A',
+      'Ä': 'A',
+      'Â': 'A',
+      'Ã': 'A',
+      'é': 'e',
+      'è': 'e',
+      'ë': 'e',
+      'ê': 'e',
+      'É': 'E',
+      'È': 'E',
+      'Ë': 'E',
+      'Ê': 'E',
+      'í': 'i',
+      'ì': 'i',
+      'ï': 'i',
+      'î': 'i',
+      'Í': 'I',
+      'Ì': 'I',
+      'Ï': 'I',
+      'Î': 'I',
+      'ó': 'o',
+      'ò': 'o',
+      'ö': 'o',
+      'ô': 'o',
+      'õ': 'o',
+      'Ó': 'O',
+      'Ò': 'O',
+      'Ö': 'O',
+      'Ô': 'O',
+      'Õ': 'O',
+      'ú': 'u',
+      'ù': 'u',
+      'ü': 'u',
+      'û': 'u',
+      'Ú': 'U',
+      'Ù': 'U',
+      'Ü': 'U',
+      'Û': 'U',
+      'ñ': 'n',
+      'Ñ': 'N',
+      'ç': 'c',
+      'Ç': 'C',
+    };
+
+    String normalized = original
+        .split('')
+        .map((c) => map[c] ?? c)
+        .join()
+        .replaceAll(' ', '-');
+
+    // Mantener extensión (si hay) pero limpiar el resto
+    String name = normalized;
+    String? ext;
+    final lastDot = normalized.lastIndexOf('.');
+    if (lastDot > 0 && lastDot < normalized.length - 1) {
+      name = normalized.substring(0, lastDot);
+      ext = normalized.substring(lastDot + 1);
+    }
+
+    name = name.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '-');
+    name = name.replaceAll(RegExp(r'-{2,}'), '-').trim();
+    if (name.isEmpty) name = 'file';
+
+    if (ext != null) {
+      ext = ext.replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
+      if (ext.isNotEmpty) {
+        return '$name.$ext';
+      }
+    }
+    return name;
   }
 
   // ─── ENCUENTROS ─────────────────────────────────
