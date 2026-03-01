@@ -14,7 +14,7 @@ class BoardScreen extends StatefulWidget {
   final VoidCallback onEdit;
   final void Function(String parentId) onCreateSubBoard;
   final VoidCallback onAiOrganize;
-  final VoidCallback onAiSummarize;
+  final Future<void> Function() onAiSummarize;
   final VoidCallback onOpenSuggestions;
 
   const BoardScreen({
@@ -39,6 +39,8 @@ class BoardScreen extends StatefulWidget {
 class _BoardScreenState extends State<BoardScreen> {
   String _activeFilter = 'All';
   final _filters = ['All', 'Images', 'Videos', 'Links', 'Notes'];
+  bool _showAiSummary = false;
+  bool _loadingAiSummary = false;
 
   List<ContentItem> get _filteredItems {
     final boardItems = widget.items
@@ -55,7 +57,46 @@ class _BoardScreenState extends State<BoardScreen> {
   }
 
   @override
+  void didUpdateWidget(covariant BoardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.board.id != widget.board.id) {
+      _showAiSummary = false;
+      _loadingAiSummary = false;
+    }
+  }
+
+  Future<void> _handleAiSummaryPressed() async {
+    if (_showAiSummary) {
+      setState(() => _showAiSummary = false);
+      return;
+    }
+
+    final hasSummary =
+        widget.board.aiSummary != null && widget.board.aiSummary!.isNotEmpty;
+
+    if (!hasSummary) {
+      setState(() => _loadingAiSummary = true);
+      try {
+        await widget.onAiSummarize();
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo generar el resumen del tablero'),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _loadingAiSummary = false);
+      }
+    }
+
+    if (mounted) setState(() => _showAiSummary = true);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final board = widget.board;
     final items = _filteredItems;
     final allBoardItems = widget.items
         .where((i) => i.boardId == widget.board.id)
@@ -76,14 +117,22 @@ class _BoardScreenState extends State<BoardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _BoardHeader(
-                    board: widget.board,
+                    board: board,
                     itemCount: allBoardItems.length,
                     onBack: widget.onBack,
                     onAiOrganize: widget.onAiOrganize,
-                    onAiSummarize: widget.onAiSummarize,
+                    onAiSummarize: _handleAiSummaryPressed,
                     onEdit: widget.onEdit,
                     onOpenSuggestions: widget.onOpenSuggestions,
                   ),
+                  if (_showAiSummary)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _AiSummaryCard(
+                        summary: board.aiSummary,
+                        loading: _loadingAiSummary,
+                      ),
+                    ),
                   const SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -587,6 +636,95 @@ class _PrimaryBtn extends StatelessWidget {
   }
 }
 
+class _AiSummaryCard extends StatelessWidget {
+  final String? summary;
+  final bool loading;
+
+  const _AiSummaryCard({required this.summary, required this.loading});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border, width: 2),
+        boxShadow: const [
+          BoxShadow(color: AppColors.border, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'AI Summary',
+                style: TextStyle(
+                  color: AppColors.foreground,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              if (loading)
+                const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (loading)
+            const Text(
+              'Generando resumen...',
+              style: TextStyle(
+                color: AppColors.mutedForeground,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            )
+          else if (summary != null && summary!.isNotEmpty)
+            Text(
+              summary!,
+              style: const TextStyle(
+                color: AppColors.foreground,
+                fontSize: 15,
+                height: 1.5,
+                fontWeight: FontWeight.w600,
+              ),
+            )
+          else
+            const Text(
+              'Aún no hay un resumen para este tablero. Pulsa el botón para generarlo.',
+              style: TextStyle(
+                color: AppColors.mutedForeground,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PublicBadge extends StatelessWidget {
   final bool isPublic;
   const _PublicBadge({required this.isPublic});
@@ -708,24 +846,24 @@ class _BoardHeader extends StatelessWidget {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _CircleBtn(icon: Icons.arrow_back_rounded, onTap: onBack),
-                    Row(
-                      children: [
-                        _GroupIdeaBtn(onTap: onOpenSuggestions),
+          children: [
+            _CircleBtn(icon: Icons.arrow_back_rounded, onTap: onBack),
+            Row(
+              children: [
+                _GroupIdeaBtn(onTap: onOpenSuggestions),
                         const SizedBox(width: 8),
                         _PrimaryBtn(
                           label: 'AI Organize',
                           icon: Icons.auto_fix_high_rounded,
                           onTap: onAiOrganize,
                         ),
-                        const SizedBox(width: 8),
-                        _PrimaryBtn(
-                          label: 'AI Summarize',
-                          icon: Icons.auto_awesome,
-                          onTap: onAiSummarize,
-                        ),
-                        const SizedBox(width: 8),
+                const SizedBox(width: 8),
+                _PrimaryBtn(
+                  label: 'AI Summary',
+                  icon: Icons.auto_awesome,
+                  onTap: onAiSummarize,
+                ),
+                const SizedBox(width: 8),
                         _PrimaryBtn(
                           label: 'Edit',
                           icon: Icons.edit_outlined,

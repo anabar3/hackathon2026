@@ -17,6 +17,8 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+
+    apply(from = "${rootProject.projectDir}/force_java_17.gradle")
 }
 
 tasks.register<Delete>("clean") {
