@@ -237,7 +237,7 @@ class PersonBoardsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'PUBLIC BOARDS (${mainBoards.length})',
+                    'TABLEROS PÚBLICOS (${mainBoards.length})',
                     style: const TextStyle(
                       color: AppColors.mutedForeground,
                       fontSize: 10,
@@ -322,7 +322,7 @@ class PersonBoardsScreen extends StatelessWidget {
                                           ),
                                         ),
                                         Text(
-                                          '${board.itemCount} items',
+                                        '${board.itemCount} elementos',
                                           style: const TextStyle(
                                             color: AppColors.mutedForeground,
                                             fontSize: 11,

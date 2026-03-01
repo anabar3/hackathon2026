@@ -71,7 +71,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
               ),
               const SizedBox(height: 32),
               const Text(
-                'We Need Your Permission',
+                'Necesitamos tu permiso',
                 style: TextStyle(
                   color: AppColors.foreground,
                   fontSize: 28,
@@ -82,7 +82,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Collect uses Bluetooth and Location to discover nearby people and their public boards while you walk on the Street.',
+                'Collect usa Bluetooth y Ubicación para descubrir personas cercanas y sus tableros públicos mientras caminas por la Street.',
                 style: TextStyle(
                   color: AppColors.mutedForeground,
                   fontSize: 16,
@@ -101,7 +101,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                     border: Border.all(color: AppColors.destruct),
                   ),
                   child: const Text(
-                    'Permissions are required to continue. Please open app settings to permit.',
+                    'Se necesitan permisos para continuar. Abre los ajustes de la app para permitirlos.',
                     style: TextStyle(
                       color: AppColors.destruct,
                       fontSize: 14,
@@ -133,7 +133,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                           color: AppColors.primaryForeground,
                         )
                       : Text(
-                          _error ? 'Open App Settings' : 'Grant Permissions',
+                          _error ? 'Abrir ajustes' : 'Conceder permisos',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,

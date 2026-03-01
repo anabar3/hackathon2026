@@ -104,7 +104,7 @@ class LettersScreen extends StatelessWidget {
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  'Attach a gift or a board!',
+                                  'Adjunta un regalo o un tablero.',
                                   style: TextStyle(
                                     color: AppColors.mutedForeground,
                                     fontSize: 13,
@@ -126,7 +126,7 @@ class LettersScreen extends StatelessWidget {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: const Text(
-                        'YOUR MAILBOX',
+                        'TU BUZÓN',
                         style: TextStyle(
                           color: AppColors.mutedForeground,
                           fontSize: 11,
@@ -158,7 +158,7 @@ class LettersScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Your mailbox is empty right\nnow.',
+                            'Tu buzón está vacío por ahora.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: AppColors.mutedForeground,

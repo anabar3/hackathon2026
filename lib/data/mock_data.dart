@@ -3,8 +3,8 @@ import '../models/models.dart';
 final List<Board> boards = [
   const Board(
     id: 'travel',
-    name: 'Travel Inspo',
-    description: 'Dream destinations and travel photography',
+    name: 'Inspo de viajes',
+    description: 'Destinos de ensueño y fotografía de viajes',
     itemCount: 24,
     coverImage:
         'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&q=80',
@@ -14,8 +14,8 @@ final List<Board> boards = [
   ),
   const Board(
     id: 'design',
-    name: 'Design System',
-    description: 'UI patterns, components, and references',
+    name: 'Sistema de diseño',
+    description: 'Patrones de UI, componentes y referencias',
     itemCount: 18,
     coverImage:
         'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800&q=80',
@@ -25,8 +25,8 @@ final List<Board> boards = [
   ),
   const Board(
     id: 'recipes',
-    name: 'Recipes',
-    description: 'Favorite recipes and food photography',
+    name: 'Recetas',
+    description: 'Recetas favoritas y fotos de comida',
     itemCount: 31,
     coverImage:
         'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80',
@@ -36,8 +36,8 @@ final List<Board> boards = [
   ),
   const Board(
     id: 'nature',
-    name: 'Nature',
-    description: 'Landscapes and wildlife photography',
+    name: 'Naturaleza',
+    description: 'Paisajes y fotografía de vida salvaje',
     itemCount: 15,
     coverImage:
         'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80',
@@ -47,8 +47,8 @@ final List<Board> boards = [
   ),
   const Board(
     id: 'architecture',
-    name: 'Architecture',
-    description: 'Modern buildings and urban design',
+    name: 'Arquitectura',
+    description: 'Edificios modernos y diseño urbano',
     itemCount: 12,
     coverImage:
         'https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=800&q=80',
@@ -58,8 +58,8 @@ final List<Board> boards = [
   ),
   const Board(
     id: 'reading',
-    name: 'Reading List',
-    description: 'Articles, books, and research papers',
+    name: 'Lista de lectura',
+    description: 'Artículos, libros y papers de investigación',
     itemCount: 9,
     coverImage:
         'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=800&q=80',
@@ -73,12 +73,12 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '1',
     type: ContentType.image,
-    title: 'Maldives Sunset Beach',
+    title: 'Playa al atardecer en Maldivas',
     description:
-        'Crystal clear waters with overwater bungalows during golden hour',
+        'Aguas cristalinas con bungalows sobre el mar durante la hora dorada',
     thumbnail:
         'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=600&q=80',
-    tags: ['travel', 'beach', 'sunset'],
+    tags: ['viajes', 'playa', 'atardecer'],
     boardId: 'travel',
     createdAt: '2026-02-25',
     author: 'Nature Gallery',
@@ -87,12 +87,12 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '2',
     type: ContentType.video,
-    title: 'UI Animation Patterns',
+    title: 'Patrones de animación UI',
     description:
-        'A comprehensive guide to micro-interactions in modern interfaces',
+        'Guía completa de microinteracciones en interfaces modernas',
     thumbnail:
         'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&q=80',
-    tags: ['design', 'animation', 'ui'],
+    tags: ['diseño', 'animación', 'ui'],
     boardId: 'design',
     createdAt: '2026-02-24',
     duration: '12:34',
@@ -102,25 +102,25 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '3',
     type: ContentType.link,
-    title: 'The Future of CSS',
+    title: 'El futuro de CSS',
     description:
-        'Exploring new CSS features coming in 2026 including container queries',
+        'Explorando las nuevas funciones de CSS en 2026, incluidas container queries',
     url: 'https://example.com/future-css',
     thumbnail:
         'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=600&q=80',
-    tags: ['css', 'web', 'development'],
+    tags: ['css', 'web', 'desarrollo'],
     boardId: 'design',
     createdAt: '2026-02-23',
-    author: 'Web Trends',
+    author: 'Tendencias Web',
     saved: true,
   ),
   ContentItem(
     id: '4',
     type: ContentType.audio,
-    title: 'Ambient Rain Sounds',
+    title: 'Sonidos de lluvia ambiente',
     description:
-        'Relaxing rain and thunder ambient audio for focus and relaxation',
-    tags: ['ambient', 'focus', 'nature'],
+        'Audio relajante de lluvia y truenos para foco y relajación',
+    tags: ['ambiente', 'foco', 'naturaleza'],
     boardId: 'nature',
     createdAt: '2026-02-22',
     duration: '45:00',
@@ -129,10 +129,10 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '5',
     type: ContentType.note,
-    title: 'Trip Packing List',
+    title: 'Lista de equipaje',
     description:
-        'Essential items for the upcoming Bali trip: passport, sunscreen, camera gear, hiking boots, waterproof bag',
-    tags: ['travel', 'planning'],
+        'Elementos esenciales para el próximo viaje a Bali: pasaporte, bloqueador, cámara, botas y bolsa impermeable',
+    tags: ['viajes', 'planeación'],
     boardId: 'travel',
     createdAt: '2026-02-21',
     saved: true,
@@ -140,24 +140,24 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '6',
     type: ContentType.image,
-    title: 'Tuscan Countryside',
+    title: 'Campo toscano',
     description:
-        'Rolling hills of Tuscany with golden wheat fields and cypress trees',
+        'Colinas de la Toscana con campos dorados de trigo y cipreses',
     thumbnail:
         'https://images.unsplash.com/photo-1523531294919-4bcd7c65e216?w=600&q=80',
-    tags: ['travel', 'landscape', 'italy'],
+    tags: ['viajes', 'paisaje', 'italia'],
     boardId: 'travel',
     createdAt: '2026-02-20',
-    author: 'Euro Travel',
+    author: 'Viajes Euro',
     saved: false,
   ),
   ContentItem(
     id: '7',
     type: ContentType.document,
-    title: 'Brand Guidelines v2',
+    title: 'Guía de marca v2',
     description:
-        'Updated brand guidelines including new color palette and typography scale',
-    tags: ['design', 'branding'],
+        'Guía de marca actualizada con nueva paleta de colores y escala tipográfica',
+    tags: ['diseño', 'branding'],
     boardId: 'design',
     createdAt: '2026-02-19',
     size: '4.2 MB',
@@ -166,11 +166,11 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '8',
     type: ContentType.image,
-    title: 'Sourdough Bread',
-    description: 'Homemade artisan sourdough with a perfect golden crust',
+    title: 'Pan de masa madre',
+    description: 'Pan artesanal con corteza dorada perfecta',
     thumbnail:
         'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80',
-    tags: ['food', 'baking', 'bread'],
+    tags: ['comida', 'panadería', 'pan'],
     boardId: 'recipes',
     createdAt: '2026-02-18',
     author: 'Bake Studio',
@@ -179,27 +179,27 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '9',
     type: ContentType.link,
-    title: '10 Hidden Gems in Portugal',
+    title: '10 joyas ocultas en Portugal',
     description:
-        'Discover the lesser-known beautiful spots across Portugal\'s coastline',
+        'Descubre los rincones menos conocidos a lo largo de la costa portuguesa',
     url: 'https://example.com/portugal-gems',
     thumbnail:
         'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=600&q=80',
-    tags: ['travel', 'portugal', 'guide'],
+    tags: ['viajes', 'portugal', 'guía'],
     boardId: 'travel',
     createdAt: '2026-02-17',
-    author: 'Travel Mag',
+    author: 'Revista Travel',
     saved: true,
   ),
   ContentItem(
     id: '10',
     type: ContentType.image,
-    title: 'Modern Glass Tower',
+    title: 'Torre moderna de vidrio',
     description:
-        'Contemporary skyscraper with reflective glass facade against blue sky',
+        'Rascacielos contemporáneo con fachada de vidrio reflectante',
     thumbnail:
         'https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=600&q=80',
-    tags: ['architecture', 'modern', 'urban'],
+    tags: ['arquitectura', 'moderno', 'urbano'],
     boardId: 'architecture',
     createdAt: '2026-02-16',
     author: 'Arch Digest',
@@ -208,10 +208,10 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '11',
     type: ContentType.file,
-    title: 'Project Assets.zip',
+    title: 'Assets del proyecto.zip',
     description:
-        'Exported design assets including icons, illustrations and UI components',
-    tags: ['design', 'assets'],
+        'Recursos de diseño exportados: íconos, ilustraciones y componentes UI',
+    tags: ['diseño', 'assets'],
     boardId: 'design',
     createdAt: '2026-02-15',
     size: '128 MB',
@@ -220,12 +220,12 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '12',
     type: ContentType.image,
-    title: 'Abstract Textures',
+    title: 'Texturas abstractas',
     description:
-        'Bold contemporary art with warm earth tones and textured canvas',
+        'Arte contemporáneo audaz con tonos tierra cálidos y lienzo texturizado',
     thumbnail:
         'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=600&q=80',
-    tags: ['art', 'abstract', 'texture'],
+    tags: ['arte', 'abstracto', 'textura'],
     boardId: 'reading',
     createdAt: '2026-02-14',
     author: 'Art Studio',
@@ -234,10 +234,10 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '13',
     type: ContentType.note,
-    title: 'Color Theory Notes',
+    title: 'Notas de teoría del color',
     description:
-        'Key takeaways from the color theory workshop: complementary vs analogous palettes',
-    tags: ['design', 'color', 'notes'],
+        'Ideas clave del taller: paletas complementarias vs análogas',
+    tags: ['diseño', 'color', 'notas'],
     boardId: 'design',
     createdAt: '2026-02-13',
     saved: false,
@@ -245,11 +245,11 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '14',
     type: ContentType.video,
-    title: 'Northern Lights Timelapse',
-    description: 'Stunning aurora borealis captured over the Norwegian fjords',
+    title: 'Time‑lapse de auroras',
+    description: 'Impresionantes auroras boreales sobre los fiordos noruegos',
     thumbnail:
         'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=600&q=80',
-    tags: ['nature', 'timelapse', 'norway'],
+    tags: ['naturaleza', 'timelapse', 'noruega'],
     boardId: 'nature',
     createdAt: '2026-02-12',
     duration: '3:22',
@@ -259,12 +259,12 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '15',
     type: ContentType.link,
-    title: 'Thai Green Curry Recipe',
-    description: 'Authentic Thai green curry with homemade paste from scratch',
+    title: 'Receta de curry verde thai',
+    description: 'Curry verde tailandés auténtico con pasta casera',
     url: 'https://example.com/thai-curry',
     thumbnail:
         'https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=600&q=80',
-    tags: ['food', 'thai', 'curry'],
+    tags: ['comida', 'thai', 'curry'],
     boardId: 'recipes',
     createdAt: '2026-02-11',
     author: 'Serious Eats',
@@ -273,11 +273,11 @@ List<ContentItem> buildContentItems() => [
   ContentItem(
     id: '16',
     type: ContentType.image,
-    title: 'Japanese Garden',
-    description: 'Serene zen garden with raked gravel and bonsai trees',
+    title: 'Jardín japonés',
+    description: 'Sereno jardín zen con grava rastrillada y bonsáis',
     thumbnail:
         'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=600&q=80',
-    tags: ['nature', 'japan', 'zen'],
+    tags: ['naturaleza', 'japón', 'zen'],
     boardId: 'nature',
     createdAt: '2026-02-10',
     author: 'Zen Collection',

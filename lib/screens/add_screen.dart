@@ -103,17 +103,17 @@ class _AddScreenState extends State<AddScreen>
   }
 
   static const _quickActions = [
-    (Icons.camera_alt_outlined, 'Camera'),
-    (Icons.photo_outlined, 'Photos'),
-    (Icons.link, 'Link'),
-    (Icons.mic_outlined, 'Voice'),
-    (Icons.upload_file_outlined, 'File'),
+    (Icons.camera_alt_outlined, 'Cámara'),
+    (Icons.photo_outlined, 'Fotos'),
+    (Icons.link, 'Enlace'),
+    (Icons.mic_outlined, 'Voz'),
+    (Icons.upload_file_outlined, 'Archivo'),
   ];
 
   static const _recentDrops = [
-    ('IMG_2847.jpg', '2 min ago', 'Travel Inspo'),
-    ('recipe-link.url', '15 min ago', 'Recipes'),
-    ('voice-memo-03.m4a', '1h ago', 'Reading List'),
+    ('IMG_2847.jpg', 'hace 2 min', 'Inspo de viajes'),
+    ('receta-enlace.url', 'hace 15 min', 'Recetas'),
+    ('nota-voz-03.m4a', 'hace 1 h', 'Lista de lectura'),
   ];
 
   @override
@@ -210,7 +210,7 @@ class _AddScreenState extends State<AddScreen>
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Drop anything here',
+                  'Suelta aquí cualquier cosa',
                   style: TextStyle(
                     color: AppColors.foreground,
                     fontSize: 14,
@@ -219,7 +219,7 @@ class _AddScreenState extends State<AddScreen>
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Photos, links, files, voice memos...\nAI will name, describe, tag, and sort it.',
+                  'Fotos, enlaces, archivos, notas de voz...\nLa IA lo nombrará, describirá, etiquetará y organizará.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: AppColors.mutedForeground,
@@ -233,7 +233,7 @@ class _AddScreenState extends State<AddScreen>
         ),
         // Quick capture
         const Text(
-          'QUICK CAPTURE',
+          'CAPTURA RÁPIDA',
           style: TextStyle(
             color: AppColors.mutedForeground,
             fontSize: 10,
@@ -292,7 +292,7 @@ class _AddScreenState extends State<AddScreen>
         const SizedBox(height: 24),
         // Paste link
         const Text(
-          'PASTE LINK',
+          'PEGAR ENLACE',
           style: TextStyle(
             color: AppColors.mutedForeground,
             fontSize: 10,
@@ -323,7 +323,7 @@ class _AddScreenState extends State<AddScreen>
                     ),
                     SizedBox(width: 8),
                     Text(
-                      'https://...',
+                    'https://...',
                       style: TextStyle(
                         color: AppColors.mutedForeground,
                         fontSize: 13,
@@ -355,7 +355,7 @@ class _AddScreenState extends State<AddScreen>
         const SizedBox(height: 24),
         // Recent
         const Text(
-          'RECENT',
+          'RECIENTE',
           style: TextStyle(
             color: AppColors.mutedForeground,
             fontSize: 10,
@@ -453,7 +453,7 @@ class _AddScreenState extends State<AddScreen>
         ),
         const SizedBox(height: 20),
         const Text(
-          'Processing...',
+          'Procesando...',
           style: TextStyle(
             color: AppColors.foreground,
             fontSize: 16,
@@ -462,15 +462,15 @@ class _AddScreenState extends State<AddScreen>
         ),
         const SizedBox(height: 4),
         const Text(
-          'AI is analyzing your content',
+          'La IA está analizando tu contenido',
           style: TextStyle(color: AppColors.mutedForeground, fontSize: 12),
         ),
         const SizedBox(height: 32),
         ...[
-          (1, 'Content type detected'),
-          (2, 'Title and description generated'),
-          (3, 'Tags assigned and board matched'),
-          (4, 'Sorted to board'),
+          (1, 'Tipo de contenido detectado'),
+          (2, 'Título y descripción generados'),
+          (3, 'Etiquetas asignadas y tablero elegido'),
+          (4, 'Organizado en el tablero'),
         ].map((s) => _stepRow(s.$1, s.$2)),
       ],
     );
@@ -497,7 +497,7 @@ class _AddScreenState extends State<AddScreen>
             ),
             const SizedBox(height: 10),
             const Text(
-              'Sorted by AI',
+              'Organizado por IA',
               style: TextStyle(
                 color: AppColors.foreground,
                 fontSize: 16,
@@ -505,7 +505,7 @@ class _AddScreenState extends State<AddScreen>
               ),
             ),
             const Text(
-              'Review and confirm, or edit the details',
+              'Revisa y confirma, o edita los detalles',
               style: TextStyle(color: AppColors.mutedForeground, fontSize: 12),
             ),
           ],
@@ -553,7 +553,7 @@ class _AddScreenState extends State<AddScreen>
                     ),
                     child: const Center(
                       child: Text(
-                        'Discard',
+                        'Descartar',
                         style: TextStyle(
                           color: AppColors.foreground,
                           fontWeight: FontWeight.w700,
@@ -575,7 +575,7 @@ class _AddScreenState extends State<AddScreen>
                     ),
                     child: const Center(
                       child: Text(
-                        'Confirm',
+                        'Confirmar',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -598,15 +598,15 @@ class _AddScreenState extends State<AddScreen>
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'IMAGE',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-              ),
-            ),
+        const Text(
+          'IMAGEN',
+          style: TextStyle(
+            color: AppColors.primary,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+          ),
+        ),
             GestureDetector(
               onTap: () => setState(() => _isEditing = true),
               child: const Row(
@@ -618,7 +618,7 @@ class _AddScreenState extends State<AddScreen>
                   ),
                   SizedBox(width: 3),
                   Text(
-                    'Edit',
+                    'Editar',
                     style: TextStyle(
                       color: AppColors.mutedForeground,
                       fontSize: 10,
@@ -631,7 +631,7 @@ class _AddScreenState extends State<AddScreen>
         ),
         const SizedBox(height: 6),
         const Text(
-          'Santorini Blue Domes',
+          'Cúpulas azules en Santorini',
           style: TextStyle(
             color: AppColors.foreground,
             fontSize: 14,
@@ -640,7 +640,7 @@ class _AddScreenState extends State<AddScreen>
         ),
         const SizedBox(height: 4),
         const Text(
-          'Iconic white-washed buildings with blue domes overlooking the Aegean Sea at sunset.',
+          'Edificios encalados con cúpulas azules frente al mar Egeo al atardecer.',
           style: TextStyle(
             color: AppColors.mutedForeground,
             fontSize: 11,
@@ -651,7 +651,7 @@ class _AddScreenState extends State<AddScreen>
         Wrap(
           spacing: 6,
           runSpacing: 6,
-          children: ['greece', 'architecture', 'sunset', 'islands']
+          children: ['grecia', 'arquitectura', 'atardecer', 'islas']
               .map(
                 (t) => Container(
                   padding: const EdgeInsets.symmetric(
@@ -686,7 +686,7 @@ class _AddScreenState extends State<AddScreen>
               Icon(Icons.arrow_forward, size: 14, color: AppColors.primary),
               SizedBox(width: 6),
               Text(
-                'Travel Inspo',
+                'Inspo de viajes',
                 style: TextStyle(
                   color: AppColors.primary,
                   fontSize: 12,
@@ -705,7 +705,7 @@ class _AddScreenState extends State<AddScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'TITLE',
+          'TÍTULO',
           style: TextStyle(
             color: AppColors.mutedForeground,
             fontSize: 10,
@@ -722,13 +722,13 @@ class _AddScreenState extends State<AddScreen>
             border: Border.all(color: AppColors.border),
           ),
           child: const Text(
-            'Santorini Blue Domes',
+            'Cúpulas azules en Santorini',
             style: TextStyle(color: AppColors.foreground, fontSize: 13),
           ),
         ),
         const SizedBox(height: 12),
         const Text(
-          'BOARD',
+          'TABLERO',
           style: TextStyle(
             color: AppColors.mutedForeground,
             fontSize: 10,
@@ -748,7 +748,7 @@ class _AddScreenState extends State<AddScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Travel Inspo',
+                'Inspo de viajes',
                 style: TextStyle(color: AppColors.foreground, fontSize: 13),
               ),
               Icon(
@@ -771,7 +771,7 @@ class _AddScreenState extends State<AddScreen>
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Text(
-                'Done Editing',
+                'Listo',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 12,

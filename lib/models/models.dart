@@ -139,11 +139,11 @@ class NearbyPerson {
 
     String timeAgo;
     if (diff.inMinutes < 60) {
-      timeAgo = '${diff.inMinutes} min ago';
+      timeAgo = 'hace ${diff.inMinutes} min';
     } else if (diff.inHours < 24) {
-      timeAgo = '${diff.inHours}h ago';
+      timeAgo = 'hace ${diff.inHours} h';
     } else {
-      timeAgo = '${diff.inDays}d ago';
+      timeAgo = 'hace ${diff.inDays} d';
     }
 
     final theirInterests = List<String>.from(perfil['intereses'] ?? []);
@@ -156,7 +156,7 @@ class NearbyPerson {
       name: perfil['nombre_completo'] ?? perfil['username'] ?? 'Unknown',
       avatar: perfil['avatar_url'] ?? '',
       bio: perfil['bio'] ?? '',
-      lastSeenLocation: row['ubicacion'] ?? 'Nearby',
+      lastSeenLocation: row['ubicacion'] ?? 'Cerca',
       lastSeenTime: timeAgo,
       sharedInterests: shared,
       sharedInterestsSummary: row['shared_interests_summary'],

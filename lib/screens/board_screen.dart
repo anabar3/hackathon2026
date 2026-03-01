@@ -38,8 +38,8 @@ class BoardScreen extends StatefulWidget {
 }
 
 class _BoardScreenState extends State<BoardScreen> {
-  String _activeFilter = 'All';
-  final _filters = ['All', 'Images', 'Videos', 'Links', 'Notes'];
+  String _activeFilter = 'Todos';
+  final _filters = ['Todos', 'Imágenes', 'Videos', 'Enlaces', 'Notas'];
   bool _showAiSummary = false;
   bool _loadingAiSummary = false;
 
@@ -47,12 +47,12 @@ class _BoardScreenState extends State<BoardScreen> {
     final boardItems = widget.items
         .where((i) => i.boardId == widget.board.id)
         .toList();
-    if (_activeFilter == 'All') return boardItems;
+    if (_activeFilter == 'Todos') return boardItems;
     final typeMap = {
-      'Images': ContentType.image,
+      'Imágenes': ContentType.image,
       'Videos': ContentType.video,
-      'Links': ContentType.link,
-      'Notes': ContentType.note,
+      'Enlaces': ContentType.link,
+      'Notas': ContentType.note,
     };
     return boardItems.where((i) => i.type == typeMap[_activeFilter]).toList();
   }
@@ -221,7 +221,7 @@ class _BoardScreenState extends State<BoardScreen> {
                     child: Row(
                       children: const [
                         Text(
-                          'Items',
+                          'Elementos',
                           style: TextStyle(
                             color: AppColors.foreground,
                             fontSize: 12,
@@ -320,7 +320,7 @@ class _BoardScreenState extends State<BoardScreen> {
                               ),
                               const SizedBox(height: 24),
                               const Text(
-                                'No items yet',
+                                'Aún no hay elementos',
                                 style: TextStyle(
                                   color: AppColors.foreground,
                                   fontSize: 22,
@@ -330,7 +330,7 @@ class _BoardScreenState extends State<BoardScreen> {
                               ),
                               const SizedBox(height: 12),
                               const Text(
-                                'Add some cool stuff here to start building your collection!',
+                                'Añade algo aquí para empezar tu colección.',
                                 style: TextStyle(
                                   color: AppColors.mutedForeground,
                                   fontSize: 15,
@@ -497,7 +497,7 @@ class _SubBoardCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${board.itemCount} items',
+                    '${board.itemCount} elementos',
                     style: const TextStyle(
                       color: AppColors.mutedForeground,
                       fontSize: 11,
@@ -679,7 +679,7 @@ class _AiSummaryCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               const Text(
-                'AI Summary',
+                'Resumen IA',
                 style: TextStyle(
                   color: AppColors.foreground,
                   fontSize: 15,
@@ -753,7 +753,7 @@ class _PublicBadge extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            isPublic ? 'Public' : 'Private',
+            isPublic ? 'Público' : 'Privado',
             style: const TextStyle(
               color: AppColors.secondaryForeground,
               fontSize: 10,
@@ -858,13 +858,13 @@ class _BoardHeader extends StatelessWidget {
                         _GroupIdeaBtn(onTap: onOpenSuggestions),
                         const SizedBox(width: 8),
                         _PrimaryBtn(
-                          label: 'AI Summary',
+                          label: 'Resumen IA',
                           icon: Icons.auto_awesome,
                           onTap: onAiSummarize,
                         ),
                         const SizedBox(width: 8),
                         _PrimaryBtn(
-                          label: 'Edit',
+                          label: 'Editar',
                           icon: Icons.edit_outlined,
                           onTap: onEdit,
                         ),
@@ -893,7 +893,7 @@ class _BoardHeader extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      '$itemCount items',
+                      '$itemCount elementos',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 11,

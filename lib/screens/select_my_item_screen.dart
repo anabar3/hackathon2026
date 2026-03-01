@@ -19,16 +19,16 @@ class SelectMyItemScreen extends StatefulWidget {
 }
 
 class _SelectMyItemScreenState extends State<SelectMyItemScreen> {
-  String _activeFilter = 'All';
-  final _filters = ['All', 'Images', 'Videos', 'Links', 'Notes'];
+  String _activeFilter = 'Todos';
+  final _filters = ['Todos', 'Imágenes', 'Videos', 'Enlaces', 'Notas'];
 
   List<ContentItem> get _filteredItems {
-    if (_activeFilter == 'All') return widget.items;
+    if (_activeFilter == 'Todos') return widget.items;
     final typeMap = {
-      'Images': ContentType.image,
+      'Imágenes': ContentType.image,
       'Videos': ContentType.video,
-      'Links': ContentType.link,
-      'Notes': ContentType.note,
+      'Enlaces': ContentType.link,
+      'Notas': ContentType.note,
     };
     return widget.items.where((i) => i.type == typeMap[_activeFilter]).toList();
   }
@@ -66,7 +66,7 @@ class _SelectMyItemScreenState extends State<SelectMyItemScreen> {
                   ),
                   const SizedBox(width: 16),
                   const Text(
-                    'Select an item to suggest',
+                    'Elige un elemento para sugerir',
                     style: TextStyle(
                       color: AppColors.foreground,
                       fontSize: 18,
@@ -127,7 +127,7 @@ class _SelectMyItemScreenState extends State<SelectMyItemScreen> {
               child: items.isEmpty
                   ? const Center(
                       child: Text(
-                        'No items found.',
+                        'No se encontraron elementos.',
                         style: TextStyle(
                           color: AppColors.mutedForeground,
                           fontSize: 16,
