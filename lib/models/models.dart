@@ -113,6 +113,7 @@ class NearbyPerson {
   final String lastSeenTime;
   final List<String> sharedInterests;
   final String? sharedInterestsSummary;
+  final int? compatibilityScore;
   final List<Board> publicBoards;
 
   const NearbyPerson({
@@ -124,6 +125,7 @@ class NearbyPerson {
     required this.lastSeenTime,
     required this.sharedInterests,
     this.sharedInterestsSummary,
+    this.compatibilityScore,
     required this.publicBoards,
   });
 
@@ -160,6 +162,7 @@ class NearbyPerson {
       lastSeenTime: timeAgo,
       sharedInterests: shared,
       sharedInterestsSummary: row['shared_interests_summary'],
+      compatibilityScore: row['compatibility_score'],
       publicBoards: boards,
     );
   }

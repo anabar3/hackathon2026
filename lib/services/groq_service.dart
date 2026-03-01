@@ -460,4 +460,99 @@ ${formatBoards(otherBoards)}
       );
     }
   }
+
+  Future<Map<String, int>> scoreUsersCompatibility({
+    required String myBio,
+    required List<String> myInterests,
+    required List<Map<String, dynamic>> otherUsers,
+  }) async {
+    final apiKey = dotenv.env['GROQ_API_KEY'];
+    if (apiKey == null || apiKey.isEmpty || apiKey == 'pon_tu_api_key_aqui') {
+      throw Exception('GROQ_API_KEY is not properly set in .env');
+    }
+
+    if (otherUsers.isEmpty) return {};
+
+    final systemPrompt = """
+You are an AI assistant that calculates an "interest compatibility score" between a primary user and a list of other users based on their bios, interests, and an AI-generated insight of their digital boards.
+Your goal is to evaluate how likely it is they would get along or find each other interesting. Provide an integer score from 1 to 100 for each user.
+Look for deep semantic connections, but score them strictly based on the strength of the connection. 
+If an "AI Insight" is provided for a user, USE IT to heavily influence the compatibility score. If the insight says they share interests, the score should be high.
+- 85-100: Very high compatibility (strong overlap in exact interests, identical hobbies, or highly complementary AI insight).
+- 50-84: Good compatibility (some shared broad interests, generally positive insight).
+- 25-49: Moderate compatibility (few shared interests, but still potential for conversation).
+- 10-24: Low compatibility (very weak semantic connections, e.g., one likes "vegetables" and another likes "fruit", or both simply like "food").
+- 1-9: No compatibility (absolutely nothing in common, completely opposite vibes, very negative insight).
+
+Output STRICTLY in the following JSON schema, replacing integer_score with a NUMBER (not a string):
+{
+  "scores": {
+    "user_id_1": integer_score,
+    "user_id_2": integer_score
+  }
+}
+""";
+
+    String formatOtherUsers(List<Map<String, dynamic>> users) {
+      return users
+          .map((u) {
+            final id = u['id'] ?? '';
+            final bio = u['bio'] ?? '';
+            final aiInsight = u['ai_insight'] ?? 'None';
+            final interests = List<String>.from(
+              u['intereses'] ?? [],
+            ).join(', ');
+            return "ID: $id\nBio: $bio\nInterests: $interests\nAI Insight: $aiInsight\n";
+          })
+          .join('\n');
+    }
+
+    final userContent =
+        """
+Primary User:
+Bio: $myBio
+Interests: ${myInterests.join(', ')}
+
+Other Users:
+${formatOtherUsers(otherUsers)}
+""";
+
+    final response = await http.post(
+      Uri.parse(_baseUrl),
+      headers: {
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "response_format": {"type": "json_object"},
+        "messages": [
+          {"role": "system", "content": systemPrompt},
+          {"role": "user", "content": userContent},
+        ],
+        "temperature": 0.4,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final content = data['choices'][0]['message']['content'];
+      final decoded = jsonDecode(content);
+
+      final Map<String, int> scores = {};
+      final rawScores = decoded['scores'] as Map<String, dynamic>? ?? {};
+      rawScores.forEach((key, value) {
+        if (value is int) {
+          scores[key] = value;
+        } else if (value is String) {
+          scores[key] = int.tryParse(value) ?? 0;
+        }
+      });
+      return scores;
+    } else {
+      throw Exception(
+        'Failed to score user compatibility: \${response.statusCode} \n \${response.body}',
+      );
+    }
+  }
 }
