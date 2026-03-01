@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/content_card.dart';
@@ -17,6 +15,7 @@ class BoardScreen extends StatefulWidget {
   final void Function(String parentId) onCreateSubBoard;
   final Future<void> Function() onAiSummarize;
   final VoidCallback onOpenSuggestions;
+  final Future<void> Function(Board board, bool toPublic) onToggleVisibility;
 
   const BoardScreen({
     super.key,
@@ -30,6 +29,7 @@ class BoardScreen extends StatefulWidget {
     required this.onCreateSubBoard,
     required this.onAiSummarize,
     required this.onOpenSuggestions,
+    required this.onToggleVisibility,
   });
 
   @override
@@ -123,6 +123,8 @@ class _BoardScreenState extends State<BoardScreen> {
                     onAiSummarize: _handleAiSummaryPressed,
                     onEdit: widget.onEdit,
                     onOpenSuggestions: widget.onOpenSuggestions,
+                    onToggleVisibility: () =>
+                        widget.onToggleVisibility(board, !board.isPublic),
                   ),
                   if (_showAiSummary)
                     Padding(
@@ -363,47 +365,6 @@ class _MasonryGrid extends StatelessWidget {
 
   const _MasonryGrid({required this.items, required this.onItemTap});
 
-  VoidCallback _downloadCallback(ContentItem item, BuildContext context) {
-    // Notes and plain text: copy content to clipboard
-    if (item.type == ContentType.note) {
-      final text = [item.title, item.description]
-          .where((s) => s != null && s.isNotEmpty)
-          .join('\n\n');
-      return () async {
-        await Clipboard.setData(ClipboardData(text: text));
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Nota copiada al portapapeles')),
-          );
-        }
-      };
-    }
-    // All other types: open URL
-    final url = item.url;
-    if (url != null && url.isNotEmpty) {
-      return () async {
-        try {
-          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-        } catch (_) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No se pudo abrir el archivo')),
-            );
-          }
-        }
-      };
-    }
-    // Fallback: copy title to clipboard
-    return () async {
-      await Clipboard.setData(ClipboardData(text: item.title));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Copiado al portapapeles')),
-        );
-      }
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     final left = <ContentItem>[];
@@ -426,15 +387,14 @@ class _MasonryGrid extends StatelessWidget {
                 .map(
                   (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: AnimatedEntry(
-                      index: entry.key * 2,
-                      child: ContentCard(
-                        item: entry.value,
-                        onTap: () => onItemTap(entry.value),
-                        onDownload: _downloadCallback(entry.value, context),
-                      ),
+                  child: AnimatedEntry(
+                    index: entry.key * 2,
+                    child: ContentCard(
+                      item: entry.value,
+                      onTap: () => onItemTap(entry.value),
                     ),
                   ),
+                ),
                 )
                 .toList(),
           ),
@@ -448,15 +408,14 @@ class _MasonryGrid extends StatelessWidget {
                 .map(
                   (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: AnimatedEntry(
-                      index: entry.key * 2 + 1,
-                      child: ContentCard(
-                        item: entry.value,
-                        onTap: () => onItemTap(entry.value),
-                        onDownload: _downloadCallback(entry.value, context),
-                      ),
+                  child: AnimatedEntry(
+                    index: entry.key * 2 + 1,
+                    child: ContentCard(
+                      item: entry.value,
+                      onTap: () => onItemTap(entry.value),
                     ),
                   ),
+                ),
                 )
                 .toList(),
           ),
@@ -810,6 +769,7 @@ class _BoardHeader extends StatelessWidget {
   final VoidCallback onAiSummarize;
   final VoidCallback onEdit;
   final VoidCallback onOpenSuggestions;
+  final VoidCallback onToggleVisibility;
 
   const _BoardHeader({
     required this.board,
@@ -818,6 +778,7 @@ class _BoardHeader extends StatelessWidget {
     required this.onAiSummarize,
     required this.onEdit,
     required this.onOpenSuggestions,
+    required this.onToggleVisibility,
   });
 
   @override
@@ -922,7 +883,10 @@ class _BoardHeader extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _PublicBadge(isPublic: board.isPublic),
+                    GestureDetector(
+                      onTap: onToggleVisibility,
+                      child: _PublicBadge(isPublic: board.isPublic),
+                    ),
                     const SizedBox(width: 10),
                     Text(
                       '$itemCount items',

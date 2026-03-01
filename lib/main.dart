@@ -391,6 +391,73 @@ class _CollectHomeState extends State<CollectHome> {
     _backgroundAiSummarize(board.id);
   }
 
+  Board _withUpdatedVisibility(Board board, bool isPublic) {
+    return Board(
+      id: board.id,
+      name: board.name,
+      description: board.description,
+      parentId: board.parentId,
+      itemCount: board.itemCount,
+      coverImage: board.coverImage,
+      color: board.color,
+      icon: board.icon,
+      isPublic: isPublic,
+      isPinned: board.isPinned,
+      aiSummary: board.aiSummary,
+    );
+  }
+
+  Future<void> _handleToggleBoardVisibility(
+    Board board,
+    bool toPublic,
+  ) async {
+    try {
+      await _service.actualizarTablero(
+        tableroId: board.id,
+        isPublic: toPublic,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _boards = _boards
+            .map(
+              (b) => b.id == board.id
+                  ? _withUpdatedVisibility(b, toPublic)
+                  : b,
+            )
+            .toList();
+
+        if (_selectedBoard?.id == board.id) {
+          _selectedBoard = _withUpdatedVisibility(_selectedBoard!, toPublic);
+        }
+        if (_selectedPublicBoard?.id == board.id) {
+          _selectedPublicBoard =
+              _withUpdatedVisibility(_selectedPublicBoard!, toPublic);
+        }
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              toPublic ? 'Tablero marcado como público' : 'Tablero en privado',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se pudo cambiar la visibilidad',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   void _handleItemSelect(ContentItem item) {
     setState(() {
       _selectedItem = item;
@@ -637,14 +704,32 @@ class _CollectHomeState extends State<CollectHome> {
               _openCreateBoard(parentId: parentId, lockedParentId: parentId),
           onAiSummarize: _handleAiSummarize,
           onOpenSuggestions: _handleOpenSuggestions,
+          onToggleVisibility: _handleToggleBoardVisibility,
         );
       case Screen.detail:
         final currentItem = _items.firstWhere(
           (i) => i.id == _selectedItem.id,
           orElse: () => _selectedItem,
         );
+        final currentBoard = _boards.firstWhere(
+          (b) => b.id == currentItem.boardId,
+          orElse: () => _boards.isNotEmpty
+              ? _boards.first
+              : Board(
+                  id: currentItem.boardId,
+                  name: 'Board',
+                  description: null,
+                  parentId: null,
+                  itemCount: 0,
+                  coverImage: null,
+                  color: '#FFFFFF',
+                  icon: 'folder',
+                  isPublic: false,
+                ),
+        );
         return DetailScreen(
           item: currentItem,
+          board: currentBoard,
           onBack: _handleBack,
           onToggleSaved: _handleToggleSaved,
           onAiSummarize: () => _handleAiSummarizeItem(currentItem.id),
@@ -653,6 +738,7 @@ class _CollectHomeState extends State<CollectHome> {
           onUpdateThumbnail: _handleUpdateItemThumbnail,
           onDeleteItem: _handleDeleteItem,
           onSummarize: _handleAiSummarize,
+          onToggleVisibility: _handleToggleBoardVisibility,
         );
       case Screen.add:
         return AddScreen(onClose: _handleBack);
