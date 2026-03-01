@@ -464,18 +464,12 @@ class SupabaseService {
       });
       await _supabase
           .from('sugerencias')
-          .update({
-            'estado': 'aceptada',
-            'accepted_at': DateTime.now().toIso8601String(),
-          })
+          .update({'estado': 'aceptada'})
           .eq('id', sugerenciaId);
     } else {
       await _supabase
           .from('sugerencias')
-          .update({
-            'estado': 'rechazada',
-            'rejected_at': DateTime.now().toIso8601String(),
-          })
+          .update({'estado': 'rechazada'})
           .eq('id', sugerenciaId);
     }
   }

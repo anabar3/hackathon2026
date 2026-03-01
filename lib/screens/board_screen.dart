@@ -13,7 +13,6 @@ class BoardScreen extends StatefulWidget {
   final void Function(ContentItem) onItemSelect;
   final VoidCallback onEdit;
   final void Function(String parentId) onCreateSubBoard;
-  final VoidCallback onAiOrganize;
   final Future<void> Function() onAiSummarize;
   final VoidCallback onOpenSuggestions;
 
@@ -27,7 +26,6 @@ class BoardScreen extends StatefulWidget {
     required this.onItemSelect,
     required this.onEdit,
     required this.onCreateSubBoard,
-    required this.onAiOrganize,
     required this.onAiSummarize,
     required this.onOpenSuggestions,
   });
@@ -120,7 +118,6 @@ class _BoardScreenState extends State<BoardScreen> {
                     board: board,
                     itemCount: allBoardItems.length,
                     onBack: widget.onBack,
-                    onAiOrganize: widget.onAiOrganize,
                     onAiSummarize: _handleAiSummaryPressed,
                     onEdit: widget.onEdit,
                     onOpenSuggestions: widget.onOpenSuggestions,
@@ -765,7 +762,6 @@ class _BoardHeader extends StatelessWidget {
   final Board board;
   final int itemCount;
   final VoidCallback onBack;
-  final VoidCallback onAiOrganize;
   final VoidCallback onAiSummarize;
   final VoidCallback onEdit;
   final VoidCallback onOpenSuggestions;
@@ -774,7 +770,6 @@ class _BoardHeader extends StatelessWidget {
     required this.board,
     required this.itemCount,
     required this.onBack,
-    required this.onAiOrganize,
     required this.onAiSummarize,
     required this.onEdit,
     required this.onOpenSuggestions,
@@ -846,24 +841,18 @@ class _BoardHeader extends StatelessWidget {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _CircleBtn(icon: Icons.arrow_back_rounded, onTap: onBack),
-            Row(
-              children: [
-                _GroupIdeaBtn(onTap: onOpenSuggestions),
+                  children: [
+                    _CircleBtn(icon: Icons.arrow_back_rounded, onTap: onBack),
+                    Row(
+                      children: [
+                        _GroupIdeaBtn(onTap: onOpenSuggestions),
                         const SizedBox(width: 8),
                         _PrimaryBtn(
-                          label: 'AI Organize',
-                          icon: Icons.auto_fix_high_rounded,
-                          onTap: onAiOrganize,
+                          label: 'AI Summary',
+                          icon: Icons.auto_awesome,
+                          onTap: onAiSummarize,
                         ),
-                const SizedBox(width: 8),
-                _PrimaryBtn(
-                  label: 'AI Summary',
-                  icon: Icons.auto_awesome,
-                  onTap: onAiSummarize,
-                ),
-                const SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         _PrimaryBtn(
                           label: 'Edit',
                           icon: Icons.edit_outlined,
