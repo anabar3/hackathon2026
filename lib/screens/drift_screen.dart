@@ -4,6 +4,7 @@ import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../services/supabase_service.dart';
 import '../services/ble_service.dart';
+import '../services/groq_service.dart';
 import '../widgets/animated_entry.dart';
 
 class DriftScreen extends StatefulWidget {
@@ -65,45 +66,45 @@ class _DriftScreenState extends State<DriftScreen> {
         List<Board> boards = [];
         try {
           final boardsData = await _service.getTablerosPublicos(id);
-          boards = boardsData
-              .map(
-                (b) {
-                  final itemsList = b['items'] as List?;
-                  final count = (itemsList != null && itemsList.isNotEmpty)
-                      ? (itemsList.first['count'] as int? ?? 0)
-                      : 0;
-                  return Board(
-                    id: b['id'] ?? '',
-                    name: b['titulo'] ?? '',
-                    description: b['descripcion'],
-                    itemCount: count,
-                    coverImage: b['imagen_portada'],
-                    color: '#1e1e32',
-                    icon: 'compass',
-                    isPublic: true,
-                  );
-                },
-              )
-              .toList();
-          boards = await Future.wait(boardsData.map((b) async {
-            int count = 0;
-            try {
-              count = await _service.countItemsPorTablero(
-                userId: id,
-                tableroId: b['id'] ?? '',
-              );
-            } catch (_) {}
+          boards = boardsData.map((b) {
+            final itemsList = b['items'] as List?;
+            final count = (itemsList != null && itemsList.isNotEmpty)
+                ? (itemsList.first['count'] as int? ?? 0)
+                : 0;
             return Board(
               id: b['id'] ?? '',
               name: b['titulo'] ?? '',
               description: b['descripcion'],
+              parentId: b['parent_id'],
               itemCount: count,
               coverImage: b['imagen_portada'],
               color: '#1e1e32',
               icon: 'compass',
               isPublic: true,
             );
-          }));
+          }).toList();
+          boards = await Future.wait(
+            boardsData.map((b) async {
+              int count = 0;
+              try {
+                count = await _service.countItemsPorTablero(
+                  userId: id,
+                  tableroId: b['id'] ?? '',
+                );
+              } catch (_) {}
+              return Board(
+                id: b['id'] ?? '',
+                name: b['titulo'] ?? '',
+                description: b['descripcion'],
+                parentId: b['parent_id'],
+                itemCount: count,
+                coverImage: b['imagen_portada'],
+                color: '#1e1e32',
+                icon: 'compass',
+                isPublic: true,
+              );
+            }),
+          );
         } catch (_) {}
 
         final theirInterests = List<String>.from(profile['intereses'] ?? []);
@@ -230,12 +231,28 @@ class _DriftScreenState extends State<DriftScreen> {
     // Fetch in the background without blocking the UI
     final myUserId = _service.currentUser?.id;
     final myInterests = <String>[];
+    List<Board> myBoards = [];
     if (myUserId != null) {
       try {
         final profile = await _service.getPerfil(myUserId);
         if (profile != null) {
           myInterests.addAll(List<String>.from(profile['intereses'] ?? []));
         }
+        final myBoardsData = await _service.getTablerosPublicos(myUserId);
+        myBoards = myBoardsData.map((b) {
+          return Board(
+            id: b['id'] ?? '',
+            name: b['titulo'] ?? '',
+            description: b['descripcion'],
+            parentId: b['parent_id'],
+            itemCount: 0,
+            coverImage: b['imagen_portada'],
+            color: '#1e1e32',
+            icon: 'compass',
+            isPublic: true,
+            aiSummary: b['ai_summary'],
+          );
+        }).toList();
       } catch (_) {}
     }
 
@@ -276,48 +293,75 @@ class _DriftScreenState extends State<DriftScreen> {
         List<Board> boards = [];
         try {
           final boardsData = await _service.getTablerosPublicos(id);
-          boards = boardsData
-              .map(
-                (b) {
-                  final itemsList = b['items'] as List?;
-                  final count = (itemsList != null && itemsList.isNotEmpty)
-                      ? (itemsList.first['count'] as int? ?? 0)
-                      : 0;
-                  return Board(
-                    id: b['id'] ?? '',
-                    name: b['titulo'] ?? '',
-                    description: b['descripcion'],
-                    itemCount: count,
-                    coverImage: b['imagen_portada'],
-                    color: '#1e1e32',
-                    icon: 'compass',
-                    isPublic: true,
-                  );
-                },
-              )
-              .toList();
-          boards = await Future.wait(boardsData.map((b) async {
-            int count = 0;
-            try {
-              count = await _service.countItemsPorTablero(
-                userId: id,
-                tableroId: b['id'] ?? '',
-              );
-            } catch (_) {}
+          boards = boardsData.map((b) {
+            final itemsList = b['items'] as List?;
+            final count = (itemsList != null && itemsList.isNotEmpty)
+                ? (itemsList.first['count'] as int? ?? 0)
+                : 0;
             return Board(
               id: b['id'] ?? '',
               name: b['titulo'] ?? '',
               description: b['descripcion'],
+              parentId: b['parent_id'],
               itemCount: count,
               coverImage: b['imagen_portada'],
               color: '#1e1e32',
               icon: 'compass',
               isPublic: true,
+              aiSummary: b['ai_summary'],
             );
-          }));
+          }).toList();
+          boards = await Future.wait(
+            boardsData.map((b) async {
+              int count = 0;
+              try {
+                count = await _service.countItemsPorTablero(
+                  userId: id,
+                  tableroId: b['id'] ?? '',
+                );
+              } catch (_) {}
+              return Board(
+                id: b['id'] ?? '',
+                name: b['titulo'] ?? '',
+                description: b['descripcion'],
+                parentId: b['parent_id'],
+                itemCount: count,
+                coverImage: b['imagen_portada'],
+                color: '#1e1e32',
+                icon: 'compass',
+                isPublic: true,
+                aiSummary: b['ai_summary'],
+              );
+            }),
+          );
         } catch (_) {}
 
         if (!BleService.instance.nearbyUsers.value.contains(id)) continue;
+
+        String? insightsSummary;
+        if (myBoards.isNotEmpty && boards.isNotEmpty) {
+          try {
+            final comparisonResult = await GroqService().compareBoards(
+              myBoards: myBoards,
+              otherBoards: boards,
+            );
+            insightsSummary = comparisonResult['insightful_summary'] as String?;
+            final rankedIds =
+                comparisonResult['ranked_board_ids'] as List<String>;
+
+            // Sort boards based on rankedIds
+            boards.sort((a, b) {
+              final indexA = rankedIds.indexOf(a.id);
+              final indexB = rankedIds.indexOf(b.id);
+              if (indexA == -1 && indexB == -1) return 0;
+              if (indexA == -1) return 1;
+              if (indexB == -1) return -1;
+              return indexA.compareTo(indexB);
+            });
+          } catch (e) {
+            print('Error comparing boards: $e');
+          }
+        }
 
         final theirInterests = List<String>.from(
           profileData['intereses'] ?? [],
@@ -342,6 +386,7 @@ class _DriftScreenState extends State<DriftScreen> {
                   lastSeenLocation: 'Conexión BLE directa',
                   lastSeenTime: 'Justo ahora',
                   sharedInterests: shared,
+                  sharedInterestsSummary: insightsSummary,
                   publicBoards: boards,
                 ),
               );
@@ -750,19 +795,9 @@ class _PersonCard extends StatelessWidget {
   }
 
   List<Board> get _shownBoards {
-    final matching = person.publicBoards
-        .where(
-          (b) => person.sharedInterests.any(
-            (i) =>
-                b.name.toLowerCase().contains(i) ||
-                (b.description?.toLowerCase().contains(i) ?? false) ||
-                b.icon == i,
-          ),
-        )
-        .toList();
-    return matching.isNotEmpty
-        ? matching.take(1).toList()
-        : person.publicBoards.take(1).toList();
+    return person.publicBoards.isNotEmpty
+        ? person.publicBoards.take(1).toList()
+        : [];
   }
 
   @override

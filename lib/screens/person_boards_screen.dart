@@ -33,6 +33,10 @@ class PersonBoardsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mainBoards = person.publicBoards
+        .where((b) => b.parentId == null)
+        .toList();
+
     return Column(
       children: [
         // Header
@@ -162,6 +166,52 @@ class PersonBoardsScreen extends StatelessWidget {
                     )
                     .toList(),
               ),
+              if (person.sharedInterestsSummary != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withAlpha(15),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.primary.withAlpha(30)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.auto_awesome,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'AI INSIGHT',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        person.sharedInterestsSummary!,
+                        style: const TextStyle(
+                          color: AppColors.foreground,
+                          fontSize: 13,
+                          height: 1.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -187,7 +237,7 @@ class PersonBoardsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'TABLEROS PÚBLICOS (${person.publicBoards.length})',
+                    'TABLEROS PÚBLICOS (${mainBoards.length})',
                     style: const TextStyle(
                       color: AppColors.mutedForeground,
                       fontSize: 10,
@@ -196,107 +246,114 @@ class PersonBoardsScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ...person.publicBoards.map(
+                  ...mainBoards.map(
                     (board) => GestureDetector(
-                      onTap: onBoardSelect != null ? () => onBoardSelect!(board) : null,
+                      onTap: onBoardSelect != null
+                          ? () => onBoardSelect!(board)
+                          : null,
                       child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      clipBehavior: Clip.hardEdge,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (board.coverImage != null)
-                            Stack(
-                              children: [
-                                Image.network(
-                                  board.coverImage!,
-                                  height: 96,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    height: 80,
-                                    color: AppColors.surface,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.card,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        clipBehavior: Clip.hardEdge,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (board.coverImage != null)
+                              Stack(
+                                children: [
+                                  Image.network(
+                                    board.coverImage!,
+                                    height: 96,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      height: 80,
+                                      color: AppColors.surface,
+                                    ),
                                   ),
-                                ),
-                                Container(
-                                  height: 96,
-                                  decoration: const BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.transparent,
-                                        Color(0x88352F20),
+                                  Container(
+                                    height: 96,
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.transparent,
+                                          Color(0x88352F20),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withAlpha(26),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      _boardIcon(board.icon),
+                                      color: AppColors.primary,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          board.name,
+                                          style: const TextStyle(
+                                            color: AppColors.foreground,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        Text(
+                                        '${board.itemCount} elementos',
+                                          style: const TextStyle(
+                                            color: AppColors.mutedForeground,
+                                            fontSize: 11,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withAlpha(26),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    _boardIcon(board.icon),
-                                    color: AppColors.primary,
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        board.name,
-                                        style: const TextStyle(
-                                          color: AppColors.foreground,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      Text(
-                                      '${board.itemCount} elementos',
-                                        style: const TextStyle(
-                                          color: AppColors.mutedForeground,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (board.description != null)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                              child: Text(
-                                board.description!,
-                                style: const TextStyle(
-                                  color: AppColors.mutedForeground,
-                                  fontSize: 11,
-                                  height: 1.4,
-                                ),
+                                ],
                               ),
                             ),
-                        ],
+                            if (board.description != null)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  14,
+                                  0,
+                                  14,
+                                  14,
+                                ),
+                                child: Text(
+                                  board.description!,
+                                  style: const TextStyle(
+                                    color: AppColors.mutedForeground,
+                                    fontSize: 11,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
                     ),
                   ),
                 ],
