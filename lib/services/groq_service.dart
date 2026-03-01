@@ -60,7 +60,7 @@ Output STRICTLY in the following JSON schema:
          "name": "string",
          "description": "string"
       } or null,
-      "reasoning": "short explanation of why you grouped this item here, referencing its relationship to other inbox items or an existing board's ai_summary if applicable"
+      "reasoning": "short explanation of why you grouped this item here, referencing its relationship to other inbox items or an existing board's ai_summary if applicable. Do not include the item id in the reasoning, use the name instead."
     }
   ]
 }

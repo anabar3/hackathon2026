@@ -114,36 +114,72 @@ class _BoardSuggestionsScreenState extends State<BoardSuggestionsScreen> {
                       padding: const EdgeInsets.all(16),
                       itemCount: widget.suggestions.length,
                       itemBuilder: (context, index) {
-                        final sug = widget.suggestions[index];
-                        final suggestionId = sug['id'] as String;
-                        final itemData = sug['item'] as Map<String, dynamic>;
+                        final sug = widget.suggestions[index] ?? {};
+                        final suggestionId = (sug['id'] ?? '').toString();
+                        if (suggestionId.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+
+                        final itemData =
+                            (sug['item'] ?? <String, dynamic>{}) as Map<String, dynamic>;
                         final autorData =
                             sug['autor_perfil'] as Map<String, dynamic>?;
 
-                        // Mock mapping the itemData directly to ContentItem (could use _mapToContentItem from parent, but simplified here)
+                        ContentType _parseType(String? value) {
+                          switch ((value ?? '').toLowerCase()) {
+                            case 'video':
+                              return ContentType.video;
+                            case 'link':
+                              return ContentType.link;
+                            case 'audio':
+                              return ContentType.audio;
+                            case 'document':
+                              return ContentType.document;
+                            case 'file':
+                            case 'archivo':
+                              return ContentType.file;
+                            case 'note':
+                            case 'texto':
+                              return ContentType.note;
+                            case 'image':
+                            case 'imagen':
+                            default:
+                              return ContentType.image;
+                          }
+                        }
+
+                        // Fallback when backend doesn't embed an item map (common for ad-hoc suggestions).
+                        final tipoRaw = itemData['tipo'] ?? sug['tipo'];
+                        final titleRaw = itemData['titulo'] ?? sug['titulo'];
+                        final descRaw =
+                            itemData['descripcion'] ?? sug['contenido'];
+                        final thumbRaw =
+                            itemData['thumbnail_url'] ??
+                            (sug['raw_data'] is Map
+                                ? (sug['raw_data']['thumbnail'] ??
+                                    sug['raw_data']['image'])
+                                : null);
+                        final urlRaw = itemData['url'] ?? sug['contenido'];
+
                         final autorName =
                             autorData?['username'] ??
                             autorData?['nombre_completo'] ??
                             'Unknown User';
 
                         final item = ContentItem(
-                          id: itemData['id'],
-                          type: ContentType.values.firstWhere(
-                            (e) =>
-                                e.name == itemData['tipo'] || e.name == 'image',
-                            orElse: () => ContentType.image,
-                          ),
-                          title: itemData['titulo'] ?? 'Untitled',
-                          description: itemData['descripcion'],
-                          url: itemData['url'],
-                          thumbnail: itemData['thumbnail_url'],
-                          boardId: sug['target_tablero_id'],
-                          createdAt: (itemData['created_at'] != null)
-                              ? itemData['created_at']
-                                    .toString()
-                                    .split('T')
-                                    .first
-                              : 'Unknown Date',
+                          id: (itemData['id'] ?? suggestionId).toString(),
+                          type: _parseType(tipoRaw?.toString()),
+                          title: (titleRaw ?? 'Untitled').toString(),
+                          description: descRaw?.toString(),
+                          url: urlRaw?.toString(),
+                          thumbnail: thumbRaw?.toString(),
+                          boardId: (sug['target_tablero_id'] ?? '').toString(),
+                          createdAt: (itemData['created_at'] ??
+                                  sug['created_at'] ??
+                                  '')
+                              .toString()
+                              .split('T')
+                              .first,
                           duration: null,
                           size: null,
                           tags: const [],

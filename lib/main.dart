@@ -633,7 +633,6 @@ class _CollectHomeState extends State<CollectHome> {
           onEdit: () => _navigate(Screen.edit),
           onCreateSubBoard: (parentId) =>
               _openCreateBoard(parentId: parentId, lockedParentId: parentId),
-          onAiOrganize: () => _navigate(Screen.aiOrganize),
           onAiSummarize: _handleAiSummarize,
           onOpenSuggestions: _handleOpenSuggestions,
         );
