@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../models/ai_suggestion.dart';
 import '../services/groq_service.dart';
@@ -478,6 +477,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                 ),
                               ),
                             ),
+
                             if (suggestion != null)
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(
