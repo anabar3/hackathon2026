@@ -3,6 +3,7 @@ import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/content_card.dart';
 import '../widgets/animated_entry.dart';
+import '../widgets/fade_scroll.dart';
 
 class BoardScreen extends StatefulWidget {
   final Board board;
@@ -108,10 +109,12 @@ class _BoardScreenState extends State<BoardScreen> {
     return SafeArea(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 100),
-            physics: const BouncingScrollPhysics(),
-            child: ConstrainedBox(
+          return FadeScrollView(
+            topFade: 0.0,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 100),
+              physics: const BouncingScrollPhysics(),
+              child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -352,6 +355,7 @@ class _BoardScreenState extends State<BoardScreen> {
                 ],
               ),
             ),
+          ),
           );
         },
       ),
