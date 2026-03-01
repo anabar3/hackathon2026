@@ -131,7 +131,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Welcome back,',
+                        'Bienvenido de vuelta,',
                         style: TextStyle(
                           color: AppColors.mutedForeground,
                           fontSize: 14,
@@ -142,8 +142,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 4),
                       Text(
                         _userName != null
-                            ? 'Hi, ${_userName!.split(' ').first}'
-                            : 'Hi there',
+                            ? 'Hola, ${_userName!.split(' ').first}'
+                            : 'Hola',
                         style: const TextStyle(
                           color: AppColors.foreground,
                           fontSize: 32, // Larger h1
@@ -242,7 +242,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(height: 16),
                           const Text(
-                            'Start organizing!',
+                            '¡Empieza a organizar!',
                             style: TextStyle(
                               color: AppColors.foreground,
                               fontSize: 20,
@@ -252,7 +252,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(height: 8),
                           const Text(
-                            'Create your first board to collect your favorite things.',
+                            'Crea tu primer tablero para guardar tus cosas favoritas.',
                             style: TextStyle(
                               color: AppColors.mutedForeground,
                               fontSize: 14,
@@ -275,7 +275,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 elevation: 0,
                               ),
                               child: const Text(
-                                'Create Board',
+                                'Crear tablero',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
@@ -306,7 +306,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
-                            'Your Boards',
+                            'Tus tableros',
                             style: TextStyle(
                               color: AppColors.foreground,
                               fontSize: 18,
@@ -454,7 +454,7 @@ class _HeroBoardCard extends StatelessWidget {
                             )
                           else
                             const Text(
-                              'Contains',
+                              'Contiene',
                               style: TextStyle(
                                 color: AppColors.mutedForeground,
                                 fontSize: 12,
@@ -468,7 +468,7 @@ class _HeroBoardCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '${board.itemCount} items',
+                            '${board.itemCount} elementos',
                             style: const TextStyle(
                               color: AppColors.foreground,
                               fontSize: 12,
@@ -494,7 +494,7 @@ class _HeroBoardCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Open',
+                          'Abrir',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -591,7 +591,7 @@ class _ModernBoardCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '${board.itemCount} items',
+                        '${board.itemCount} elementos',
                         style: const TextStyle(
                           color: AppColors.foreground,
                           fontSize: 12,

@@ -356,8 +356,8 @@ class _ExportableCardState extends State<_ExportableCard> {
         ContentCard(item: widget.item, onTap: widget.onTap),
         if (widget.onExport != null)
           Positioned(
-            top: 10,
-            left: 10,
+            top: 8,
+            right: 8,
             child: GestureDetector(
               onTap: _exporting
                   ? null
@@ -435,7 +435,7 @@ class _SuggestBtn extends StatelessWidget {
             Icon(Icons.add_reaction_outlined, color: Colors.white, size: 16),
             SizedBox(width: 6),
             Text(
-              'Suggest Item',
+              'Sugerir elemento',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 12,

@@ -29,7 +29,24 @@ class ContentCard extends StatelessWidget {
     }
   }
 
-  String _typeLabel() => item.type.name;
+  String _typeLabel() {
+    switch (item.type) {
+      case ContentType.image:
+        return 'Imagen';
+      case ContentType.video:
+        return 'Video';
+      case ContentType.link:
+        return 'Enlace';
+      case ContentType.audio:
+        return 'Audio';
+      case ContentType.note:
+        return 'Nota';
+      case ContentType.document:
+        return 'Documento';
+      case ContentType.file:
+        return 'Archivo';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -277,7 +294,7 @@ class ContentCard extends StatelessWidget {
                         ),
                         SizedBox(width: 6),
                         Text(
-                          'Import to Inbox',
+                          'Importar a Inbox',
                           style: TextStyle(
                             color: AppColors.primary,
                             fontSize: 11,

@@ -101,6 +101,37 @@ class SupabaseService {
     });
   }
 
+  /// Sube un avatar del usuario a storage y devuelve una URL accesible.
+  Future<String> uploadAvatar({
+    required Uint8List bytes,
+    required String fileName,
+    required String mimeType,
+  }) async {
+    final user = currentUser;
+    if (user == null) {
+      throw Exception('No hay usuario autenticado');
+    }
+
+    final safeName = fileName.replaceAll(' ', '-');
+    final randomSuffix = Random().nextInt(1 << 32);
+    // Usamos el bucket ya existente de uploads para evitar errores de bucket inexistente.
+    const bucket = 'inbox-uploads';
+    final objectPath = '${user.id}/avatar-$randomSuffix-$safeName';
+
+    await _supabase.storage.from(bucket).uploadBinary(
+          objectPath,
+          bytes,
+          fileOptions: FileOptions(contentType: mimeType, upsert: true),
+        );
+
+    // Firma por 30 días. Ajusta según tus políticas de caducidad.
+    final signedUrl = await _supabase.storage
+        .from(bucket)
+        .createSignedUrl(objectPath, 60 * 60 * 24 * 30);
+
+    return signedUrl;
+  }
+
   // ─── TABLEROS ───────────────────────────────────
   Future<List<Map<String, dynamic>>> getTableros(String userId) async {
     final res = await _supabase

@@ -199,7 +199,7 @@ class _InboxScreenState extends State<InboxScreen> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Drop anything here — AI will organize it',
+                'Suelta lo que quieras aquí — la IA lo organizará',
                 style: TextStyle(
                   color: AppColors.mutedForeground,
                   fontSize: 14,

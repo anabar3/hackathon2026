@@ -2,29 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  // Warm Beige / Sage Green palette (matching reference)
-  static const background = Color(0xFFF5F0E8); // Warm linen
-  static const foreground = Color(0xFF3D3929); // Dark olive-brown
+  // Beige base palette inspired by provided mock
+  static const background = Color(0xFFF3EDDD); // Soft beige base
+  static const foreground = Color(0xFF3C392E); // Dark warm gray
 
-  static const card = Color(0xFFFDFAF3); // Off-white cream
-  static const cardForeground = Color(0xFF5A5344); // Medium brown
+  static const card = Color(0xFFF8F2E4); // Lighter card cream
+  static const cardForeground = Color(0xFF524A3A); // Medium brown
 
   static const surface = card; // Alias for existing codebase
   static const green = Color(0xFF22C55E); // Keep for online dots
 
-  static const primary = Color(0xFF6B8F71); // Sage green
+  static const primary = Color(0xFF73C08F); // Minty green accent
   static const primaryForeground = Color(0xFFFFFFFF);
 
-  static const secondary = Color(0xFFEDE8DC); // Beige
-  static const secondaryForeground = Color(0xFF8A7F6E); // Warm grey
+  static const secondary = Color(0xFFE9E1CD); // Muted beige for pills
+  static const secondaryForeground = Color(0xFF867C66); // Warm gray
 
-  static const muted = Color(0xFFD5CDBE); // Light taupe
-  static const mutedForeground = Color(0xFF9C9483); // Warm muted
+  static const muted = Color(0xFFDCCFB6); // Soft taupe borders
+  static const mutedForeground = Color(0xFFA09684); // Muted text
 
-  static const accent = Color(0xFF6B8F71); // Same sage green
+  static const accent = primary;
   static const accentForeground = Color(0xFFFFFFFF);
 
-  static const border = Color(0xFFD5CDBE); // Taupe border
+  static const border = Color(0xFFDCCFB6); // Light taupe border
   static const destruct = Color(0xFFC75050); // Warm red
 }
 

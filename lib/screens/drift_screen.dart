@@ -143,10 +143,10 @@ class _DriftScreenState extends State<DriftScreen> {
             name:
                 profile['nombre_completo'] ??
                 profile['username'] ??
-                'Anonymous',
+                'Anónimo',
             avatar: profile['avatar_url'] ?? '',
             bio: profile['bio'] ?? '',
-            lastSeenLocation: 'Crossed path',
+            lastSeenLocation: 'Se cruzó en tu camino',
             lastSeenTime: lastSeenTime,
             sharedInterests: shared,
             publicBoards: boards,
@@ -261,10 +261,10 @@ class _DriftScreenState extends State<DriftScreen> {
 
   String _formatTimeAgo(DateTime date) {
     final diff = DateTime.now().difference(date);
-    if (diff.inSeconds < 60) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-    if (diff.inHours < 24) return '${diff.inHours} hrs ago';
-    return '${diff.inDays} days ago';
+    if (diff.inSeconds < 60) return 'Justo ahora';
+    if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'hace ${diff.inHours} h';
+    return 'hace ${diff.inDays} d';
   }
 
   @override
@@ -294,8 +294,8 @@ class _DriftScreenState extends State<DriftScreen> {
               name: person.name,
               avatar: person.avatar,
               bio: person.bio,
-              lastSeenLocation: 'Crossed path',
-              lastSeenTime: 'Just now',
+              lastSeenLocation: 'Se cruzó en tu camino',
+              lastSeenTime: 'Justo ahora',
               sharedInterests: person.sharedInterests,
               publicBoards: person.publicBoards,
             ),
@@ -380,11 +380,11 @@ class _DriftScreenState extends State<DriftScreen> {
                 _nearPeople.add(
                   NearbyPerson(
                     id: id,
-                    name: 'Nearby User',
+                    name: 'Usuario cercano',
                     avatar: '',
-                    bio: 'Active on Collect',
-                    lastSeenLocation: 'Nearby',
-                    lastSeenTime: 'Just now',
+                    bio: 'Activo en Collect',
+                    lastSeenLocation: 'Cerca',
+                    lastSeenTime: 'Justo ahora',
                     sharedInterests: const [],
                     publicBoards: const [],
                   ),
@@ -486,11 +486,11 @@ class _DriftScreenState extends State<DriftScreen> {
                   name:
                       profileData['nombre_completo'] ??
                       profileData['username'] ??
-                      'Anonymous',
+                      'Anónimo',
                   avatar: profileData['avatar_url'] ?? '',
                   bio: profileData['bio'] ?? '',
-                  lastSeenLocation: 'Direct BLE Connection',
-                  lastSeenTime: 'Just now',
+                  lastSeenLocation: 'Conexión BLE directa',
+                  lastSeenTime: 'Justo ahora',
                   sharedInterests: shared,
                   sharedInterestsSummary: insightsSummary,
                   compatibilityScore: 0, // Placeholder
@@ -597,9 +597,9 @@ class _DriftScreenState extends State<DriftScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
@@ -622,22 +622,6 @@ class _DriftScreenState extends State<DriftScreen> {
                             ),
                           ),
                         ],
-                      ),
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withAlpha(20),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.primary.withAlpha(40),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.tune,
-                          color: AppColors.primary,
-                          size: 22,
-                        ),
                       ),
                     ],
                   ),
@@ -670,8 +654,8 @@ class _DriftScreenState extends State<DriftScreen> {
                         const SizedBox(width: 12),
                         Text(
                           _nearPeople.isEmpty
-                              ? 'Scanning your surroundings...'
-                              : '${activeNow.length} people nearby share your interests',
+                              ? 'Escaneando a tu alrededor...'
+                              : '${activeNow.length} personas cerca comparten tus intereses',
                           style: const TextStyle(
                             color: AppColors.primary,
                             fontSize: 13,
@@ -683,7 +667,7 @@ class _DriftScreenState extends State<DriftScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Only boards matching your interests are shown. Tap someone to see all their public boards.',
+                    'Solo se muestran los tableros que coinciden con tus intereses. Toca a alguien para ver todos sus tableros públicos.',
                     style: TextStyle(
                       color: AppColors.mutedForeground,
                       fontSize: 12,
@@ -839,7 +823,7 @@ class _DriftScreenState extends State<DriftScreen> {
               ),
               const SizedBox(height: 24),
               const Text(
-                'No one around yet',
+                'Aún no hay nadie cerca',
                 style: TextStyle(
                   color: AppColors.foreground,
                   fontSize: 22,
@@ -849,7 +833,7 @@ class _DriftScreenState extends State<DriftScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Walk near someone with the app and you\'ll automatically discover their public boards.',
+                'Camina cerca de alguien con la app y descubrirás automáticamente sus tableros públicos.',
                 style: TextStyle(
                   color: AppColors.mutedForeground,
                   fontSize: 15,
@@ -1208,7 +1192,7 @@ class _PersonCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
-                                  '${board.itemCount} items',
+                                  '${board.itemCount} elementos',
                                   style: const TextStyle(
                                     color: AppColors.secondaryForeground,
                                     fontSize: 12,
@@ -1226,7 +1210,7 @@ class _PersonCard extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 12),
                       child: Center(
                         child: Text(
-                          '+$hiddenCount more public board${hiddenCount != 1 ? 's' : ''}',
+                          '+$hiddenCount tablero público más',
                           style: const TextStyle(
                             color: AppColors.mutedForeground,
                             fontSize: 11,
