@@ -8,6 +8,7 @@ import 'models/models.dart';
 import 'data/mock_data.dart';
 import 'theme/app_theme.dart';
 import 'services/supabase_service.dart';
+import 'services/groq_service.dart';
 import 'widgets/bottom_nav.dart';
 import 'widgets/pattern_background.dart';
 import 'screens/login_screen.dart';
@@ -240,10 +241,14 @@ class _CollectHomeState extends State<CollectHome> {
           if (prevBoard.isNotEmpty) {
             _selectedBoard = prevBoard.first;
           }
-          _prevScreen = _boardHistory.isNotEmpty ? Screen.board : Screen.dashboard;
+          _prevScreen = _boardHistory.isNotEmpty
+              ? Screen.board
+              : Screen.dashboard;
           _screen = Screen.board;
         } else {
-          _screen = _prevScreen == Screen.board ? Screen.dashboard : _prevScreen;
+          _screen = _prevScreen == Screen.board
+              ? Screen.dashboard
+              : _prevScreen;
         }
       } else {
         _screen = Screen.dashboard;
@@ -262,6 +267,8 @@ class _CollectHomeState extends State<CollectHome> {
       _prevScreen = _screen;
       _screen = Screen.board;
     });
+    // Trigger board summarize automatically when board is changed
+    _backgroundAiSummarize(board.id);
   }
 
   void _handleItemSelect(ContentItem item) {
@@ -280,7 +287,10 @@ class _CollectHomeState extends State<CollectHome> {
     });
   }
 
-  Future<void> _handlePublicBoardSelect(Board board, NearbyPerson person) async {
+  Future<void> _handlePublicBoardSelect(
+    Board board,
+    NearbyPerson person,
+  ) async {
     setState(() {
       _selectedPublicBoard = board;
       _publicBoardItems = [];
@@ -299,9 +309,9 @@ class _CollectHomeState extends State<CollectHome> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading items: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading items: $e')));
       }
     }
   }
@@ -514,6 +524,7 @@ class _CollectHomeState extends State<CollectHome> {
           item: currentItem,
           onBack: _handleBack,
           onToggleSaved: _handleToggleSaved,
+          onAiSummarize: () => _handleAiSummarizeItem(currentItem.id),
           onUpdateTitle: _handleUpdateItemTitle,
           onUpdateDescription: _handleUpdateItemDescription,
           onUpdateThumbnail: _handleUpdateItemThumbnail,
@@ -553,7 +564,8 @@ class _CollectHomeState extends State<CollectHome> {
         return PersonBoardsScreen(
           person: _selectedPerson!,
           onBack: _handleBack,
-          onBoardSelect: (board) => _handlePublicBoardSelect(board, _selectedPerson!),
+          onBoardSelect: (board) =>
+              _handlePublicBoardSelect(board, _selectedPerson!),
         );
       case Screen.publicBoard:
         if (_selectedPublicBoard == null) return const SizedBox.shrink();
@@ -591,33 +603,42 @@ class _CollectHomeState extends State<CollectHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        bottom: false,
-        child: PatternBackground(
-          child: Stack(
-            children: [
-              _buildScreen(),
-              if (_showBottomNav)
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: BottomNav(
-                    activeScreen: _screen,
-                    onNavigate: (s) {
-                      setState(() {
-                        _prevScreen = _screen;
-                        _screen = s;
-                      });
-                      if (s == Screen.inbox) _loadInbox();
-                      if (s == Screen.dashboard) _loadBoards();
-                    },
+    return PopScope(
+      canPop: _screen == Screen.dashboard,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        resizeToAvoidBottomInset: false,
+        body: SafeArea(
+          bottom: false,
+          child: PatternBackground(
+            child: Stack(
+              children: [
+                _buildScreen(),
+                if (_showBottomNav)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: BottomNav(
+                      activeScreen: _screen,
+                      onNavigate: (s) {
+                        setState(() {
+                          _prevScreen = _screen;
+                          _screen = s;
+                        });
+                        if (s == Screen.inbox) _loadInbox();
+                        if (s == Screen.dashboard) _loadBoards();
+                      },
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -662,6 +683,7 @@ class _CollectHomeState extends State<CollectHome> {
               icon: 'palette',
               isPublic: (b['is_public'] ?? false) as bool,
               isPinned: (b['is_pinned'] ?? false) as bool? ?? false,
+              aiSummary: b['ai_summary'],
             ),
           )
           .toList();
@@ -712,6 +734,7 @@ class _CollectHomeState extends State<CollectHome> {
               icon: b.icon,
               isPublic: b.isPublic,
               isPinned: b.isPinned,
+              aiSummary: b.aiSummary,
             ),
           )
           .toList();
@@ -722,10 +745,102 @@ class _CollectHomeState extends State<CollectHome> {
     });
   }
 
-  void _handleAiSummarize() {
+  Future<void> _handleAiSummarize() async {
+    final board = _selectedBoard;
+    if (board == null) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Generating board summary...')),
+    );
+
+    try {
+      await _backgroundAiSummarize(board.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Board summary generated!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error generating summary: $e')));
+      }
+    }
+  }
+
+  Future<void> _backgroundAiSummarize(String boardId) async {
+    final user = _service.currentUser;
+    if (user == null) return;
+
+    final dbBoards = await _service.getTableros(user.id);
+    final dbBoard = dbBoards.firstWhere(
+      (b) => b['id'] == boardId,
+      orElse: () => <String, dynamic>{},
+    );
+    if (dbBoard.isEmpty) return;
+
+    final dbItems = await _service.getItemsPorTablero(
+      userId: user.id,
+      tableroId: boardId,
+    );
+    final groq = GroqService();
+
+    // summarize items
+    for (var i = 0; i < dbItems.length; i++) {
+      final itemMap = dbItems[i];
+      if (itemMap['ai_summary'] == null ||
+          itemMap['ai_summary'].toString().isEmpty) {
+        try {
+          final summary = await groq.summarizeItem(itemMap);
+          await _service.actualizarItem(
+            itemId: itemMap['id'],
+            aiSummary: summary,
+          );
+          itemMap['ai_summary'] = summary; // update map
+        } catch (e) {
+          /* ignore individual item failure in background */
+        }
+      }
+    }
+
+    // summarize board
+    final boardSummary = await groq.summarizeBoard(dbBoard, dbItems);
+    await _service.actualizarTablero(
+      tableroId: boardId,
+      aiSummary: boardSummary,
+    );
+    await _loadBoards();
+  }
+
+  Future<void> _handleAiSummarizeItem(String itemId) async {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('AI Summarize coming soon')));
+    ).showSnackBar(const SnackBar(content: Text('Generating item summary...')));
+    try {
+      final user = _service.currentUser;
+      if (user == null) return;
+
+      final dbItems = await _service.getItems(user.id);
+      final itemMap = dbItems.firstWhere((i) => i['id'] == itemId);
+
+      final groq = GroqService();
+      final summary = await groq.summarizeItem(itemMap);
+      await _service.actualizarItem(itemId: itemId, aiSummary: summary);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item summary generated!')),
+        );
+      }
+      await _syncItems();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error generating summary: $e')));
+      }
+    }
   }
 
   ContentItem _mapToContentItem(Map<String, dynamic> i) {
@@ -774,6 +889,7 @@ class _CollectHomeState extends State<CollectHome> {
       duration: null,
       size: null,
       author: null,
+      aiSummary: i['ai_summary'],
       saved: false,
     );
   }
@@ -1075,18 +1191,11 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
 
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
     );
   }
 
-  Board _copyBoard({
-    String? name,
-    String? description,
-    String? cover,
-  }) {
+  Board _copyBoard({String? name, String? description, String? cover}) {
     return Board(
       id: _board.id,
       name: name ?? _board.name,
@@ -1130,8 +1239,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(ctx, controller.text.trim()),
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
               child: const Text('Guardar'),
             ),
           ],
@@ -1139,16 +1247,11 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
       },
     );
     final newTitle = result?.trim();
-    if (newTitle == null ||
-        newTitle.isEmpty ||
-        newTitle == _board.name) return;
+    if (newTitle == null || newTitle.isEmpty || newTitle == _board.name) return;
 
     setState(() => _savingTitle = true);
     try {
-      await _service.actualizarTablero(
-        tableroId: _board.id,
-        titulo: newTitle,
-      );
+      await _service.actualizarTablero(tableroId: _board.id, titulo: newTitle);
       _applyUpdate(_copyBoard(name: newTitle));
       _showSnack('Título actualizado');
     } catch (_) {
@@ -1181,8 +1284,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(ctx, controller.text.trim()),
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
               child: const Text('Guardar'),
             ),
           ],
@@ -1200,9 +1302,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
         tableroId: _board.id,
         descripcion: descForDb,
       );
-      _applyUpdate(
-        _copyBoard(description: newDesc.isEmpty ? null : newDesc),
-      );
+      _applyUpdate(_copyBoard(description: newDesc.isEmpty ? null : newDesc));
       _showSnack('Descripción actualizada');
     } catch (_) {
       _showSnack('No se pudo actualizar la descripción');
@@ -1225,8 +1325,9 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
     try {
       final userId = _service.currentUser?.id;
       if (userId == null) throw Exception('Debes iniciar sesión');
-      final mime =
-          file.extension != null ? 'image/${file.extension}' : 'image/jpeg';
+      final mime = file.extension != null
+          ? 'image/${file.extension}'
+          : 'image/jpeg';
       final url = await _service.subirImagenPortada(
         userId: userId,
         bytes: file.bytes!,
@@ -1263,9 +1364,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Eliminar'),
             ),
@@ -1287,10 +1386,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
     }
   }
 
-  Widget _editIcon({
-    required VoidCallback onTap,
-    required bool loading,
-  }) {
+  Widget _editIcon({required VoidCallback onTap, required bool loading}) {
     return GestureDetector(
       onTap: loading ? null : onTap,
       child: Container(
@@ -1419,10 +1515,7 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
                               ],
                             ),
                           ),
-                          _editIcon(
-                            onTap: _editTitle,
-                            loading: _savingTitle,
-                          ),
+                          _editIcon(onTap: _editTitle, loading: _savingTitle),
                         ],
                       ),
                       const Divider(color: AppColors.border, height: 24),
@@ -1541,42 +1634,42 @@ class _EditPlaceholderState extends State<_EditPlaceholder> {
                 ),
                 const SizedBox(height: 14),
                 const Text(
-              'Los cambios se guardan al instante.',
-              style: TextStyle(
-                color: AppColors.mutedForeground,
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  'Los cambios se guardan al instante.',
+                  style: TextStyle(
+                    color: AppColors.mutedForeground,
+                    fontSize: 12,
                   ),
                 ),
-                onPressed: _deleting ? null : _confirmDelete,
-                child: _deleting
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Borrar tablero',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-              ),
-            ),
+                    ),
+                    onPressed: _deleting ? null : _confirmDelete,
+                    child: _deleting
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Borrar tablero',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                  ),
+                ),
               ],
             ),
           ),

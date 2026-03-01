@@ -9,6 +9,7 @@ class DetailScreen extends StatefulWidget {
   final ContentItem item;
   final VoidCallback onBack;
   final void Function(String) onToggleSaved;
+  final VoidCallback? onAiSummarize;
   final Future<void> Function(String, String) onUpdateTitle;
   final Future<void> Function(String, String) onUpdateDescription;
   final Future<String> Function(
@@ -25,6 +26,7 @@ class DetailScreen extends StatefulWidget {
     required this.item,
     required this.onBack,
     required this.onToggleSaved,
+    this.onAiSummarize,
     required this.onUpdateTitle,
     required this.onUpdateDescription,
     required this.onUpdateThumbnail,
